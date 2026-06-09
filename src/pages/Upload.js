@@ -199,8 +199,9 @@ export default function Upload() {
 
   // Cascading selects
   const [unis,   setUnis]   = useState([])
-  const [facs,   setFacs]   = useState([])
-  const [fils,   setFils]   = useState([])
+  const [facs,       setFacs]       = useState([])
+  const [fils,       setFils]       = useState([])
+  const [facsFetched, setFacsFetched] = useState(false)
   const [selUni, setSelUni] = useState('')
   const [selFac, setSelFac] = useState('')
   const [selFil, setSelFil] = useState('')
@@ -277,9 +278,19 @@ export default function Upload() {
   }, [])
 
   useEffect(() => {
-    if (!selUni) { setFacs([]); setSelFac(''); return }
+    if (!selUni) { setFacs([]); setSelFac(''); setFacsFetched(false); return }
+    setFacsFetched(false)
     supabase.from('faculties').select('*').eq('university_id', selUni).order('name')
-      .then(({ data }) => setFacs(data || []))
+      .then(({ data }) => {
+        const result = data || []
+        setFacs(result)
+        setFacsFetched(true)
+        if (result.length === 0) {
+          setShowSchoolForm(true)
+          setSchoolCase('faculty')
+          setSchBParentUni(selUni)
+        }
+      })
     setSelFac(''); setSelFil(''); setSelSem(''); setSelMod(null)
   }, [selUni])
 
@@ -387,13 +398,19 @@ export default function Upload() {
         request_type: 'independent',
         status:       'approved',
       })
-      await supabase.from('universities').insert({
+      const { data: newUni } = await supabase.from('universities').insert({
         name: schAName.trim(),
         city: schACity.trim() || null,
         type: schAType,
-      })
-      const { data } = await supabase.from('universities').select('*').order('name')
-      if (data) setUnis(data)
+      }).select().single()
+      const { data: allUnis } = await supabase.from('universities').select('*').order('name')
+      if (allUnis) setUnis(allUnis)
+      // Reset Case A form and auto-select new university — selUni useEffect
+      // will detect empty faculties and auto-open Case B
+      setSchoolCase(''); setSchAName(''); setSchACity(''); setSchAType('public')
+      setShowSchoolForm(false)
+      if (newUni) setSelUni(String(newUni.id))
+      return
     } else if (schoolCase === 'faculty') {
       if (!schBFacName.trim() || !schBParentUni) return
       await supabase.from('school_requests').insert({
@@ -703,10 +720,19 @@ export default function Upload() {
                   </div>
                   <div>
                     <label className="label">Faculté / École</label>
-                    <select className="select" value={selFac} onChange={e => setSelFac(e.target.value)} disabled={!selUni}>
-                      <option value="">Sélectionner...</option>
-                      {facs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                    </select>
+                    {selUni && facs.length === 0 && facsFetched ? (
+                      <div style={{background:'rgba(79,142,247,0.06)',border:'1px solid rgba(79,142,247,0.2)',borderRadius:9,padding:'10px 12px'}}>
+                        <div style={{fontSize:'0.72rem',color:'var(--accent2)',fontFamily:'DM Mono,monospace',lineHeight:1.65}}>
+                          Cet établissement n'a pas encore<br/>de composantes enregistrées.<br/>
+                          <span style={{color:'var(--text2)'}}>Tu peux en ajouter une ci-dessous.</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <select className="select" value={selFac} onChange={e => setSelFac(e.target.value)} disabled={!selUni}>
+                        <option value="">Sélectionner...</option>
+                        {facs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                      </select>
+                    )}
                   </div>
                 </div>
                 <div className="field-grid">
