@@ -762,6 +762,11 @@ export default function Upload() {
                       <option value="">Sélectionner...</option>
                       {unis.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select>
+                    {!selUni && (
+                      <p style={{color:'var(--text3)',fontSize:'11px',marginTop:'4px',fontFamily:'DM Mono, monospace'}}>
+                        // Cherche ton école directement (ex: ENSA, ENCG, SUPMTI) ou sélectionne l'université parente si ton école en fait partie
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="label">Faculté / École</label>
