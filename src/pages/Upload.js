@@ -217,6 +217,12 @@ export default function Upload() {
   const [schoolType,      setSchoolType]      = useState('public')
   const [schoolSent,      setSchoolSent]      = useState(false)
 
+  // Filière suggestion form
+  const [showFiliereForm, setShowFiliereForm] = useState(false)
+  const [filiereName,     setFiliereName]     = useState('')
+  const [filiereNbSem,    setFiliereNbSem]    = useState('')
+  const [filiereSent,     setFiliereSent]     = useState(false)
+
   // Points state for success screen
   const [earnedPoints, setEarnedPoints] = useState(null)
 
@@ -334,6 +340,19 @@ export default function Upload() {
   const handleDrop = (e) => {
     e.preventDefault(); setDrag(false)
     handleFiles(e.dataTransfer.files)
+  }
+
+  // Filière suggestion submit
+  const handleFiliereRequest = async () => {
+    if (!filiereName.trim()) return
+    await supabase.from('filiere_suggestions').insert({
+      suggested_by:    user.id,
+      faculty_id:      selFac ? parseInt(selFac) : null,
+      name:            filiereName.trim(),
+      total_semesters: filiereNbSem ? parseInt(filiereNbSem) : null,
+      status:          'pending',
+    })
+    setFiliereSent(true)
   }
 
   // School request submit
@@ -491,6 +510,7 @@ export default function Upload() {
     setProgress(0); setEarnedPoints(null)
     setModSearch(''); setError('')
     setShowSchoolForm(false); setSchoolName(''); setSchoolCity(''); setSchoolSent(false)
+    setShowFiliereForm(false); setFiliereName(''); setFiliereNbSem(''); setFiliereSent(false)
   }
 
   if (authLoad) return (
@@ -622,6 +642,51 @@ export default function Upload() {
                     </select>
                   </div>
                 </div>
+
+                {/* FILIÈRE NOT FOUND */}
+                {selFac && (
+                  <div style={{marginBottom:'1rem'}}>
+                    {!showFiliereForm ? (
+                      <button
+                        style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.78rem',fontFamily:'DM Mono,monospace',cursor:'pointer',textDecoration:'underline',padding:0,transition:'color 0.15s'}}
+                        onClick={() => setShowFiliereForm(true)}>
+                        Ma filière n'est pas dans la liste → La signaler
+                      </button>
+                    ) : filiereSent ? (
+                      <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.75rem',color:'var(--teal2)'}}>
+                        ✓ Ta filière a été signalée. Elle sera ajoutée après vérification. Merci de ta contribution !
+                      </div>
+                    ) : (
+                      <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:10,padding:'1rem 1.25rem'}}>
+                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'0.875rem'}}>// signaler une filière manquante</div>
+                        <div className="field-grid">
+                          <div>
+                            <label className="label">Nom de la filière *</label>
+                            <input className="input" placeholder="Ex: Génie Informatique, MIAGE..."
+                              value={filiereName} onChange={e => setFiliereName(e.target.value)} />
+                          </div>
+                          <div>
+                            <label className="label">Nombre de semestres</label>
+                            <input className="input" type="number" min="1" max="10" placeholder="Ex: 6, 8, 10..."
+                              value={filiereNbSem} onChange={e => setFiliereNbSem(e.target.value)} />
+                          </div>
+                        </div>
+                        <div style={{display:'flex',gap:8,alignItems:'center',marginTop:4}}>
+                          <button
+                            style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif'}}
+                            onClick={handleFiliereRequest}>
+                            Signaler la filière
+                          </button>
+                          <button
+                            style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.75rem',cursor:'pointer',fontFamily:'DM Mono,monospace'}}
+                            onClick={() => setShowFiliereForm(false)}>
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="field">
                   <label className="label">Module</label>

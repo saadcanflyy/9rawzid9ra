@@ -198,6 +198,7 @@ export default function Admin() {
   const [pendingDocs,  setPendingDocs]  = useState([])
   const [pendingMods,  setPendingMods]  = useState([])
   const [schoolReqs,   setSchoolReqs]   = useState([])
+  const [filiereReqs,  setFiliereReqs]  = useState([])
   const [users,        setUsers]        = useState([])
   const [topUsers,     setTopUsers]     = useState([])
   const [recentDocs,   setRecentDocs]   = useState([])
@@ -230,6 +231,7 @@ export default function Admin() {
     if (activeTab === 'documents') loadDocs(docFilter)
     if (activeTab === 'modules') loadMods()
     if (activeTab === 'schools') loadSchools()
+    if (activeTab === 'filieres') loadFilieres()
     if (activeTab === 'users') loadUsers()
     if (activeTab === 'senpai') loadSenpai()
   }, [activeTab, isAdmin]) // eslint-disable-line
@@ -244,7 +246,7 @@ export default function Admin() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
 
-    const [docs, mods, schools, usrs, docsMonth, docsLastMonth, usrsMonth, top10, recent, flagged] = await Promise.all([
+    const [docs, mods, schools, usrs, docsMonth, docsLastMonth, usrsMonth, top10, recent, flagged, filieres_sug] = await Promise.all([
       supabase.from('documents').select('*', { count:'exact', head:true }),
       supabase.from('modules').select('*', { count:'exact', head:true }).eq('verified', false),
       supabase.from('school_requests').select('*', { count:'exact', head:true }).eq('status', 'pending'),
@@ -255,16 +257,18 @@ export default function Admin() {
       supabase.from('user_profiles').select('id, name, email, points, uploads_count').order('points', { ascending: false }).limit(10),
       supabase.from('admin_documents').select('id, doc_type, module_name, uploader_name, created_at, files, academic_year').order('created_at', { ascending: false }).limit(10),
       supabase.from('senpai_posts').select('*', { count:'exact', head:true }).eq('is_approved', false),
+      supabase.from('filiere_suggestions').select('*', { count:'exact', head:true }).eq('status', 'pending'),
     ])
     setStats({
-      pendingDocs:     docs.count      || 0,
-      pendingMods:     mods.count      || 0,
-      pendingSchools:  schools.count   || 0,
-      totalUsers:      usrs.count      || 0,
-      docsThisMonth:   docsMonth.count || 0,
-      docsLastMonth:   docsLastMonth.count || 0,
-      usersThisMonth:  usrsMonth.count || 0,
-      flaggedPosts:    flagged.count   || 0,
+      pendingDocs:      docs.count         || 0,
+      pendingMods:      mods.count         || 0,
+      pendingSchools:   schools.count      || 0,
+      totalUsers:       usrs.count         || 0,
+      docsThisMonth:    docsMonth.count    || 0,
+      docsLastMonth:    docsLastMonth.count|| 0,
+      usersThisMonth:   usrsMonth.count    || 0,
+      flaggedPosts:     flagged.count      || 0,
+      pendingFilieres:  filieres_sug.count || 0,
     })
     setTopUsers(top10.data   || [])
     setRecentDocs(recent.data || [])
@@ -297,6 +301,16 @@ export default function Admin() {
     setLoading(true)
     const { data } = await supabase.from('school_requests').select('*, user_profiles(name, email)').order('created_at', { ascending: false })
     setSchoolReqs(data || [])
+    setLoading(false)
+  }
+
+  const loadFilieres = async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('filiere_suggestions')
+      .select('*, user_profiles(name, email), faculties(name, universities(name))')
+      .order('created_at', { ascending: false })
+    setFiliereReqs(data || [])
     setLoading(false)
   }
 
@@ -401,6 +415,16 @@ export default function Admin() {
     setSchoolReqs(s => s.map(x => x.id === id ? { ...x, status: 'rejected' } : x))
   }
 
+  const approveFiliere = async (id) => {
+    await supabase.from('filiere_suggestions').update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: user.id }).eq('id', id)
+    setFiliereReqs(f => f.map(x => x.id === id ? { ...x, status: 'approved' } : x))
+  }
+
+  const rejectFiliere = async (id) => {
+    await supabase.from('filiere_suggestions').update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: user.id }).eq('id', id)
+    setFiliereReqs(f => f.map(x => x.id === id ? { ...x, status: 'rejected' } : x))
+  }
+
   const banUser = async (id, currentBan) => {
     const msg = currentBan ? 'Débannir cet utilisateur ?' : 'Bannir cet utilisateur ?'
     if (!window.confirm(msg)) return
@@ -430,6 +454,7 @@ export default function Admin() {
     { k:'documents', label:'Documents',        icon:'[]', count: stats?.pendingDocs },
     { k:'modules',   label:'Modules',          icon:'#',  count: stats?.pendingMods },
     { k:'schools',   label:'Écoles',           icon:'@',  count: stats?.pendingSchools },
+    { k:'filieres',  label:'Filières',         icon:'≡',  count: stats?.pendingFilieres },
     { k:'users',     label:'Utilisateurs',     icon:'::' },
     { k:'senpai',    label:'Senpai Zone',      icon:'🧠', count: stats?.flaggedPosts },
   ]
@@ -812,6 +837,48 @@ export default function Admin() {
                   })}
                 </div>
                )}
+            </>
+          )}
+
+          {/* FILIÈRES */}
+          {activeTab === 'filieres' && (
+            <>
+              <div className="section-title">// demandes d'ajout de filières</div>
+              {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel"/>) :
+               filiereReqs.length === 0 ? <div className="empty">// aucune demande de filière</div> : (
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr><th>Filière</th><th>Faculté / Université</th><th>Semestres</th><th>Demandé par</th><th>Statut</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                      {filiereReqs.map(f => (
+                        <tr key={f.id}>
+                          <td><div className="table-name">{f.name}</div></td>
+                          <td>
+                            <div>{f.faculties?.name || '—'}</div>
+                            <div className="table-mono" style={{color:'var(--text3)'}}>{f.faculties?.universities?.name || '—'}</div>
+                          </td>
+                          <td className="table-mono">{f.total_semesters ?? '—'}</td>
+                          <td>
+                            <div className="table-name">{f.user_profiles?.name || '—'}</div>
+                            <div className="table-mono" style={{color:'var(--text3)'}}>{fmt(f.created_at)}</div>
+                          </td>
+                          <td><span className={`badge badge-${f.status}`}>{f.status}</span></td>
+                          <td>
+                            {f.status === 'pending' && (
+                              <div className="actions">
+                                <button className="act-btn act-approve" onClick={() => approveFiliere(f.id)}>Approuver</button>
+                                <button className="act-btn act-reject" onClick={() => rejectFiliere(f.id)}>Rejeter</button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           )}
 
