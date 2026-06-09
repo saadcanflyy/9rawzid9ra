@@ -92,6 +92,7 @@ export default function Register() {
   const [otpCode,      setOtpCode]      = useState('')
   const [otpLoading,   setOtpLoading]   = useState(false)
   const [otpError,     setOtpError]     = useState('')
+  const [pwdError,     setPwdError]     = useState('')
   const [universities, setUniversities] = useState([])
   const [form, setForm] = useState({ name:'', email:'', password:'', confirm:'', university_id:'' })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -104,9 +105,11 @@ export default function Register() {
   const handleRegister = async (e) => {
     e.preventDefault()
     setError('')
+    setPwdError('')
     if (!form.name.trim())              return setError('Le nom est requis.')
     if (!form.email.trim())             return setError("L'email est requis.")
-    if (form.password.length < 6)       return setError('Mot de passe : minimum 6 caractères.')
+    const pwdOk = form.password.length >= 8 && /[a-zA-Z]/.test(form.password) && /[0-9]/.test(form.password)
+    if (!pwdOk) return setPwdError('Le mot de passe doit contenir au moins une lettre et un chiffre')
     if (form.password !== form.confirm) return setError('Les mots de passe ne correspondent pas.')
 
     setLoading(true)
@@ -248,7 +251,7 @@ export default function Register() {
                   <div>
                     <label className="label">Mot de passe</label>
                     <input className="input" type="password" placeholder="••••••••"
-                      value={form.password} onChange={e => set('password', e.target.value)} />
+                      value={form.password} onChange={e => { set('password', e.target.value); setPwdError('') }} />
                   </div>
                   <div>
                     <label className="label">Confirmer</label>
@@ -256,7 +259,10 @@ export default function Register() {
                       value={form.confirm} onChange={e => set('confirm', e.target.value)} />
                   </div>
                 </div>
-                <div className="hint">Minimum 6 caractères</div>
+                {pwdError
+                  ? <div style={{ fontSize:'0.75rem', color:'#F87171', marginTop:6, fontFamily:"'Outfit',sans-serif" }}>{pwdError}</div>
+                  : <div className="hint">Minimum 8 caractères, une lettre et un chiffre</div>
+                }
                 <button type="submit" className="submit" disabled={loading}>
                   {loading ? 'Création du compte...' : 'Créer mon compte'}
                 </button>
