@@ -557,7 +557,9 @@ export default function SenpaiZone() {
     setViewPost(vp => vp ? patch(vp) : vp)
     if (isVoted) await supabase.from('senpai_votes').delete().eq('user_id', user.id).eq('post_id', post.id)
     else         await supabase.from('senpai_votes').insert({ user_id: user.id, post_id: post.id })
-    await supabase.from('senpai_posts').update({ helpful_count: newCount }).eq('id', post.id)
+    const { count: trueCount } = await supabase
+      .from('senpai_votes').select('*', { count: 'exact', head: true }).eq('post_id', post.id)
+    await supabase.from('senpai_posts').update({ helpful_count: trueCount || 0 }).eq('id', post.id)
     setVoting(s => { const n = new Set(s); n.delete(post.id); return n })
   }
 
