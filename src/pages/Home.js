@@ -133,6 +133,28 @@ const css = `
   .footer-bar-link { font-size:0.7rem; color:var(--text3); background:none; border:none; cursor:pointer; font-family:'Outfit',sans-serif; transition:color 0.15s; padding:0; }
   .footer-bar-link:hover { color:var(--accent2); }
   .footer-dev { font-size:0.7rem; color:var(--text3); font-family:'DM Mono',monospace; }
+
+  @media(max-width:768px) {
+    .hero { padding:2.5rem 1.25rem 3.5rem; min-height:auto; }
+    .hero-inner h1 { font-size:2.1rem; }
+    .hero-inner p { font-size:0.85rem; }
+    .school-grid { grid-template-columns:1fr 1fr; gap:1px; }
+    .stats-row { grid-template-columns:repeat(2,1fr); }
+    .steps { grid-template-columns:1fr 1fr; gap:1.25rem; }
+    .section { padding:3rem 1.25rem; }
+    .cta-block { grid-template-columns:1fr; padding:2rem 1.5rem; }
+    .cta-actions { align-items:stretch; flex-direction:row; flex-wrap:wrap; }
+    .footer-bar { padding:1rem 1.25rem; }
+  }
+  @media(max-width:480px) {
+    .hero-inner h1 { font-size:1.65rem; }
+    .school-grid { grid-template-columns:1fr; }
+    .stats-row { grid-template-columns:repeat(2,1fr); }
+    .steps { grid-template-columns:1fr; }
+    .search-row { flex-direction:column; gap:8px; }
+    .cta-actions { flex-direction:column; }
+    .btn-primary, .btn-outline { width:100%; text-align:center; }
+  }
 `
 
 const SCHOOLS = [

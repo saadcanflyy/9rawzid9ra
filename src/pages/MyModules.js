@@ -72,6 +72,16 @@ const css = `
     font-size:0.875rem; font-weight:600; cursor:pointer;
     font-family:'Outfit',sans-serif; padding:10px 24px;
   }
+
+  @media(max-width:768px) {
+    .mm-header { padding:1.5rem 1rem 0.75rem; }
+    .mm-title { font-size:1.3rem; }
+    .mm-grid { padding:0 1rem 2rem; grid-template-columns:1fr 1fr; gap:10px; }
+  }
+  @media(max-width:480px) {
+    .mm-grid { grid-template-columns:1fr; }
+    .mm-card { padding:14px; }
+  }
 `
 
 export default function MyModules() {

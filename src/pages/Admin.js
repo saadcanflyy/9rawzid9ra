@@ -162,6 +162,27 @@ const css = `
   .denied-code { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text3); margin-bottom:1rem; }
   .denied-title { font-size:1.2rem; font-weight:700; color:var(--white); margin-bottom:0.5rem; }
   .denied-desc { font-size:0.85rem; color:var(--text2); }
+
+  @media(max-width:768px) {
+    .layout { flex-direction:column; height:auto; overflow:visible; }
+    .sidebar { width:100%; height:auto; border-right:none; border-bottom:1px solid var(--border); padding:0.75rem 1rem; display:flex; flex-direction:row; overflow-x:auto; gap:4px; flex-wrap:nowrap; }
+    .sidebar-title { display:none; }
+    .nav-item { flex-shrink:0; margin-bottom:0; white-space:nowrap; padding:7px 12px; }
+    .main { padding:1rem; overflow:visible; height:auto; }
+    .overview-cols { grid-template-columns:1fr; }
+    .table-wrap { overflow-x:auto; }
+    .table { min-width:600px; }
+    .stats-grid { grid-template-columns:repeat(2,1fr); }
+    .nav { padding:0 1rem; }
+    .nav-left { gap:0.75rem; }
+    .admin-badge { display:none; }
+  }
+  @media(max-width:480px) {
+    .stats-grid { grid-template-columns:1fr 1fr; }
+    .sidebar { gap:3px; }
+    .nav-item-label { font-size:0.75rem; }
+    .report-grid { grid-template-columns:1fr 1fr; }
+  }
 `
 
 export default function Admin() {

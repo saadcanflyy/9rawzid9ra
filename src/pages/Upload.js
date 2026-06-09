@@ -126,6 +126,22 @@ const css = `
   .success-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
   .btn-primary { background:linear-gradient(135deg,var(--accent),#3A6ED4); color:var(--white); border:none; border-radius:9px; padding:11px 24px; font-size:0.875rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; }
   .btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(79,142,247,0.4); }
+
+  @media(max-width:768px) {
+    .layout { padding:1.5rem 1rem; }
+    .page-title { font-size:1.4rem; }
+    .field-grid { grid-template-columns:1fr; }
+    .stepper { gap:0; overflow-x:auto; }
+    .s-info { display:none; }
+    .submit-section { flex-direction:column-reverse; gap:8px; }
+    .btn-back, .btn-submit { width:100%; text-align:center; }
+    .upload-zone { padding:1.5rem 1rem; }
+  }
+  @media(max-width:480px) {
+    .card { padding:1.25rem; }
+    .success-actions { flex-direction:column; }
+    .success-actions .btn-primary { width:100%; text-align:center; }
+  }
 `
 
 const DOC_TYPES = [

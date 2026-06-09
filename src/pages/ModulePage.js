@@ -274,6 +274,24 @@ const css = `
     flex-shrink: 0;
   }
   .related-name { font-size: 0.8rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  @media(max-width:900px) {
+    .layout { grid-template-columns:1fr; padding:1.25rem; gap:1.25rem; }
+    .aside { display:none; }
+  }
+  @media(max-width:768px) {
+    .breadcrumb-strip { padding:0.5rem 1rem; }
+    .mod-hero { padding:1.5rem 1rem; }
+    .mod-name { font-size:1.5rem; }
+    .mod-meta { gap:1rem; }
+    .layout { padding:1rem; }
+    .filter-tabs { padding:3px; }
+  }
+  @media(max-width:480px) {
+    .mod-name { font-size:1.25rem; }
+    .mod-tags { flex-wrap:wrap; }
+    .mod-meta { flex-direction:column; gap:0.5rem; align-items:flex-start; }
+  }
 `
 
 const TYPE_CONFIG = {

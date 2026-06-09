@@ -98,6 +98,26 @@ const css = `
 
   .skel { background:var(--surface); height:130px; animation:pulse 1.8s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:0.35} 50%{opacity:0.7} }
+
+  @media(max-width:768px) {
+    .layout { flex-direction:column; height:auto; overflow:visible; }
+    .sidebar { width:100%; height:auto; max-height:none; border-right:none; border-bottom:1px solid var(--border); padding:1rem; overflow-x:auto; overflow-y:visible; display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px; }
+    .sidebar-header { width:100%; margin-bottom:0; padding-bottom:0; border-bottom:none; }
+    .filter-block { min-width:150px; flex:1; margin-bottom:0; }
+    .sidebar-divider { display:none; }
+    .main { height:auto; overflow:visible; }
+    .topbar { padding:0.75rem 1rem; flex-wrap:wrap; gap:8px; }
+    .breadcrumb { padding:0.5rem 1rem; }
+    .results-bar { padding:0.5rem 1rem; }
+    .grid-wrap { padding:0 1rem 1rem; }
+    .modules-grid { grid-template-columns:1fr 1fr; }
+  }
+  @media(max-width:480px) {
+    .sidebar { gap:8px; }
+    .filter-block { min-width:100%; }
+    .modules-grid { grid-template-columns:1fr; }
+    .search-prompt { display:none; }
+  }
 `
 
 const DOC_TYPES = [

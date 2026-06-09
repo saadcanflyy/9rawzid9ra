@@ -244,15 +244,22 @@ const css = `
   .skel { background:var(--surface); border:1px solid var(--border); border-radius:12px; animation:pulse 1.8s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:0.35} 50%{opacity:0.7} }
 
-  @media(max-width:640px) {
+  @media(max-width:768px) {
     .layout { padding:1.25rem 1rem; }
     .profile-header { flex-direction:column; align-items:flex-start; gap:1rem; padding:1.25rem; }
     .profile-right { align-items:flex-start; flex-direction:row; width:100%; }
     .stats-row { grid-template-columns:repeat(2,1fr); }
     .stat:nth-child(3)::before { display:none; }
     .social-row { gap:1rem; }
-    .tabs { width:100%; }
-    .tab-btn { flex:1; padding:7px 10px; font-size:0.75rem; text-align:center; }
+    .tabs { width:100%; overflow-x:auto; flex-wrap:nowrap; }
+    .tab-btn { flex-shrink:0; padding:7px 12px; font-size:0.78rem; }
+  }
+  @media(max-width:480px) {
+    .layout { padding:1rem 0.75rem; }
+    .stats-row { grid-template-columns:repeat(2,1fr); }
+    .tab-btn { padding:6px 10px; font-size:0.72rem; }
+    .upload-card { padding:1rem; }
+    .sp-item { padding:0.75rem 1rem; }
   }
 `
 
