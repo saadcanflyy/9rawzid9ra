@@ -222,8 +222,7 @@ export default function Upload() {
   const [schAType,        setSchAType]        = useState('public')
   // Case B — faculty of existing university
   const [schBParentUni,   setSchBParentUni]   = useState('')
-  const [schBFacName,     setSchBFacName]     = useState('')
-  const [schBFacType,     setSchBFacType]     = useState('Faculté')
+  const [schBFaculties,   setSchBFaculties]   = useState([{ name: '', type: 'Faculté' }])
   // Case C — new university with its faculties
   const [schCUniName,     setSchCUniName]     = useState('')
   const [schCCity,        setSchCCity]        = useState('')
@@ -374,112 +373,120 @@ export default function Upload() {
   // Filière suggestion submit
   const handleFiliereRequest = async () => {
     if (!filiereName.trim()) return
-    await supabase.from('filiere_suggestions').insert({
-      suggested_by:    user.id,
-      faculty_id:      selFac ? parseInt(selFac) : null,
-      name:            filiereName.trim(),
-      total_semesters: filiereNbSem ? parseInt(filiereNbSem) : null,
-      status:          'approved',
-    })
-    if (selFac) {
-      await supabase.from('filieres').insert({
-        faculty_id:      parseInt(selFac),
+    if (!user) { navigate('/login', { state: { from: '/upload' } }); return }
+    try {
+      const { error: sugErr } = await supabase.from('filiere_suggestions').insert({
+        suggested_by:    user.id,
+        faculty_id:      selFac ? parseInt(selFac) : null,
         name:            filiereName.trim(),
-        total_semesters: filiereNbSem ? parseInt(filiereNbSem) : 6,
+        total_semesters: filiereNbSem ? parseInt(filiereNbSem) : null,
+        status:          'approved',
       })
-      const { data } = await supabase.from('filieres').select('*').eq('faculty_id', parseInt(selFac)).order('name')
-      if (data) setFils(data)
+      if (sugErr) console.error('[Filière] suggestion insert error:', sugErr)
+
+      if (selFac) {
+        const payload = { faculty_id: parseInt(selFac), name: filiereName.trim(), total_semesters: filiereNbSem ? parseInt(filiereNbSem) : 6 }
+        console.log('[Filière] Inserting filière:', payload)
+        const { data: newFil, error: filErr } = await supabase.from('filieres').insert(payload).select().single()
+        if (filErr) { console.error('[Filière] insert error:', filErr); setError('Erreur ajout filière : ' + filErr.message); return }
+        console.log('[Filière] Inserted:', newFil)
+        const { data: updatedFils } = await supabase.from('filieres').select('*').eq('faculty_id', parseInt(selFac)).order('name')
+        if (updatedFils) setFils(updatedFils)
+        if (newFil) setSelFil(String(newFil.id))
+      }
+      setFiliereSent(true)
+      setTimeout(() => { setFiliereSent(false); setShowFiliereForm(false); setFiliereName(''); setFiliereNbSem('') }, 3000)
+    } catch (e) {
+      setError('Erreur inattendue : ' + e.message)
     }
-    setFiliereSent(true)
   }
 
   // School request submit (3 cases)
   const handleSchoolRequest = async () => {
-    if (schoolCase === 'independent') {
-      if (!schAName.trim()) return
-      await supabase.from('school_requests').insert({
-        requested_by: user.id,
-        school_name:  schAName.trim(),
-        city:         schACity.trim() || null,
-        school_type:  schAType,
-        request_type: 'independent',
-        status:       'approved',
-      })
-      const { data: newUni } = await supabase.from('universities').insert({
-        name: schAName.trim(),
-        city: schACity.trim() || null,
-        type: schAType,
-      }).select().single()
-      const { data: allUnis } = await supabase.from('universities').select('*').order('name')
-      if (allUnis) setUnis(allUnis)
-      // Reset Case A form and auto-select new university — selUni useEffect
-      // will detect empty faculties and auto-open Case B
-      setSchoolCase(''); setSchAName(''); setSchACity(''); setSchAType('public')
-      setShowSchoolForm(false)
-      if (newUni) setSelUni(String(newUni.id))
-      return
-    } else if (schoolCase === 'faculty') {
-      if (!schBFacName.trim() || !schBParentUni) return
-      const parentUniId = parseInt(schBParentUni)
-      await supabase.from('school_requests').insert({
-        requested_by:         user.id,
-        school_name:          schBFacName.trim(),
-        school_type:          schBFacType,
-        request_type:         'faculty',
-        parent_university_id: parentUniId,
-        status:               'approved',
-      })
-      await supabase.from('faculties').insert({
-        university_id: parentUniId,
-        name:          schBFacName.trim(),
-        type:          schBFacType,
-      })
-      const { data: updatedFacs } = await supabase.from('faculties').select('*').eq('university_id', parentUniId).order('name')
-      if (updatedFacs) setFacs(updatedFacs)
-      setFacsFetched(true)
-      prefetchedForUniRef.current = String(parentUniId)
-      setSelFac(''); setSelFil(''); setSelSem(''); setSelMod(null)
-      setSchoolCase(''); setSchBParentUni(''); setSchBFacName(''); setSchBFacType('Faculté')
-      setShowSchoolForm(false)
-      setSelUni(String(parentUniId))
-      return
-    } else if (schoolCase === 'university_with_faculties') {
-      if (!schCUniName.trim()) return
-      const validFacs = schCFaculties.filter(f => f.name.trim())
-      await supabase.from('school_requests').insert({
-        requested_by: user.id,
-        school_name:  schCUniName.trim(),
-        city:         schCCity.trim() || null,
-        school_type:  schCType,
-        request_type: 'university_with_faculties',
-        details:      validFacs.length > 0 ? validFacs : null,
-        status:       'approved',
-      })
-      const { data: newUni } = await supabase.from('universities').insert({
-        name: schCUniName.trim(),
-        city: schCCity.trim() || null,
-        type: schCType,
-      }).select().single()
-      if (newUni) {
+    if (!user) { navigate('/login', { state: { from: '/upload' } }); return }
+    try {
+      if (schoolCase === 'independent') {
+        if (!schAName.trim()) return
+        await supabase.from('school_requests').insert({
+          requested_by: user.id, school_name: schAName.trim(), city: schACity.trim() || null,
+          school_type: schAType, request_type: 'independent', status: 'approved',
+        })
+        const payload = { name: schAName.trim(), city: schACity.trim() || null, type: schAType }
+        console.log('[Case A] Inserting university:', payload)
+        const { data: newUni, error: uniErr } = await supabase.from('universities').insert(payload).select().single()
+        if (uniErr) { console.error('[Case A] error:', uniErr); setError('Erreur ajout université : ' + uniErr.message); return }
+        console.log('[Case A] Inserted:', newUni)
+        const { data: allUnis } = await supabase.from('universities').select('*').order('name')
+        if (allUnis) setUnis(allUnis)
+        setSchoolCase(''); setSchAName(''); setSchACity(''); setSchAType('public')
+        setShowSchoolForm(false)
+        if (newUni) setSelUni(String(newUni.id))
+        return
+
+      } else if (schoolCase === 'faculty') {
+        if (!schBParentUni) return
+        const validFacs = schBFaculties.filter(f => f.name.trim())
+        if (validFacs.length === 0) { setError('Ajoute au moins une composante.'); return }
+        const parentUniId = parseInt(schBParentUni)
         for (const fac of validFacs) {
-          await supabase.from('faculties').insert({
-            university_id: newUni.id,
-            name: fac.name,
-            type: fac.type,
+          await supabase.from('school_requests').insert({
+            requested_by: user.id, school_name: fac.name.trim(), school_type: fac.type,
+            request_type: 'faculty', parent_university_id: parentUniId, status: 'approved',
           })
+          const payload = { university_id: parentUniId, name: fac.name.trim(), type: fac.type }
+          console.log('[Case B] Inserting faculty:', payload)
+          const { data: inserted, error: facErr } = await supabase.from('faculties').insert(payload).select().single()
+          if (facErr) { console.error('[Case B] error:', facErr); setError(`Erreur ajout "${fac.name}" : ${facErr.message}`); return }
+          console.log('[Case B] Inserted:', inserted)
+        }
+        const { data: updatedFacs, error: fetchErr } = await supabase.from('faculties').select('*').eq('university_id', parentUniId).order('name')
+        if (fetchErr) console.error('[Case B] re-fetch error:', fetchErr)
+        console.log('[Case B] Updated facs from DB:', updatedFacs)
+        if (updatedFacs) setFacs(updatedFacs)
+        setFacsFetched(true)
+        prefetchedForUniRef.current = String(parentUniId)
+        setSelFac(''); setSelFil(''); setSelSem(''); setSelMod(null)
+        setSchoolCase(''); setSchBParentUni(''); setSchBFaculties([{ name: '', type: 'Faculté' }])
+        setShowSchoolForm(false)
+        setSelUni(String(parentUniId))
+        return
+
+      } else if (schoolCase === 'university_with_faculties') {
+        if (!schCUniName.trim()) return
+        const validFacs = schCFaculties.filter(f => f.name.trim())
+        await supabase.from('school_requests').insert({
+          requested_by: user.id, school_name: schCUniName.trim(), city: schCCity.trim() || null,
+          school_type: schCType, request_type: 'university_with_faculties',
+          details: validFacs.length > 0 ? validFacs : null, status: 'approved',
+        })
+        const uniPayload = { name: schCUniName.trim(), city: schCCity.trim() || null, type: schCType }
+        console.log('[Case C] Inserting university:', uniPayload)
+        const { data: newUni, error: uniErr } = await supabase.from('universities').insert(uniPayload).select().single()
+        if (uniErr) { console.error('[Case C] university error:', uniErr); setError('Erreur ajout université : ' + uniErr.message); return }
+        console.log('[Case C] Inserted university:', newUni)
+        for (const fac of validFacs) {
+          const facPayload = { university_id: newUni.id, name: fac.name, type: fac.type }
+          console.log('[Case C] Inserting faculty:', facPayload)
+          const { data: inserted, error: facErr } = await supabase.from('faculties').insert(facPayload).select().single()
+          if (facErr) console.error('[Case C] faculty error:', facErr, facPayload)
+          else console.log('[Case C] Inserted faculty:', inserted)
         }
         const { data: allUnis } = await supabase.from('universities').select('*').order('name')
         if (allUnis) setUnis(allUnis)
         const { data: newFacs } = await supabase.from('faculties').select('*').eq('university_id', newUni.id).order('name')
+        console.log('[Case C] Faculties for new uni:', newFacs)
         if (newFacs) setFacs(newFacs)
         setFacsFetched(true)
         prefetchedForUniRef.current = String(newUni.id)
         setSelUni(String(newUni.id))
+      } else {
+        return
       }
-    } else {
-      return
+      setSchoolSent(true)
+    } catch (e) {
+      console.error('[handleSchoolRequest] unexpected error:', e)
+      setError('Erreur inattendue : ' + e.message)
     }
-    setSchoolSent(true)
   }
 
   // Step validations
@@ -625,7 +632,7 @@ export default function Upload() {
     setModSearch(''); setError('')
     setShowSchoolForm(false); setSchoolSent(false); setSchoolCase('')
     setSchAName(''); setSchACity(''); setSchAType('public')
-    setSchBParentUni(''); setSchBFacName(''); setSchBFacType('Faculté')
+    setSchBParentUni(''); setSchBFaculties([{ name: '', type: 'Faculté' }])
     setSchCUniName(''); setSchCCity(''); setSchCType('public'); setSchCFaculties([{ name:'', type:'Faculté' }])
     setShowFiliereForm(false); setFiliereName(''); setFiliereNbSem(''); setFiliereSent(false)
   }
@@ -928,21 +935,36 @@ export default function Upload() {
                               {unis.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                             </select>
                           </div>
-                          <div className="field-grid">
-                            <div>
-                              <label className="label">Nom de la faculté *</label>
-                              <input className="input" placeholder="Ex: Faculté des Sciences..."
-                                value={schBFacName} onChange={e => setSchBFacName(e.target.value)} />
-                            </div>
-                            <div>
-                              <label className="label">Type de composante</label>
-                              <select className="select" value={schBFacType} onChange={e => setSchBFacType(e.target.value)}>
-                                <option value="Faculté">Faculté</option>
-                                <option value="École">École</option>
-                                <option value="Institut">Institut</option>
-                                <option value="Centre">Centre</option>
-                              </select>
-                            </div>
+                          <div style={{marginBottom:'0.875rem'}}>
+                            <label className="label" style={{marginBottom:'0.5rem'}}>Composantes à ajouter *</label>
+                            {schBFaculties.map((f, i) => (
+                              <div key={i} style={{display:'flex',gap:6,marginBottom:6,alignItems:'center'}}>
+                                <input className="input" placeholder="Nom de la faculté..."
+                                  value={f.name}
+                                  onChange={e => { const a=[...schBFaculties]; a[i]={...a[i],name:e.target.value}; setSchBFaculties(a) }}
+                                  style={{flex:1}} />
+                                <select className="select" value={f.type}
+                                  onChange={e => { const a=[...schBFaculties]; a[i]={...a[i],type:e.target.value}; setSchBFaculties(a) }}
+                                  style={{width:110,flexShrink:0}}>
+                                  <option value="Faculté">Faculté</option>
+                                  <option value="École">École</option>
+                                  <option value="Institut">Institut</option>
+                                  <option value="Centre">Centre</option>
+                                </select>
+                                {schBFaculties.length > 1 && (
+                                  <button
+                                    style={{background:'none',border:'1px solid rgba(248,113,113,0.2)',color:'var(--red)',borderRadius:6,width:32,height:36,cursor:'pointer',flexShrink:0,fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}
+                                    onClick={() => setSchBFaculties(a => a.filter((_,j) => j!==i))}>
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            <button
+                              style={{background:'none',border:'1px dashed rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:7,padding:'6px 14px',fontSize:'0.78rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:2,width:'100%',transition:'background 0.15s'}}
+                              onClick={() => setSchBFaculties(a => [...a, { name: '', type: 'Faculté' }])}>
+                              + Ajouter une composante
+                            </button>
                           </div>
                         </>
                       )}
@@ -1023,7 +1045,10 @@ export default function Upload() {
 
                 <div className="submit-section">
                   <button className="btn-back" onClick={() => { setShowSchoolForm(false); setShowFiliereForm(false); }}>Annuler</button>
-                  <button className="btn-submit" onClick={validateStep1}>Continuer</button>
+                  <button className="btn-submit" onClick={validateStep1}
+                    disabled={!selUni || !selFac || !selFil || !selSem || !selMod}>
+                    Continuer
+                  </button>
                 </div>
               </div>
             )}
@@ -1152,7 +1177,10 @@ export default function Upload() {
 
                 <div className="submit-section">
                   <button className="btn-back" onClick={() => setStep(1)}>Retour</button>
-                  <button className="btn-submit" onClick={validateStep2}>Continuer</button>
+                  <button className="btn-submit" onClick={validateStep2}
+                    disabled={!docType || files.length === 0 || (['examen','cc','corrige_examen'].includes(docType) && !year)}>
+                    Continuer
+                  </button>
                 </div>
               </div>
             )}
