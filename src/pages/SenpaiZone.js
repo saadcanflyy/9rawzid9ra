@@ -479,13 +479,14 @@ export default function SenpaiZone() {
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'senpai_posts' }, payload => {
+        const n = payload.new
         setPosts(prev => prev.map(p =>
-          p.id === payload.new.id
-            ? { ...p, helpful_count: payload.new.helpful_count, reply_count: payload.new.reply_count }
+          p.id === n.id
+            ? { ...p, helpful_count: n.helpful_count ?? p.helpful_count, reply_count: n.reply_count ?? p.reply_count }
             : p
         ))
-        setViewPost(vp => vp?.id === payload.new.id
-          ? { ...vp, helpful_count: payload.new.helpful_count, reply_count: payload.new.reply_count }
+        setViewPost(vp => vp?.id === n.id
+          ? { ...vp, helpful_count: n.helpful_count ?? vp.helpful_count, reply_count: n.reply_count ?? vp.reply_count }
           : vp
         )
       })
@@ -557,9 +558,7 @@ export default function SenpaiZone() {
     setViewPost(vp => vp ? patch(vp) : vp)
     if (isVoted) await supabase.from('senpai_votes').delete().eq('user_id', user.id).eq('post_id', post.id)
     else         await supabase.from('senpai_votes').insert({ user_id: user.id, post_id: post.id })
-    const { count: trueCount } = await supabase
-      .from('senpai_votes').select('*', { count: 'exact', head: true }).eq('post_id', post.id)
-    await supabase.from('senpai_posts').update({ helpful_count: trueCount || 0 }).eq('id', post.id)
+    // DB trigger trg_helpful_count now atomically updates helpful_count — no manual write needed
     setVoting(s => { const n = new Set(s); n.delete(post.id); return n })
   }
 

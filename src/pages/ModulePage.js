@@ -418,6 +418,24 @@ export default function ModulePage() {
     load()
   }, [id])
 
+  // real-time: new docs uploaded to this module appear instantly
+  useEffect(() => {
+    const channel = supabase
+      .channel(`module-docs-${id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'documents' }, async payload => {
+        if (String(payload.new.module_id) !== String(id)) return
+        const { data } = await supabase
+          .from('documents').select('*, user_profiles!uploader_id(name)').eq('id', payload.new.id).single()
+        if (data) setDocs(prev => prev.some(d => d.id === data.id) ? prev : [data, ...prev])
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'documents' }, payload => {
+        if (String(payload.new.module_id) !== String(id)) return
+        setDocs(prev => prev.map(d => d.id === payload.new.id ? { ...d, ...payload.new } : d))
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [id])
+
   const GROUP_ORDER = ['examen','cc','td','tp','cours','corrige_examen','corrige_td','corrige_tp','quiz','projet_final']
 
   const tabDocs = activeTab === 'all' ? docs : docs.filter(d => d.doc_type === activeTab)
