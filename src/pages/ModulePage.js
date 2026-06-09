@@ -443,7 +443,13 @@ export default function ModulePage() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         setUser(session.user)
-        const currentDocs = docsRef.current
+        // re-fetch full docs to get current helpful_count from DB
+        const { data: freshDocs } = await supabase.from('documents')
+          .select('*, user_profiles!uploader_id(name)')
+          .eq('module_id', parseInt(id))
+          .order('created_at', { ascending: false })
+        if (freshDocs) { setDocs(freshDocs); docsRef.current = freshDocs }
+        const currentDocs = freshDocs || docsRef.current
         if (currentDocs.length === 0) return
         const { data: rxns } = await supabase.from('document_reactions')
           .select('*').eq('user_id', session.user.id).in('document_id', currentDocs.map(d => d.id))
@@ -511,19 +517,15 @@ export default function ModulePage() {
     // optimistic UI
     setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], helpful: !isH } }))
     setDocs(p => p.map(d => d.id === doc.id ? { ...d, helpful_count: Math.max(0, (d.helpful_count || 0) + (isH ? -1 : 1)) } : d))
-    // DB write
+    // DB write — trigger trg_doc_helpful_count (SECURITY DEFINER) auto-updates documents.helpful_count
     if (isH) {
       await supabase.from('document_reactions').delete().eq('user_id', user.id).eq('document_id', doc.id).eq('reaction_type', 'helpful')
     } else {
       await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'helpful' })
     }
-    // re-fetch true count to fix any race condition
-    const { count: trueCount } = await supabase
-      .from('document_reactions').select('*', { count: 'exact', head: true })
-      .eq('document_id', doc.id).eq('reaction_type', 'helpful')
-    const realCount = trueCount || 0
-    await supabase.from('documents').update({ helpful_count: realCount }).eq('id', doc.id)
-    setDocs(p => p.map(d => d.id === doc.id ? { ...d, helpful_count: realCount } : d))
+    // fetch true count from documents (trigger already updated it) to correct optimistic UI
+    const { data: freshDoc } = await supabase.from('documents').select('helpful_count').eq('id', doc.id).single()
+    if (freshDoc) setDocs(p => p.map(d => d.id === doc.id ? { ...d, helpful_count: freshDoc.helpful_count } : d))
   }
 
   // ── RATING ────────────────────────────────────────────────────────────────
