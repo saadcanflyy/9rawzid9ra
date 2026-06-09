@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
@@ -334,6 +334,7 @@ export default function ModulePage() {
   const [user,         setUser]         = useState(null)
   const [userReactions,setUserReactions]= useState({})
   const [isBookmarked, setIsBookmarked] = useState(false)
+  const docsRef = useRef([])
   const [requests,     setRequests]     = useState({})
   const [userRequested,setUserRequested]= useState({})
 
@@ -360,6 +361,7 @@ export default function ModulePage() {
         .eq('module_id', parseInt(id))
         .order('created_at', { ascending: false })
       setDocs(d || [])
+      docsRef.current = d || []
 
       // Bookmark status
       if (u && m) {
@@ -436,6 +438,31 @@ export default function ModulePage() {
     return () => supabase.removeChannel(channel)
   }, [id])
 
+  // reload user reactions when auth state changes (e.g. user logs back in mid-session)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user)
+        const currentDocs = docsRef.current
+        if (currentDocs.length === 0) return
+        const { data: rxns } = await supabase.from('document_reactions')
+          .select('*').eq('user_id', session.user.id).in('document_id', currentDocs.map(d => d.id))
+        const rxnMap = {}
+        rxns?.forEach(r => {
+          if (!rxnMap[r.document_id]) rxnMap[r.document_id] = {}
+          if (r.reaction_type === 'helpful') rxnMap[r.document_id].helpful = true
+          if (r.reaction_type === 'rating')  rxnMap[r.document_id].rating  = r.rating
+          if (r.reaction_type === 'report')  rxnMap[r.document_id].reported = true
+        })
+        setUserReactions(rxnMap)
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setUserReactions({})
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
   const GROUP_ORDER = ['examen','cc','td','tp','cours','corrige_examen','corrige_td','corrige_tp','quiz','projet_final']
 
   const tabDocs = activeTab === 'all' ? docs : docs.filter(d => d.doc_type === activeTab)
@@ -481,17 +508,22 @@ export default function ModulePage() {
   const handleHelpful = async (doc) => {
     if (!user) { navigate('/login', { state: { from: `/module/${id}` } }); return }
     const isH = userReactions[doc.id]?.helpful
+    // optimistic UI
+    setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], helpful: !isH } }))
+    setDocs(p => p.map(d => d.id === doc.id ? { ...d, helpful_count: Math.max(0, (d.helpful_count || 0) + (isH ? -1 : 1)) } : d))
+    // DB write
     if (isH) {
       await supabase.from('document_reactions').delete().eq('user_id', user.id).eq('document_id', doc.id).eq('reaction_type', 'helpful')
-      await supabase.from('documents').update({ helpful_count: Math.max(0, (doc.helpful_count || 0) - 1) }).eq('id', doc.id)
-      setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], helpful: false } }))
-      setDocs(p => p.map(d => d.id === doc.id ? { ...d, helpful_count: Math.max(0, (d.helpful_count || 0) - 1) } : d))
     } else {
       await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'helpful' })
-      await supabase.from('documents').update({ helpful_count: (doc.helpful_count || 0) + 1 }).eq('id', doc.id)
-      setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], helpful: true } }))
-      setDocs(p => p.map(d => d.id === doc.id ? { ...d, helpful_count: (d.helpful_count || 0) + 1 } : d))
     }
+    // re-fetch true count to fix any race condition
+    const { count: trueCount } = await supabase
+      .from('document_reactions').select('*', { count: 'exact', head: true })
+      .eq('document_id', doc.id).eq('reaction_type', 'helpful')
+    const realCount = trueCount || 0
+    await supabase.from('documents').update({ helpful_count: realCount }).eq('id', doc.id)
+    setDocs(p => p.map(d => d.id === doc.id ? { ...d, helpful_count: realCount } : d))
   }
 
   // ── RATING ────────────────────────────────────────────────────────────────

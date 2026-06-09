@@ -116,13 +116,15 @@ const css = `
 
   /* ── RESPONSIVE ── */
   @media(max-width: 768px) {
-    .navbar { padding: 0 1rem; }
+    .navbar { padding: 0 1rem; display: flex; justify-content: space-between; align-items: center; }
     .nb-divider { display: none; }
     .nb-links { display: none; }
     .nb-upload-btn { display: none; }
     .nb-ghost { display: none; }
     .nb-accent { display: none; }
     .nb-burger { display: block; }
+    .nb-left { flex: 0; }
+    .nb-right { flex: 0; }
   }
   @media(max-width: 480px) {
     .nb-logo-text { font-size: 0.78rem; }
