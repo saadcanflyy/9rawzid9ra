@@ -514,18 +514,26 @@ export default function ModulePage() {
   const handleHelpful = async (doc) => {
     if (!user) { navigate('/login', { state: { from: `/module/${id}` } }); return }
     const isH = userReactions[doc.id]?.helpful
+    console.log('[handleHelpful] START — doc.id:', doc.id, '| isH (removing?):', isH, '| user.id:', user.id)
+
     // optimistic UI
     setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], helpful: !isH } }))
     setDocs(p => p.map(d => d.id === doc.id ? { ...d, helpful_count: Math.max(0, (d.helpful_count || 0) + (isH ? -1 : 1)) } : d))
+
     // DB write — trigger trg_doc_helpful_count (SECURITY DEFINER) auto-updates documents.helpful_count
     if (isH) {
-      await supabase.from('document_reactions').delete().eq('user_id', user.id).eq('document_id', doc.id).eq('reaction_type', 'helpful')
+      const { error: delErr } = await supabase.from('document_reactions').delete().eq('user_id', user.id).eq('document_id', doc.id).eq('reaction_type', 'helpful')
+      console.log('[handleHelpful] DELETE reaction — error:', delErr)
     } else {
-      await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'helpful' })
+      const { data: insData, error: insErr } = await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'helpful' }).select()
+      console.log('[handleHelpful] INSERT reaction — data:', insData, '| error:', insErr)
     }
+
     // fetch true count from documents (trigger already updated it) to correct optimistic UI
-    const { data: freshDoc } = await supabase.from('documents').select('helpful_count').eq('id', doc.id).single()
+    const { data: freshDoc, error: selErr } = await supabase.from('documents').select('helpful_count').eq('id', doc.id).single()
+    console.log('[handleHelpful] SELECT documents.helpful_count — freshDoc:', freshDoc, '| error:', selErr)
     if (freshDoc) setDocs(p => p.map(d => d.id === doc.id ? { ...d, helpful_count: freshDoc.helpful_count } : d))
+    console.log('[handleHelpful] DONE — final helpful_count set to:', freshDoc?.helpful_count)
   }
 
   // ── RATING ────────────────────────────────────────────────────────────────
