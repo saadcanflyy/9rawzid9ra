@@ -26,10 +26,15 @@ const css = `
     font-family: 'Outfit', sans-serif;
   }
   .nb-left { display: flex; align-items: center; gap: 10px; }
-  .nb-logo { display: flex; align-items: center; gap: 10px; cursor: pointer; flex-shrink: 0; }
-  .nb-logo-box { width: 28px; height: 28px; border-radius: 6px; background: linear-gradient(135deg, #4F8EF7, #2DD4BF); flex-shrink: 0; }
-  .nb-logo-text { font-family: 'DM Mono', monospace; font-size: 0.88rem; font-weight: 500; color: #FFFFFF; }
-  .nb-logo-text b { color: #7BB3FF; font-weight: 500; }
+  .nb-logo { display: flex; align-items: center; gap: 9px; cursor: pointer; flex-shrink: 0; }
+  .nb-logo-box {
+    width: 30px; height: 30px; border-radius: 7px; flex-shrink: 0;
+    background: linear-gradient(135deg, #4F8EF7, #2DD4BF);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 10px rgba(79,142,247,0.35);
+  }
+  .nb-logo-text { font-family: 'DM Mono', monospace; font-size: 0.88rem; font-weight: 500; color: #FFFFFF; letter-spacing: -0.3px; }
+  .nb-logo-text b { color: #7BB3FF; font-weight: 700; }
   .nb-divider { display: none; }
   .nb-links { display: flex; align-items: center; gap: 2px; justify-content: center; }
   .nb-link { background: none; border: none; padding: 6px 12px; font-size: 0.82rem; color: #64748B; cursor: pointer; border-radius: 7px; font-family: 'Outfit', sans-serif; transition: all 0.15s; white-space: nowrap; }
@@ -281,7 +286,11 @@ export default function Navbar({ activePage = '' }) {
         {/* col 1 — logo */}
         <div className="nb-left">
           <div className="nb-logo" onClick={() => navigate('/')}>
-            <div className="nb-logo-box" />
+            <div className="nb-logo-box">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <text x="9" y="13.5" textAnchor="middle" fontFamily="monospace" fontWeight="800" fontSize="13" fill="#ffffff">9</text>
+              </svg>
+            </div>
             <span className="nb-logo-text">9raw<b>Zid</b>9ra</span>
           </div>
         </div>
