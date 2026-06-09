@@ -299,7 +299,9 @@ export default function Admin() {
 
   const loadSchools = async () => {
     setLoading(true)
-    const { data } = await supabase.from('school_requests').select('*, user_profiles(name, email)').order('created_at', { ascending: false })
+    const { data } = await supabase.from('school_requests')
+      .select('*, user_profiles(name, email), universities!school_requests_parent_university_id_fkey(name)')
+      .order('created_at', { ascending: false })
     setSchoolReqs(data || [])
     setLoading(false)
   }
@@ -715,29 +717,57 @@ export default function Admin() {
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
-                      <tr><th>École</th><th>Ville</th><th>Type</th><th>Demandé par</th><th>Statut</th><th>Actions</th></tr>
+                      <tr><th>Établissement</th><th>Type de demande</th><th>Demandé par</th><th>Statut</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
-                      {schoolReqs.map(s => (
-                        <tr key={s.id}>
-                          <td>
-                            <div className="table-name">{s.school_name}</div>
-                            {s.filieres && <div className="table-mono" style={{color:'var(--text3)',maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.filieres}</div>}
-                          </td>
-                          <td>{s.city}</td>
-                          <td><span className={`badge badge-${s.school_type==='public'?'approved':s.school_type==='private'?'flagged':'pending'}`}>{s.school_type}</span></td>
-                          <td className="table-mono">{s.user_profiles?.name || '—'}</td>
-                          <td><span className={`badge badge-${s.status}`}>{s.status}</span></td>
-                          <td>
-                            {s.status === 'pending' && (
-                              <div className="actions">
-                                <button className="act-btn act-approve" onClick={() => approveSchool(s.id)}>Approuver</button>
-                                <button className="act-btn act-reject" onClick={() => rejectSchool(s.id)}>Rejeter</button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                      {schoolReqs.map(s => {
+                        const rt = s.request_type || 'independent'
+                        const RT_LABEL = { independent:'École indép.', faculty:'Faculté', university_with_faculties:'Université' }
+                        const RT_COLOR = { independent:'rgba(79,142,247,0.1)', faculty:'rgba(45,212,191,0.08)', university_with_faculties:'rgba(245,158,11,0.08)' }
+                        const RT_BORDER = { independent:'rgba(79,142,247,0.2)', faculty:'rgba(45,212,191,0.18)', university_with_faculties:'rgba(245,158,11,0.22)' }
+                        const RT_TEXT = { independent:'var(--accent2)', faculty:'var(--teal2)', university_with_faculties:'#F59E0B' }
+                        return (
+                          <tr key={s.id}>
+                            <td>
+                              <div className="table-name">{s.school_name}</div>
+                              {rt === 'faculty' && s.universities?.name && (
+                                <div className="table-mono" style={{color:'var(--text3)'}}>Sous : {s.universities.name}</div>
+                              )}
+                              {s.city && <div className="table-mono" style={{color:'var(--text3)'}}>{s.city}</div>}
+                              {rt === 'university_with_faculties' && s.details?.length > 0 && (
+                                <div style={{marginTop:4,display:'flex',flexWrap:'wrap',gap:3}}>
+                                  {s.details.map((f,i) => (
+                                    <span key={i} style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:3,padding:'1px 6px',color:'var(--text3)'}}>
+                                      {f.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                            <td>
+                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',background:RT_COLOR[rt],border:`1px solid ${RT_BORDER[rt]}`,color:RT_TEXT[rt],padding:'2px 8px',borderRadius:4}}>
+                                {RT_LABEL[rt]}
+                              </span>
+                              {s.school_type && (
+                                <div className="table-mono" style={{color:'var(--text3)',marginTop:3}}>{s.school_type}</div>
+                              )}
+                            </td>
+                            <td>
+                              <div className="table-name">{s.user_profiles?.name || '—'}</div>
+                              <div className="table-mono" style={{color:'var(--text3)'}}>{fmt(s.created_at)}</div>
+                            </td>
+                            <td><span className={`badge badge-${s.status}`}>{s.status}</span></td>
+                            <td>
+                              {s.status === 'pending' && (
+                                <div className="actions">
+                                  <button className="act-btn act-approve" onClick={() => approveSchool(s.id)}>Approuver</button>
+                                  <button className="act-btn act-reject" onClick={() => rejectSchool(s.id)}>Rejeter</button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>

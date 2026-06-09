@@ -212,10 +212,21 @@ export default function Upload() {
 
   // School request form
   const [showSchoolForm,  setShowSchoolForm]  = useState(false)
-  const [schoolName,      setSchoolName]      = useState('')
-  const [schoolCity,      setSchoolCity]      = useState('')
-  const [schoolType,      setSchoolType]      = useState('public')
   const [schoolSent,      setSchoolSent]      = useState(false)
+  const [schoolCase,      setSchoolCase]      = useState('')
+  // Case A — independent school
+  const [schAName,        setSchAName]        = useState('')
+  const [schACity,        setSchACity]        = useState('')
+  const [schAType,        setSchAType]        = useState('public')
+  // Case B — faculty of existing university
+  const [schBParentUni,   setSchBParentUni]   = useState('')
+  const [schBFacName,     setSchBFacName]     = useState('')
+  const [schBFacType,     setSchBFacType]     = useState('Faculté')
+  // Case C — new university with its faculties
+  const [schCUniName,     setSchCUniName]     = useState('')
+  const [schCCity,        setSchCCity]        = useState('')
+  const [schCType,        setSchCType]        = useState('public')
+  const [schCFaculties,   setSchCFaculties]   = useState([{ name:'', type:'Faculté' }])
 
   // Filière suggestion form
   const [showFiliereForm, setShowFiliereForm] = useState(false)
@@ -355,16 +366,43 @@ export default function Upload() {
     setFiliereSent(true)
   }
 
-  // School request submit
+  // School request submit (3 cases)
   const handleSchoolRequest = async () => {
-    if (!schoolName.trim()) return
-    await supabase.from('school_requests').insert({
-      requested_by: user.id,
-      school_name:  schoolName.trim(),
-      city:         schoolCity.trim() || null,
-      school_type:  schoolType,
-      status:       'pending',
-    })
+    if (schoolCase === 'independent') {
+      if (!schAName.trim()) return
+      await supabase.from('school_requests').insert({
+        requested_by: user.id,
+        school_name:  schAName.trim(),
+        city:         schACity.trim() || null,
+        school_type:  schAType,
+        request_type: 'independent',
+        status:       'pending',
+      })
+    } else if (schoolCase === 'faculty') {
+      if (!schBFacName.trim() || !schBParentUni) return
+      await supabase.from('school_requests').insert({
+        requested_by:         user.id,
+        school_name:          schBFacName.trim(),
+        school_type:          schBFacType,
+        request_type:         'faculty',
+        parent_university_id: parseInt(schBParentUni),
+        status:               'pending',
+      })
+    } else if (schoolCase === 'university_with_faculties') {
+      if (!schCUniName.trim()) return
+      const validFacs = schCFaculties.filter(f => f.name.trim())
+      await supabase.from('school_requests').insert({
+        requested_by: user.id,
+        school_name:  schCUniName.trim(),
+        city:         schCCity.trim() || null,
+        school_type:  schCType,
+        request_type: 'university_with_faculties',
+        details:      validFacs.length > 0 ? validFacs : null,
+        status:       'pending',
+      })
+    } else {
+      return
+    }
     setSchoolSent(true)
   }
 
@@ -509,7 +547,10 @@ export default function Upload() {
     setProfessor(''); setProfSuggestions([]); setShowProfDD(false)
     setProgress(0); setEarnedPoints(null)
     setModSearch(''); setError('')
-    setShowSchoolForm(false); setSchoolName(''); setSchoolCity(''); setSchoolSent(false)
+    setShowSchoolForm(false); setSchoolSent(false); setSchoolCase('')
+    setSchAName(''); setSchACity(''); setSchAType('public')
+    setSchBParentUni(''); setSchBFacName(''); setSchBFacType('Faculté')
+    setSchCUniName(''); setSchCCity(''); setSchCType('public'); setSchCFaculties([{ name:'', type:'Faculté' }])
     setShowFiliereForm(false); setFiliereName(''); setFiliereNbSem(''); setFiliereSent(false)
   }
 
@@ -648,7 +689,7 @@ export default function Upload() {
                   <div style={{marginBottom:'1rem'}}>
                     {!showFiliereForm ? (
                       <button
-                        style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.78rem',fontFamily:'DM Mono,monospace',cursor:'pointer',textDecoration:'underline',padding:0,transition:'color 0.15s'}}
+                        style={{background:'none',border:'none',color:'var(--accent2)',fontSize:'0.78rem',fontFamily:'DM Mono,monospace',cursor:'pointer',textDecoration:'underline',padding:0,transition:'color 0.15s',opacity:0.7}}
                         onClick={() => setShowFiliereForm(true)}>
                         Ma filière n'est pas dans la liste → La signaler
                       </button>
@@ -743,49 +784,160 @@ export default function Upload() {
                     </button>
                   ) : schoolSent ? (
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.75rem',color:'var(--teal2)'}}>
-                      ✓ Demande envoyée — l'établissement sera ajouté après vérification.
+                      ✓ Demande envoyée — l'établissement sera ajouté après vérification. Merci !
                     </div>
                   ) : (
                     <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:10,padding:'1rem 1.25rem'}}>
                       <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'0.875rem'}}>// demande d'ajout d'établissement</div>
-                      <div className="field-grid">
-                        <div>
-                          <label className="label">Nom de l'établissement *</label>
-                          <input className="input" placeholder="Ex: ENSA Kénitra, ENCG Casablanca..."
-                            value={schoolName} onChange={e => setSchoolName(e.target.value)} />
+
+                      {/* Step 1 — choose type */}
+                      <div style={{fontSize:'0.82rem',fontWeight:600,color:'var(--text)',marginBottom:'0.625rem'}}>Quel type d'établissement veux-tu ajouter ?</div>
+                      <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:'1rem'}}>
+                        {[
+                          { v:'independent',               l:"Une école / université indépendante",                s:'ENSA, ENCG, IAV, FST...' },
+                          { v:'faculty',                   l:"Une faculté d'une université déjà listée",           s:'Ex: Faculté des Sciences → Univ. Mohammed V' },
+                          { v:'university_with_faculties', l:"Une nouvelle université + ses facultés",             s:'Ajouter l\'université et ses composantes en même temps' },
+                        ].map(opt => (
+                          <label key={opt.v} style={{display:'flex',alignItems:'flex-start',gap:10,background:schoolCase===opt.v?'rgba(79,142,247,0.08)':'transparent',border:`1px solid ${schoolCase===opt.v?'rgba(79,142,247,0.3)':'var(--border)'}`,borderRadius:8,padding:'10px 12px',cursor:'pointer',transition:'all 0.15s'}}>
+                            <input type="radio" name="schoolCase" value={opt.v} checked={schoolCase===opt.v} onChange={() => setSchoolCase(opt.v)} style={{marginTop:3,accentColor:'var(--accent)',flexShrink:0}} />
+                            <div>
+                              <div style={{fontSize:'0.82rem',fontWeight:500,color:'var(--text)'}}>{opt.l}</div>
+                              <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--text3)',marginTop:2}}>{opt.s}</div>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+
+                      {/* Case A — independent school */}
+                      {schoolCase === 'independent' && (
+                        <>
+                          <div className="field-grid">
+                            <div>
+                              <label className="label">Nom de l'école *</label>
+                              <input className="input" placeholder="Ex: ENSA Kénitra, ENCG Casablanca..."
+                                value={schAName} onChange={e => setSchAName(e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="label">Ville</label>
+                              <input className="input" placeholder="Ex: Rabat, Casablanca..."
+                                value={schACity} onChange={e => setSchACity(e.target.value)} />
+                            </div>
+                          </div>
+                          <div className="field" style={{marginBottom:'0.875rem'}}>
+                            <label className="label">Type</label>
+                            <select className="select" value={schAType} onChange={e => setSchAType(e.target.value)}>
+                              <option value="public">Public</option>
+                              <option value="private">Privé</option>
+                            </select>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Case B — faculty of existing university */}
+                      {schoolCase === 'faculty' && (
+                        <>
+                          <div className="field" style={{marginBottom:'0.875rem'}}>
+                            <label className="label">Université parente *</label>
+                            <select className="select" value={schBParentUni} onChange={e => setSchBParentUni(e.target.value)}>
+                              <option value="">Sélectionner une université...</option>
+                              {unis.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                            </select>
+                          </div>
+                          <div className="field-grid">
+                            <div>
+                              <label className="label">Nom de la faculté *</label>
+                              <input className="input" placeholder="Ex: Faculté des Sciences..."
+                                value={schBFacName} onChange={e => setSchBFacName(e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="label">Type de composante</label>
+                              <select className="select" value={schBFacType} onChange={e => setSchBFacType(e.target.value)}>
+                                <option value="Faculté">Faculté</option>
+                                <option value="École">École</option>
+                                <option value="Institut">Institut</option>
+                                <option value="Centre">Centre</option>
+                              </select>
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Case C — new university with faculties */}
+                      {schoolCase === 'university_with_faculties' && (
+                        <>
+                          <div className="field-grid" style={{marginBottom:'0.875rem'}}>
+                            <div>
+                              <label className="label">Nom de l'université *</label>
+                              <input className="input" placeholder="Ex: Université Ibn Tofail..."
+                                value={schCUniName} onChange={e => setSchCUniName(e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="label">Ville</label>
+                              <input className="input" placeholder="Ex: Kénitra, Marrakech..."
+                                value={schCCity} onChange={e => setSchCCity(e.target.value)} />
+                            </div>
+                          </div>
+                          <div className="field" style={{marginBottom:'0.875rem'}}>
+                            <label className="label">Type</label>
+                            <select className="select" value={schCType} onChange={e => setSchCType(e.target.value)}>
+                              <option value="public">Publique</option>
+                              <option value="private">Privée</option>
+                            </select>
+                          </div>
+                          <div style={{marginBottom:'0.875rem'}}>
+                            <label className="label" style={{marginBottom:'0.5rem'}}>Facultés / Composantes</label>
+                            {schCFaculties.map((f, i) => (
+                              <div key={i} style={{display:'flex',gap:6,marginBottom:6,alignItems:'center'}}>
+                                <input className="input" placeholder="Nom de la faculté..."
+                                  value={f.name}
+                                  onChange={e => { const a=[...schCFaculties]; a[i]={...a[i],name:e.target.value}; setSchCFaculties(a) }}
+                                  style={{flex:1}} />
+                                <select className="select" value={f.type}
+                                  onChange={e => { const a=[...schCFaculties]; a[i]={...a[i],type:e.target.value}; setSchCFaculties(a) }}
+                                  style={{width:110,flexShrink:0}}>
+                                  <option value="Faculté">Faculté</option>
+                                  <option value="École">École</option>
+                                  <option value="Institut">Institut</option>
+                                  <option value="Centre">Centre</option>
+                                </select>
+                                {schCFaculties.length > 1 && (
+                                  <button
+                                    style={{background:'none',border:'1px solid rgba(248,113,113,0.2)',color:'var(--red)',borderRadius:6,width:32,height:36,cursor:'pointer',flexShrink:0,fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}
+                                    onClick={() => setSchCFaculties(a => a.filter((_,j) => j!==i))}>
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                            <button
+                              style={{background:'none',border:'1px dashed rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:7,padding:'6px 14px',fontSize:'0.78rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:2,width:'100%',transition:'background 0.15s'}}
+                              onClick={() => setSchCFaculties(a => [...a, { name:'', type:'Faculté' }])}>
+                              + Ajouter une faculté
+                            </button>
+                          </div>
+                        </>
+                      )}
+
+                      {schoolCase && (
+                        <div style={{display:'flex',gap:8,alignItems:'center',marginTop:8}}>
+                          <button
+                            style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif'}}
+                            onClick={handleSchoolRequest}>
+                            Envoyer la demande
+                          </button>
+                          <button
+                            style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.75rem',cursor:'pointer',fontFamily:'DM Mono,monospace'}}
+                            onClick={() => setShowSchoolForm(false)}>
+                            Annuler
+                          </button>
                         </div>
-                        <div>
-                          <label className="label">Ville</label>
-                          <input className="input" placeholder="Ex: Rabat, Casablanca..."
-                            value={schoolCity} onChange={e => setSchoolCity(e.target.value)} />
-                        </div>
-                      </div>
-                      <div className="field">
-                        <label className="label">Type</label>
-                        <select className="select" value={schoolType} onChange={e => setSchoolType(e.target.value)}>
-                          <option value="public">Public</option>
-                          <option value="private">Privé</option>
-                          <option value="grande_ecole">Grande École</option>
-                        </select>
-                      </div>
-                      <div style={{display:'flex',gap:8,alignItems:'center',marginTop:4}}>
-                        <button
-                          style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif'}}
-                          onClick={handleSchoolRequest}>
-                          Envoyer la demande
-                        </button>
-                        <button
-                          style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.75rem',cursor:'pointer',fontFamily:'DM Mono,monospace'}}
-                          onClick={() => setShowSchoolForm(false)}>
-                          Annuler
-                        </button>
-                      </div>
+                      )}
                     </div>
                   )}
                 </div>
 
                 <div className="submit-section">
-                  <button className="btn-back" onClick={() => navigate('/browse')}>Annuler</button>
+                  <button className="btn-back" onClick={() => { setShowSchoolForm(false); setShowFiliereForm(false); }}>Annuler</button>
                   <button className="btn-submit" onClick={validateStep1}>Continuer</button>
                 </div>
               </div>
