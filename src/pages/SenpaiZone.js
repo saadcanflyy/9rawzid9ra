@@ -506,6 +506,28 @@ export default function SenpaiZone() {
     return () => document.removeEventListener('mousedown', handler)
   }, [composeFocused, composeText])
 
+  // re-fetch posts and user data when auth state changes (login/logout mid-session)
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user)
+        const [{ data: prof }, { data: fols }] = await Promise.all([
+          supabase.from('user_profiles').select('name,university_id,is_admin').eq('id', session.user.id).single(),
+          supabase.from('user_follows').select('following_id').eq('follower_id', session.user.id),
+        ])
+        setProfile(prof)
+        setFollowing(new Set((fols || []).map(f => f.following_id)))
+        loadPosts()
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setProfile(null)
+        setFollowing(new Set())
+        loadPosts()
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [loadPosts])
+
   // ── FILTERED POSTS ────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let f = posts
@@ -546,18 +568,26 @@ export default function SenpaiZone() {
     if (voting.has(post.id)) return
     setVoting(s => new Set([...s, post.id]))
     const isVoted = post.senpai_votes?.some(v => v.user_id === user.id)
-    const newCount = Math.max(0, (post.helpful_count || 0) + (isVoted ? -1 : 1))
+    // optimistic UI
+    const optimisticCount = Math.max(0, (post.helpful_count || 0) + (isVoted ? -1 : 1))
     const patch = p => p.id !== post.id ? p : {
-      ...p, helpful_count: newCount,
+      ...p, helpful_count: optimisticCount,
       senpai_votes: isVoted
         ? (p.senpai_votes || []).filter(v => v.user_id !== user.id)
         : [...(p.senpai_votes || []), { user_id: user.id }]
     }
     setPosts(ps => ps.map(patch))
     setViewPost(vp => vp ? patch(vp) : vp)
+    // DB write — trigger fn_sync_senpai_helpful_count (SECURITY DEFINER) updates senpai_posts.helpful_count
     if (isVoted) await supabase.from('senpai_votes').delete().eq('user_id', user.id).eq('post_id', post.id)
     else         await supabase.from('senpai_votes').insert({ user_id: user.id, post_id: post.id })
-    // DB trigger trg_helpful_count now atomically updates helpful_count — no manual write needed
+    // fetch true count from senpai_posts to correct optimistic UI
+    const { data: freshPost } = await supabase.from('senpai_posts').select('helpful_count').eq('id', post.id).single()
+    if (freshPost) {
+      const correctPatch = p => p.id !== post.id ? p : { ...p, helpful_count: freshPost.helpful_count }
+      setPosts(ps => ps.map(correctPatch))
+      setViewPost(vp => vp?.id === post.id ? { ...vp, helpful_count: freshPost.helpful_count } : vp)
+    }
     setVoting(s => { const n = new Set(s); n.delete(post.id); return n })
   }
 
