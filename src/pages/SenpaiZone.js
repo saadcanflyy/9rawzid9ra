@@ -478,6 +478,17 @@ export default function SenpaiZone() {
           setPosts(prev => prev.some(p => p.id === data.id) ? prev : [data, ...prev])
         }
       })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'senpai_posts' }, payload => {
+        setPosts(prev => prev.map(p =>
+          p.id === payload.new.id
+            ? { ...p, helpful_count: payload.new.helpful_count, reply_count: payload.new.reply_count }
+            : p
+        ))
+        setViewPost(vp => vp?.id === payload.new.id
+          ? { ...vp, helpful_count: payload.new.helpful_count, reply_count: payload.new.reply_count }
+          : vp
+        )
+      })
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [])
