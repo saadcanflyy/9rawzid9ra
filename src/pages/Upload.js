@@ -186,7 +186,8 @@ const FILE_ICON = (f) => {
 
 export default function Upload() {
   const navigate = useNavigate()
-  const fileRef = useRef()
+  const fileRef            = useRef()
+  const prefetchedForUniRef = useRef(null)
 
   const [user,     setUser]     = useState(null)
   const [authLoad, setAuthLoad] = useState(true)
@@ -279,6 +280,12 @@ export default function Upload() {
 
   useEffect(() => {
     if (!selUni) { setFacs([]); setSelFac(''); setFacsFetched(false); return }
+    // If facs were pre-loaded for this exact university (Case C), skip the fetch
+    if (prefetchedForUniRef.current === selUni) {
+      prefetchedForUniRef.current = null
+      setSelFac(''); setSelFil(''); setSelSem(''); setSelMod(null)
+      return
+    }
     setFacsFetched(false)
     supabase.from('faculties').select('*').eq('university_id', selUni).order('name')
       .then(({ data }) => {
@@ -292,7 +299,7 @@ export default function Upload() {
         }
       })
     setSelFac(''); setSelFil(''); setSelSem(''); setSelMod(null)
-  }, [selUni])
+  }, [selUni]) // eslint-disable-line
 
   useEffect(() => {
     if (!selFac) { setFils([]); setSelFil(''); return }
@@ -448,15 +455,19 @@ export default function Upload() {
         type: schCType,
       }).select().single()
       if (newUni) {
-        for (const f of validFacs) {
+        for (const fac of validFacs) {
           await supabase.from('faculties').insert({
             university_id: newUni.id,
-            name: f.name,
-            type: f.type,
+            name: fac.name,
+            type: fac.type,
           })
         }
-        const { data } = await supabase.from('universities').select('*').order('name')
-        if (data) setUnis(data)
+        const { data: allUnis } = await supabase.from('universities').select('*').order('name')
+        if (allUnis) setUnis(allUnis)
+        const { data: newFacs } = await supabase.from('faculties').select('*').eq('university_id', newUni.id).order('name')
+        if (newFacs) setFacs(newFacs)
+        setFacsFetched(true)
+        prefetchedForUniRef.current = String(newUni.id)
         setSelUni(String(newUni.id))
       }
     } else {
@@ -763,7 +774,7 @@ export default function Upload() {
                       </button>
                     ) : filiereSent ? (
                       <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.75rem',color:'var(--teal2)'}}>
-                        ✓ Ta filière a été signalée. Elle sera ajoutée après vérification. Merci de ta contribution !
+                        ✓ Filière ajoutée et disponible immédiatement !
                       </div>
                     ) : (
                       <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:10,padding:'1rem 1.25rem'}}>
@@ -852,7 +863,7 @@ export default function Upload() {
                     </button>
                   ) : schoolSent ? (
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.75rem',color:'var(--teal2)'}}>
-                      ✓ Demande envoyée — l'établissement sera ajouté après vérification. Merci !
+                      ✓ Établissement ajouté et disponible immédiatement !
                     </div>
                   ) : (
                     <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:10,padding:'1rem 1.25rem'}}>
