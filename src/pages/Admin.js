@@ -291,8 +291,8 @@ export default function Admin() {
     const { data } = await supabase
       .from('modules')
       .select('*, filieres(name, faculties(name, universities(name)))')
-      .eq('verified', false)
       .order('created_at', { ascending: false })
+      .limit(100)
     setPendingMods(data || [])
     setLoading(false)
   }
@@ -321,8 +321,8 @@ export default function Admin() {
     const { data } = await supabase
       .from('senpai_posts')
       .select('*, user_profiles(name, email)')
-      .eq('is_approved', false)
       .order('created_at', { ascending: false })
+      .limit(100)
     setFlaggedPosts(data || [])
     setLoading(false)
   }
@@ -660,9 +660,9 @@ export default function Admin() {
           {/* MODULES */}
           {activeTab === 'modules' && (
             <>
-              <div className="section-title">// modules à vérifier</div>
+              <div className="section-title">// modules (100 derniers)</div>
               {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               pendingMods.length === 0 ? <div className="empty">// tous les modules sont vérifiés</div> : (
+               pendingMods.length === 0 ? <div className="empty">// aucun module trouvé</div> : (
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
@@ -692,7 +692,6 @@ export default function Admin() {
                                 </>
                               ) : (
                                 <>
-                                  <button className="act-btn act-approve" onClick={() => approveMod(m)}>Approuver</button>
                                   <button className="act-btn act-rename" onClick={() => { setRenamingId(m.id); setRenameVal(m.name); }}>Renommer</button>
                                   <button className="act-btn act-reject" onClick={() => rejectMod(m)}>Supprimer</button>
                                 </>
@@ -820,10 +819,10 @@ export default function Admin() {
           {/* SENPAI MODERATION */}
           {activeTab === 'senpai' && (
             <>
-              <div className="section-title">// senpai zone — posts signalés</div>
+              <div className="section-title">// senpai zone — 100 derniers posts</div>
               {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel" style={{height:100}}/>) :
                flaggedPosts.length === 0 ? (
-                <div className="empty">// aucun post en attente de vérification ✓</div>
+                <div className="empty">// aucun post trouvé</div>
                ) : (
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {flaggedPosts.map(post => {
@@ -847,7 +846,7 @@ export default function Admin() {
                               {post.is_anonymous && (
                                 <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#94A3B8', background:'rgba(148,163,184,0.08)', padding:'2px 8px', borderRadius:4, border:'1px solid rgba(148,163,184,0.15)' }}>🎭 Anonyme</span>
                               )}
-                              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#F87171', background:'rgba(248,113,113,0.08)', padding:'2px 8px', borderRadius:4, border:'1px solid rgba(248,113,113,0.2)' }}>⚠ Signalé</span>
+                              {!post.is_approved && <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#F87171', background:'rgba(248,113,113,0.08)', padding:'2px 8px', borderRadius:4, border:'1px solid rgba(248,113,113,0.2)' }}>⚠ Signalé</span>}
                             </div>
                             <div style={{ fontSize:'0.92rem', fontWeight:700, color:'#fff', marginBottom:4 }}>{post.title}</div>
                             <div style={{ fontSize:'0.78rem', color:'#94A3B8', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden', marginBottom:8 }}>
@@ -858,7 +857,6 @@ export default function Admin() {
                             </div>
                           </div>
                           <div style={{ display:'flex', flexDirection:'column', gap:6, flexShrink:0 }}>
-                            <button className="act-btn act-approve" onClick={() => approvePost(post)}>✓ Approuver</button>
                             <button className="act-btn act-ban" onClick={() => deletePost(post)}>✕ Supprimer</button>
                           </div>
                         </div>
