@@ -373,7 +373,7 @@ export default function Home() {
               >Me notifier</button>
             </div>
             <div style={{ fontSize:'0.72rem', color:'#4A5568', fontFamily:'DM Mono,monospace' }}>
-              Développé par <span style={{ color:'#7BB3FF' }}>GAGA Saad</span>
+              Développé par <span style={{ color:'#7BB3FF' }}>saadcanflyy</span>
             </div>
             <div style={{ fontSize:'0.7rem', color:'#4A5568', marginTop:2, fontFamily:'DM Mono,monospace' }}>saadga2003@gmail.com</div>
           </div>

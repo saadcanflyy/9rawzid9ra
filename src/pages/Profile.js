@@ -328,6 +328,13 @@ export default function Profile() {
   const [isFollowing,    setIsFollowing]    = useState(false)
   const [followBusy,     setFollowBusy]     = useState(false)
 
+  // Doc edit state
+  const [editingDocId,  setEditingDocId]  = useState(null)
+  const [editDocNumber, setEditDocNumber] = useState('')
+  const [editDocYear,   setEditDocYear]   = useState('')
+  const [editDocProf,   setEditDocProf]   = useState('')
+  const [editDocSaving, setEditDocSaving] = useState(false)
+
   // Settings fields
   const [editName,    setEditName]    = useState('')
   const [editBio,     setEditBio]     = useState('')
@@ -356,7 +363,7 @@ export default function Profile() {
         supabase.from('user_follows').select('*', { count:'exact', head:true }).eq('following_id', uid),
         supabase.from('user_follows').select('*', { count:'exact', head:true }).eq('follower_id', uid),
         supabase.from('documents')
-          .select('id, doc_type, academic_year, pages_count, downloads, is_verified, is_flagged, created_at, modules(id, name, semester)')
+          .select('id, doc_type, doc_number, academic_year, professor, pages_count, downloads, is_verified, is_flagged, created_at, files, modules(id, name, semester)')
           .eq('uploader_id', uid)
           .order('created_at', { ascending: false }),
         supabase.from('senpai_posts')
@@ -441,6 +448,55 @@ export default function Profile() {
       supabase.from('notifications').insert({ user_id: targetId, type: 'follow', actor_id: currentUser.id }).then()
     }
     setFollowBusy(false)
+  }
+
+  const startEditDoc = (doc) => {
+    setEditingDocId(doc.id)
+    setEditDocNumber(doc.doc_number || '')
+    setEditDocYear(doc.academic_year || '')
+    setEditDocProf(doc.professor || '')
+  }
+
+  const handleSaveDoc = async (docId) => {
+    setEditDocSaving(true)
+    await supabase.from('documents').update({
+      doc_number:    editDocNumber.trim() || null,
+      academic_year: editDocYear || null,
+      professor:     editDocProf.trim() || null,
+    }).eq('id', docId)
+    setUploads(u => u.map(d => d.id === docId ? {
+      ...d,
+      doc_number:    editDocNumber.trim() || null,
+      academic_year: editDocYear || null,
+      professor:     editDocProf.trim() || null,
+    } : d))
+    setEditDocSaving(false)
+    setEditingDocId(null)
+  }
+
+  const handleDeleteDoc = async (doc) => {
+    if (!window.confirm('Supprimer ce document définitivement ? Cette action est irréversible.')) return
+    if (doc.files?.length > 0) {
+      for (const url of doc.files) {
+        const path = url.split('/documents/')[1]
+        if (path) await supabase.storage.from('documents').remove([path])
+      }
+    }
+    await Promise.all([
+      supabase.from('document_reactions').delete().eq('document_id', doc.id),
+      supabase.from('downloads_log').delete().eq('document_id', doc.id),
+      supabase.from('documents').delete().eq('id', doc.id),
+    ])
+    await supabase.from('user_profiles').update({
+      uploads_count: Math.max(0, (profile?.uploads_count || 1) - 1),
+      points:        Math.max(0, (profile?.points || 50) - 50),
+    }).eq('id', currentUser.id)
+    setUploads(u => u.filter(d => d.id !== doc.id))
+    setProfile(p => ({
+      ...p,
+      uploads_count: Math.max(0, (p?.uploads_count || 1) - 1),
+      points:        Math.max(0, (p?.points || 50) - 50),
+    }))
   }
 
   const handleSave = async () => {
@@ -606,29 +662,89 @@ export default function Profile() {
             </div>
           ) : (
             <div className="upload-list">
-              {uploads.map(doc => (
-                <div key={doc.id} className="upload-card" onClick={() => doc.modules?.id && navigate(`/module/${doc.modules.id}`)}>
-                  <div className={`doc-icon ${DOC_ICON[doc.doc_type] || 'icon-cours'}`}>
-                    {DOC_LABEL[doc.doc_type] || 'DOC'}
-                  </div>
-                  <div className="upload-info">
-                    <div className="upload-title">{doc.modules?.name || 'Module inconnu'}</div>
-                    <div className="upload-sub">
-                      <span>{DOC_LABEL[doc.doc_type] || doc.doc_type?.toUpperCase()}</span>
-                      <span>·</span><span>{doc.academic_year}</span>
-                      <span>·</span><span>{doc.modules?.semester || '—'}</span>
-                      <span>·</span><span>{doc.pages_count} p.</span>
+              {uploads.map(doc => {
+                const isEditing = editingDocId === doc.id
+                return (
+                  <div key={doc.id}>
+                    <div className="upload-card"
+                      style={{ borderRadius: isEditing ? '12px 12px 0 0' : undefined, cursor: isEditing ? 'default' : 'pointer', marginBottom:0 }}
+                      onClick={() => !isEditing && doc.modules?.id && navigate(`/module/${doc.modules.id}`)}>
+                      <div className={`doc-icon ${DOC_ICON[doc.doc_type] || 'icon-cours'}`}>
+                        {DOC_LABEL[doc.doc_type] || 'DOC'}
+                      </div>
+                      <div className="upload-info">
+                        <div className="upload-title">{doc.modules?.name || 'Module inconnu'}</div>
+                        <div className="upload-sub">
+                          <span>{DOC_LABEL[doc.doc_type] || doc.doc_type?.toUpperCase()}</span>
+                          {doc.doc_number && <><span>·</span><span style={{color:'var(--text2)'}}>{doc.doc_number}</span></>}
+                          {doc.academic_year && <><span>·</span><span>{doc.academic_year}</span></>}
+                          <span>·</span><span>{doc.modules?.semester || '—'}</span>
+                          <span>·</span><span>{doc.pages_count} p.</span>
+                          {doc.professor && <><span>·</span><span>Prof. {doc.professor}</span></>}
+                        </div>
+                        {isOwnProfile && !isEditing && (
+                          <div style={{ display:'flex', gap:5, marginTop:5 }}>
+                            <button
+                              style={{ background:'rgba(79,142,247,0.07)', border:'1px solid rgba(79,142,247,0.18)', color:'var(--accent2)', borderRadius:5, padding:'2px 9px', fontSize:'0.68rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif' }}
+                              onClick={e => { e.stopPropagation(); startEditDoc(doc) }}>
+                              Modifier
+                            </button>
+                            <button
+                              style={{ background:'rgba(248,113,113,0.06)', border:'1px solid rgba(248,113,113,0.15)', color:'var(--red)', borderRadius:5, padding:'2px 9px', fontSize:'0.68rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif' }}
+                              onClick={e => { e.stopPropagation(); handleDeleteDoc(doc) }}>
+                              Supprimer
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="upload-right">
+                        <span className="dl-count">{doc.downloads || 0} DL</span>
+                        <span className="upload-date">{fmtShort(doc.created_at)}</span>
+                        <span className={doc.is_verified ? 'tag-verified' : 'tag-pending'}>
+                          {doc.is_verified ? 'VÉRIFIÉ' : 'EN ATTENTE'}
+                        </span>
+                      </div>
                     </div>
+                    {isOwnProfile && isEditing && (
+                      <div style={{ background:'rgba(79,142,247,0.03)', border:'1px solid rgba(79,142,247,0.15)', borderTop:'none', borderRadius:'0 0 12px 12px', padding:'1rem 1.25rem' }}>
+                        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--accent2)', letterSpacing:'1px', textTransform:'uppercase', marginBottom:'0.75rem' }}>// modifier le document</div>
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem', marginBottom:'0.75rem' }}>
+                          <div>
+                            <label style={{ display:'block', fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--text3)', textTransform:'uppercase', letterSpacing:'1.5px', marginBottom:4 }}>Label / Numéro</label>
+                            <input className="input" placeholder="Ex: Examen 1, TD n°3..."
+                              value={editDocNumber} onChange={e => setEditDocNumber(e.target.value)} />
+                          </div>
+                          <div>
+                            <label style={{ display:'block', fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--text3)', textTransform:'uppercase', letterSpacing:'1.5px', marginBottom:4 }}>Année académique</label>
+                            <select className="select" value={editDocYear} onChange={e => setEditDocYear(e.target.value)}>
+                              <option value="">—</option>
+                              {['2026/2027','2025/2026','2024/2025','2023/2024','2022/2023','2021/2022','2020/2021','2019/2020','2018/2019'].map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div style={{ marginBottom:'0.75rem' }}>
+                          <label style={{ display:'block', fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--text3)', textTransform:'uppercase', letterSpacing:'1.5px', marginBottom:4 }}>Professeur (optionnel)</label>
+                          <input className="input" placeholder="Ex: Dr. Alaoui, Pr. Benali..."
+                            value={editDocProf} onChange={e => setEditDocProf(e.target.value)} />
+                        </div>
+                        <div style={{ display:'flex', gap:8 }}>
+                          <button
+                            style={{ background:'linear-gradient(135deg,var(--accent),#3A6ED4)', color:'#fff', border:'none', borderRadius:7, padding:'7px 18px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', opacity: editDocSaving ? 0.6 : 1 }}
+                            disabled={editDocSaving}
+                            onClick={() => handleSaveDoc(doc.id)}>
+                            {editDocSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+                          </button>
+                          <button
+                            style={{ background:'none', border:'1px solid var(--border)', color:'var(--text2)', borderRadius:7, padding:'7px 14px', fontSize:'0.8rem', cursor:'pointer', fontFamily:'Outfit,sans-serif' }}
+                            onClick={() => setEditingDocId(null)}>
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <div className="upload-right">
-                    <span className="dl-count">{doc.downloads || 0} DL</span>
-                    <span className="upload-date">{fmtShort(doc.created_at)}</span>
-                    <span className={doc.is_verified ? 'tag-verified' : 'tag-pending'}>
-                      {doc.is_verified ? 'VÉRIFIÉ' : 'EN ATTENTE'}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )
         )}

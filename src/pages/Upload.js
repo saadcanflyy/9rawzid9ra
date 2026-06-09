@@ -189,6 +189,7 @@ export default function Upload() {
   const fileRef             = useRef()
   const prefetchedForUniRef = useRef(null)
   const isSubmittingRef     = useRef(false)
+  const isSubmittingFacRef  = useRef(false)
 
   const [user,     setUser]     = useState(null)
   const [authLoad, setAuthLoad] = useState(true)
@@ -214,9 +215,10 @@ export default function Upload() {
   const [modResults,   setModResults]   = useState([])
 
   // School request form
-  const [showSchoolForm,  setShowSchoolForm]  = useState(false)
-  const [schoolSent,      setSchoolSent]      = useState(false)
-  const [schoolCase,      setSchoolCase]      = useState('')
+  const [showSchoolForm,    setShowSchoolForm]    = useState(false)
+  const [schoolSent,        setSchoolSent]        = useState(false)
+  const [schoolCase,        setSchoolCase]        = useState('')
+  const [schoolSubmitting,  setSchoolSubmitting]  = useState(false)
   // Case A — independent school
   const [schAName,        setSchAName]        = useState('')
   const [schACity,        setSchACity]        = useState('')
@@ -404,9 +406,10 @@ export default function Upload() {
 
   // School request submit (3 cases)
   const handleSchoolRequest = async () => {
-    if (isSubmittingRef.current) return
+    if (isSubmittingRef.current) return   // synchronous guard (survives re-renders)
     if (!user) { navigate('/login', { state: { from: '/upload' } }); return }
     isSubmittingRef.current = true
+    setSchoolSubmitting(true)             // triggers re-render → button visually disabled
     try {
       if (schoolCase === 'independent') {
         if (!schAName.trim()) return
@@ -431,16 +434,22 @@ export default function Upload() {
         const validFacs = schBFaculties.filter(f => f.name.trim())
         if (validFacs.length === 0) { setError('Ajoute au moins une composante.'); return }
         const parentUniId = parseInt(schBParentUni)
-        for (const fac of validFacs) {
-          await supabase.from('school_requests').insert({
-            requested_by: user.id, school_name: fac.name.trim(), school_type: fac.type,
-            request_type: 'faculty', parent_university_id: parentUniId, status: 'approved',
-          })
-          const payload = { university_id: parentUniId, name: fac.name.trim(), type: fac.type }
-          console.log('[Case B] Inserting faculty:', payload)
-          const { data: inserted, error: facErr } = await supabase.from('faculties').insert(payload).select().single()
-          if (facErr) { console.error('[Case B] error:', facErr); setError(`Erreur ajout "${fac.name}" : ${facErr.message}`); return }
-          console.log('[Case B] Inserted:', inserted)
+        if (isSubmittingFacRef.current) return
+        isSubmittingFacRef.current = true
+        try {
+          for (const fac of validFacs) {
+            await supabase.from('school_requests').insert({
+              requested_by: user.id, school_name: fac.name.trim(), school_type: fac.type,
+              request_type: 'faculty', parent_university_id: parentUniId, status: 'approved',
+            })
+            const payload = { university_id: parentUniId, name: fac.name.trim(), type: fac.type }
+            console.log('[Case B] Inserting faculty:', payload)
+            const { data: inserted, error: facErr } = await supabase.from('faculties').insert(payload).select().single()
+            if (facErr) { console.error('[Case B] error:', facErr); setError(`Erreur ajout "${fac.name}" : ${facErr.message}`); return }
+            console.log('[Case B] Inserted:', inserted)
+          }
+        } finally {
+          isSubmittingFacRef.current = false
         }
         const { data: updatedFacs, error: fetchErr } = await supabase.from('faculties').select('*').eq('university_id', parentUniId).order('name')
         if (fetchErr) console.error('[Case B] re-fetch error:', fetchErr)
@@ -467,12 +476,18 @@ export default function Upload() {
         const { data: newUni, error: uniErr } = await supabase.from('universities').insert(uniPayload).select().single()
         if (uniErr) { console.error('[Case C] university error:', uniErr); setError('Erreur ajout université : ' + uniErr.message); return }
         console.log('[Case C] Inserted university:', newUni)
-        for (const fac of validFacs) {
-          const facPayload = { university_id: newUni.id, name: fac.name, type: fac.type }
-          console.log('[Case C] Inserting faculty:', facPayload)
-          const { data: inserted, error: facErr } = await supabase.from('faculties').insert(facPayload).select().single()
-          if (facErr) console.error('[Case C] faculty error:', facErr, facPayload)
-          else console.log('[Case C] Inserted faculty:', inserted)
+        if (isSubmittingFacRef.current) return
+        isSubmittingFacRef.current = true
+        try {
+          for (const fac of validFacs) {
+            const facPayload = { university_id: newUni.id, name: fac.name, type: fac.type }
+            console.log('[Case C] Inserting faculty:', facPayload)
+            const { data: inserted, error: facErr } = await supabase.from('faculties').insert(facPayload).select().single()
+            if (facErr) console.error('[Case C] faculty error:', facErr, facPayload)
+            else console.log('[Case C] Inserted faculty:', inserted)
+          }
+        } finally {
+          isSubmittingFacRef.current = false
         }
         const { data: allUnis } = await supabase.from('universities').select('*').order('name')
         if (allUnis) setUnis(allUnis.filter((u, i, arr) => arr.findIndex(x => x.id === u.id) === i))
@@ -491,6 +506,7 @@ export default function Upload() {
       setError('Erreur inattendue : ' + e.message)
     } finally {
       isSubmittingRef.current = false
+      setSchoolSubmitting(false)
     }
   }
 
@@ -1037,10 +1053,11 @@ export default function Upload() {
                       {schoolCase && (
                         <div style={{display:'flex',gap:8,alignItems:'center',marginTop:8}}>
                           <button
-                            style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',opacity:isSubmittingRef.current?0.5:1}}
+                            type="button"
+                            style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:schoolSubmitting?'not-allowed':'pointer',fontFamily:'Outfit,sans-serif',opacity:schoolSubmitting?0.5:1}}
                             onClick={handleSchoolRequest}
-                            disabled={isSubmittingRef.current}>
-                            {isSubmittingRef.current ? 'Envoi...' : 'Envoyer la demande'}
+                            disabled={schoolSubmitting}>
+                            {schoolSubmitting ? 'Envoi en cours...' : 'Envoyer la demande'}
                           </button>
                           <button
                             style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.75rem',cursor:'pointer',fontFamily:'DM Mono,monospace'}}
