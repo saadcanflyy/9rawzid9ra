@@ -186,8 +186,9 @@ const FILE_ICON = (f) => {
 
 export default function Upload() {
   const navigate = useNavigate()
-  const fileRef            = useRef()
+  const fileRef             = useRef()
   const prefetchedForUniRef = useRef(null)
+  const isSubmittingRef     = useRef(false)
 
   const [user,     setUser]     = useState(null)
   const [authLoad, setAuthLoad] = useState(true)
@@ -403,7 +404,9 @@ export default function Upload() {
 
   // School request submit (3 cases)
   const handleSchoolRequest = async () => {
+    if (isSubmittingRef.current) return
     if (!user) { navigate('/login', { state: { from: '/upload' } }); return }
+    isSubmittingRef.current = true
     try {
       if (schoolCase === 'independent') {
         if (!schAName.trim()) return
@@ -417,7 +420,7 @@ export default function Upload() {
         if (uniErr) { console.error('[Case A] error:', uniErr); setError('Erreur ajout université : ' + uniErr.message); return }
         console.log('[Case A] Inserted:', newUni)
         const { data: allUnis } = await supabase.from('universities').select('*').order('name')
-        if (allUnis) setUnis(allUnis)
+        if (allUnis) setUnis(allUnis.filter((u, i, arr) => arr.findIndex(x => x.id === u.id) === i))
         setSchoolCase(''); setSchAName(''); setSchACity(''); setSchAType('public')
         setShowSchoolForm(false)
         if (newUni) setSelUni(String(newUni.id))
@@ -472,7 +475,7 @@ export default function Upload() {
           else console.log('[Case C] Inserted faculty:', inserted)
         }
         const { data: allUnis } = await supabase.from('universities').select('*').order('name')
-        if (allUnis) setUnis(allUnis)
+        if (allUnis) setUnis(allUnis.filter((u, i, arr) => arr.findIndex(x => x.id === u.id) === i))
         const { data: newFacs } = await supabase.from('faculties').select('*').eq('university_id', newUni.id).order('name')
         console.log('[Case C] Faculties for new uni:', newFacs)
         if (newFacs) setFacs(newFacs)
@@ -486,6 +489,8 @@ export default function Upload() {
     } catch (e) {
       console.error('[handleSchoolRequest] unexpected error:', e)
       setError('Erreur inattendue : ' + e.message)
+    } finally {
+      isSubmittingRef.current = false
     }
   }
 
@@ -950,6 +955,8 @@ export default function Upload() {
                                   <option value="École">École</option>
                                   <option value="Institut">Institut</option>
                                   <option value="Centre">Centre</option>
+                                  <option value="Département">Département</option>
+                                  <option value="Autre">Autre</option>
                                 </select>
                                 {schBFaculties.length > 1 && (
                                   <button
@@ -1006,6 +1013,8 @@ export default function Upload() {
                                   <option value="École">École</option>
                                   <option value="Institut">Institut</option>
                                   <option value="Centre">Centre</option>
+                                  <option value="Département">Département</option>
+                                  <option value="Autre">Autre</option>
                                 </select>
                                 {schCFaculties.length > 1 && (
                                   <button
@@ -1028,9 +1037,10 @@ export default function Upload() {
                       {schoolCase && (
                         <div style={{display:'flex',gap:8,alignItems:'center',marginTop:8}}>
                           <button
-                            style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif'}}
-                            onClick={handleSchoolRequest}>
-                            Envoyer la demande
+                            style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',opacity:isSubmittingRef.current?0.5:1}}
+                            onClick={handleSchoolRequest}
+                            disabled={isSubmittingRef.current}>
+                            {isSubmittingRef.current ? 'Envoi...' : 'Envoyer la demande'}
                           </button>
                           <button
                             style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.75rem',cursor:'pointer',fontFamily:'DM Mono,monospace'}}
