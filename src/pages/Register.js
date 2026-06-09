@@ -65,7 +65,22 @@ const css = `
   .success-title { font-size:1.3rem; font-weight:700; color:var(--white); margin-bottom:0.5rem; }
   .success-desc { font-size:0.85rem; color:var(--text2); line-height:1.6; }
 
+  /* OTP STEP */
+  .otp-icon { width:64px; height:64px; border-radius:18px; background:rgba(79,142,247,0.08); border:1px solid rgba(79,142,247,0.2); display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:1.75rem; }
+  .otp-title { font-size:1.4rem; font-weight:700; color:var(--white); margin-bottom:0.5rem; text-align:center; }
+  .otp-sub { font-size:0.85rem; color:var(--text2); line-height:1.6; text-align:center; margin-bottom:1.75rem; }
+  .otp-email { color:var(--accent2); font-weight:600; }
+  .otp-input { width:100%; background:var(--surface); border:1px solid var(--borderhi); border-radius:12px; padding:16px 20px; color:var(--white); font-size:1.6rem; font-family:'DM Mono',monospace; outline:none; text-align:center; letter-spacing:10px; transition:border-color 0.15s, box-shadow 0.15s; }
+  .otp-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,142,247,0.12); }
+  .otp-input::placeholder { color:var(--text3); letter-spacing:4px; font-size:1.2rem; }
+  .otp-hint { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text3); text-align:center; margin-top:8px; }
+  .otp-resend { background:none; border:none; color:var(--accent2); font-size:0.82rem; cursor:pointer; font-family:'Outfit',sans-serif; padding:0; transition:opacity 0.15s; }
+  .otp-resend:hover { opacity:0.7; }
+  .otp-back { background:none; border:none; color:var(--text3); font-size:0.78rem; cursor:pointer; font-family:'DM Mono',monospace; padding:0; margin-top:1rem; display:block; width:100%; text-align:center; transition:color 0.15s; }
+  .otp-back:hover { color:var(--text2); }
+
   @media(max-width:768px){ .page{grid-template-columns:1fr;} .left{display:none;} .right{padding:2rem 1.5rem;} }
+  @media(max-width:480px){ .field-row{grid-template-columns:1fr;} .right{padding:1.5rem 1rem;} }
 `
 
 export default function Register() {
@@ -73,6 +88,10 @@ export default function Register() {
   const [loading,      setLoading]      = useState(false)
   const [error,        setError]        = useState('')
   const [success,      setSuccess]      = useState(false)
+  const [step,         setStep]         = useState('form')
+  const [otpCode,      setOtpCode]      = useState('')
+  const [otpLoading,   setOtpLoading]   = useState(false)
+  const [otpError,     setOtpError]     = useState('')
   const [universities, setUniversities] = useState([])
   const [form, setForm] = useState({ name:'', email:'', password:'', confirm:'', university_id:'' })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
@@ -91,7 +110,7 @@ export default function Register() {
     if (form.password !== form.confirm) return setError('Les mots de passe ne correspondent pas.')
 
     setLoading(true)
-    const { error: err } = await supabase.auth.signUp({
+    const { data, error: err } = await supabase.auth.signUp({
       email: form.email.trim(),
       password: form.password,
       options: { data: { name: form.name.trim(), university_id: form.university_id || null } },
@@ -99,8 +118,34 @@ export default function Register() {
     setLoading(false)
     if (err) { setError(err.message); return }
 
+    if (data?.user && !data?.session) {
+      setStep('otp')
+    } else {
+      setSuccess(true)
+      setTimeout(() => navigate('/'), 1800)
+    }
+  }
+
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault()
+    if (otpCode.length !== 6) return setOtpError('Entrez le code à 6 chiffres.')
+    setOtpLoading(true)
+    setOtpError('')
+    const { error: err } = await supabase.auth.verifyOtp({
+      email: form.email.trim(),
+      token: otpCode,
+      type: 'signup',
+    })
+    setOtpLoading(false)
+    if (err) { setOtpError(err.message); return }
     setSuccess(true)
     setTimeout(() => navigate('/'), 1800)
+  }
+
+  const handleResend = async () => {
+    await supabase.auth.resend({ type: 'signup', email: form.email.trim() })
+    setOtpError('')
+    setOtpCode('')
   }
 
   return (
@@ -141,6 +186,38 @@ export default function Register() {
               <h2 className="success-title">Compte créé avec succès !</h2>
               <p className="success-desc">Bienvenue sur 9rawZid9ra.<br />Redirection en cours...</p>
             </div>
+          ) : step === 'otp' ? (
+            <>
+              <div className="otp-icon">📬</div>
+              <h2 className="otp-title">Vérifie ton email</h2>
+              <p className="otp-sub">
+                Un code à 6 chiffres a été envoyé à<br />
+                <span className="otp-email">{form.email}</span>
+              </p>
+              {otpError && <div className="alert err">{otpError}</div>}
+              <form onSubmit={handleVerifyOtp}>
+                <input
+                  className="otp-input"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={otpCode}
+                  onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  autoFocus
+                />
+                <div className="otp-hint">Valable 10 minutes · Vérifie tes spams</div>
+                <button type="submit" className="submit" disabled={otpLoading || otpCode.length !== 6}>
+                  {otpLoading ? 'Vérification...' : 'Confirmer le code'}
+                </button>
+              </form>
+              <div style={{ textAlign:'center', marginTop:'1.25rem' }}>
+                <button className="otp-resend" onClick={handleResend}>Renvoyer le code</button>
+                <button className="otp-back" onClick={() => { setStep('form'); setOtpCode(''); setOtpError('') }}>
+                  ← Modifier l'email
+                </button>
+              </div>
+            </>
           ) : (
             <>
               <h2 className="form-title">Créer un compte</h2>
