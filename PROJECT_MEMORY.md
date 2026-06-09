@@ -202,3 +202,10 @@ src/
 - Production audit completed
 - DB triggers for realtime counts
 - helpful_count RLS bypass trigger added
+
+### Session 2 continued — Ads & Production
+- Google AdSense approved and configured
+- Auto ads ON, superposition formats OFF, bannières only
+- ads.txt added to /public with publisher ID pub-9230269242068997
+- AdSense script added to public/index.html
+- Site under review by Google (1-7 days)
