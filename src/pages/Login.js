@@ -55,7 +55,8 @@ const css = `
   .submit:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 24px rgba(79,142,247,0.4); }
   .submit:disabled { opacity:0.5; cursor:not-allowed; }
   .alert { padding:10px 14px; border-radius:8px; font-size:0.82rem; margin-bottom:1rem; font-family:'DM Mono',monospace; }
-  .err { background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.2); color:var(--red); }
+  .err  { background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.2); color:var(--red); }
+  .info { background:rgba(79,142,247,0.08); border:1px solid rgba(79,142,247,0.2); color:#7BB3FF; }
   .register-box { margin-top:1.5rem; padding:1.25rem; background:var(--surface); border:1px solid var(--border); border-radius:10px; text-align:center; }
   .register-box p { font-size:0.82rem; color:var(--text2); margin-bottom:0.75rem; }
   .register-box button { width:100%; background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:9px; font-size:0.82rem; font-weight:500; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; }
@@ -142,6 +143,7 @@ export default function Login() {
               S'inscrire gratuitement
             </button>
           </p>
+          {location.state?.message && <div className="alert info">{location.state.message}</div>}
           {error && <div className="alert err">{error}</div>}
           <form onSubmit={handleLogin}>
             <div className="field">

@@ -233,14 +233,25 @@ export default function Upload() {
 
   // Auth check — redirect to login if not logged in
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session?.user) {
-        navigate('/login', { state: { from: '/upload' } })
-      } else {
-        setUser(session.user)
-        setAuthLoad(false)
-      }
-    })
+    let done = false
+    const loginRedirect = () => {
+      if (!done) { done = true; navigate('/login', { state: { from: '/upload', message: 'Connecte-toi pour continuer' } }) }
+    }
+    // 3-second fallback in case getSession hangs
+    const timeout = setTimeout(loginRedirect, 3000)
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        clearTimeout(timeout)
+        if (done) return
+        done = true
+        if (!session?.user) {
+          navigate('/login', { state: { from: '/upload', message: 'Connecte-toi pour continuer' } })
+        } else {
+          setUser(session.user)
+          setAuthLoad(false)
+        }
+      })
+      .catch(() => { clearTimeout(timeout); loginRedirect() })
   }, [])
 
   useEffect(() => {

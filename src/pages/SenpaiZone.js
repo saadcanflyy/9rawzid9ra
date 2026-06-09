@@ -564,7 +564,7 @@ export default function SenpaiZone() {
   // ── VOTE ──────────────────────────────────────────────────────────────────
   const handleVote = async (post, e) => {
     e?.stopPropagation()
-    if (!user) { navigate('/login'); return }
+    if (!user) { navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
     if (voting.has(post.id)) return
     setVoting(s => new Set([...s, post.id]))
     const isVoted = post.senpai_votes?.some(v => v.user_id === user.id)
@@ -595,6 +595,7 @@ export default function SenpaiZone() {
   const handleFollow = async (authorId, e) => {
     e?.stopPropagation()
     if (!user) { navigate('/login'); return }
+    if (!user) { navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
     if (authorId === user.id || toggling.has(authorId)) return
     setToggling(s => new Set([...s, authorId]))
     const isF = following.has(authorId)
@@ -622,7 +623,8 @@ export default function SenpaiZone() {
 
   // ── SEND REPLY ────────────────────────────────────────────────────────────
   const sendReply = async () => {
-    if (!user || replyText.trim().length < 5) return
+    if (!user) { navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
+    if (replyText.trim().length < 5) return
     setSendingR(true)
     const { data, error } = await supabase.from('senpai_replies').insert({
       post_id: viewPost.id, author_id: user.id,
@@ -674,7 +676,7 @@ export default function SenpaiZone() {
 
   // ── PUBLISH POST ──────────────────────────────────────────────────────────
   const handlePublish = async () => {
-    if (!user) { navigate('/login'); return }
+    if (!user) { navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
     const text = composeText.trim()
     if (text.length < 20) return
     const lines = text.split('\n')

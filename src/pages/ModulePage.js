@@ -498,7 +498,7 @@ export default function ModulePage() {
   const handleDownload = async (doc) => {
     // Check if user is logged in
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { navigate('/login', { state: { from: `/module/${doc.module_id}` } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${doc.module_id}`, message: 'Connecte-toi pour continuer' } }); return }
 
     // Log download
     await supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id })
@@ -512,7 +512,7 @@ export default function ModulePage() {
 
   // ── HELPFUL ──────────────────────────────────────────────────────────────
   const handleHelpful = async (doc) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${id}` } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
     const isH = userReactions[doc.id]?.helpful
     console.log('[handleHelpful] START — doc.id:', doc.id, '| isH (removing?):', isH, '| user.id:', user.id)
 
@@ -538,7 +538,7 @@ export default function ModulePage() {
 
   // ── RATING ────────────────────────────────────────────────────────────────
   const handleRating = async (doc, star) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${id}` } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
     const prev = userReactions[doc.id]?.rating || 0
     await supabase.from('document_reactions')
       .upsert({ user_id: user.id, document_id: doc.id, reaction_type: 'rating', rating: star },
@@ -552,7 +552,7 @@ export default function ModulePage() {
 
   // ── REPORT ────────────────────────────────────────────────────────────────
   const handleReport = async (doc) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${id}` } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
     if (userReactions[doc.id]?.reported) return
     await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'report' })
     await supabase.from('documents').update({ report_count: (doc.report_count || 0) + 1 }).eq('id', doc.id)
@@ -561,7 +561,7 @@ export default function ModulePage() {
 
   // ── BOOKMARK ──────────────────────────────────────────────────────────────
   const handleBookmark = async () => {
-    if (!user) { navigate('/login', { state: { from: `/module/${id}` } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
     if (isBookmarked) {
       await supabase.from('module_bookmarks').delete().eq('user_id', user.id).eq('module_id', parseInt(id))
       setIsBookmarked(false)
@@ -573,7 +573,7 @@ export default function ModulePage() {
 
   // ── DOCUMENT REQUEST ──────────────────────────────────────────────────────
   const handleRequest = async (docType) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${id}` } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
     const existing = requests[docType]
     if (existing) {
       if (userRequested[docType]) return
@@ -851,7 +851,7 @@ export default function ModulePage() {
                                 onClick={async e => {
                                   e.stopPropagation()
                                   const { data: { user } } = await supabase.auth.getUser()
-                                  if (!user) { navigate('/login', { state: { from: `/module/${doc.module_id}` } }); return }
+                                  if (!user) { navigate('/login', { state: { from: `/module/${doc.module_id}`, message: 'Connecte-toi pour continuer' } }); return }
                                   if (i === 0) {
                                     await supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id })
                                     await supabase.from('documents').update({ downloads: (doc.downloads || 0) + 1 }).eq('id', doc.id)
