@@ -420,23 +420,29 @@ export default function Upload() {
       return
     } else if (schoolCase === 'faculty') {
       if (!schBFacName.trim() || !schBParentUni) return
+      const parentUniId = parseInt(schBParentUni)
       await supabase.from('school_requests').insert({
         requested_by:         user.id,
         school_name:          schBFacName.trim(),
         school_type:          schBFacType,
         request_type:         'faculty',
-        parent_university_id: parseInt(schBParentUni),
+        parent_university_id: parentUniId,
         status:               'approved',
       })
       await supabase.from('faculties').insert({
-        university_id: parseInt(schBParentUni),
+        university_id: parentUniId,
         name:          schBFacName.trim(),
         type:          schBFacType,
       })
-      if (parseInt(schBParentUni) === parseInt(selUni)) {
-        const { data } = await supabase.from('faculties').select('*').eq('university_id', parseInt(selUni)).order('name')
-        if (data) setFacs(data)
-      }
+      const { data: updatedFacs } = await supabase.from('faculties').select('*').eq('university_id', parentUniId).order('name')
+      if (updatedFacs) setFacs(updatedFacs)
+      setFacsFetched(true)
+      prefetchedForUniRef.current = String(parentUniId)
+      setSelFac(''); setSelFil(''); setSelSem(''); setSelMod(null)
+      setSchoolCase(''); setSchBParentUni(''); setSchBFacName(''); setSchBFacType('Faculté')
+      setShowSchoolForm(false)
+      setSelUni(String(parentUniId))
+      return
     } else if (schoolCase === 'university_with_faculties') {
       if (!schCUniName.trim()) return
       const validFacs = schCFaculties.filter(f => f.name.trim())
