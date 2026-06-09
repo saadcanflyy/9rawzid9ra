@@ -364,12 +364,13 @@ export default function Upload() {
       status:          'approved',
     })
     if (selFac) {
-      const { data: newFil } = await supabase.from('filieres').insert({
+      await supabase.from('filieres').insert({
         faculty_id:      parseInt(selFac),
         name:            filiereName.trim(),
         total_semesters: filiereNbSem ? parseInt(filiereNbSem) : 6,
-      }).select().single()
-      if (newFil) setFils(prev => [...prev, newFil].sort((a, b) => a.name.localeCompare(b.name)))
+      })
+      const { data } = await supabase.from('filieres').select('*').eq('faculty_id', parseInt(selFac)).order('name')
+      if (data) setFils(data)
     }
     setFiliereSent(true)
   }
@@ -386,12 +387,13 @@ export default function Upload() {
         request_type: 'independent',
         status:       'approved',
       })
-      const { data: newUni } = await supabase.from('universities').insert({
+      await supabase.from('universities').insert({
         name: schAName.trim(),
         city: schACity.trim() || null,
         type: schAType,
-      }).select().single()
-      if (newUni) setUnis(prev => [...prev, newUni].sort((a, b) => a.name.localeCompare(b.name)))
+      })
+      const { data } = await supabase.from('universities').select('*').order('name')
+      if (data) setUnis(data)
     } else if (schoolCase === 'faculty') {
       if (!schBFacName.trim() || !schBParentUni) return
       await supabase.from('school_requests').insert({
@@ -402,13 +404,14 @@ export default function Upload() {
         parent_university_id: parseInt(schBParentUni),
         status:               'approved',
       })
-      const { data: newFac } = await supabase.from('faculties').insert({
+      await supabase.from('faculties').insert({
         university_id: parseInt(schBParentUni),
         name:          schBFacName.trim(),
         type:          schBFacType,
-      }).select().single()
-      if (newFac && parseInt(schBParentUni) === parseInt(selUni)) {
-        setFacs(prev => [...prev, newFac].sort((a, b) => a.name.localeCompare(b.name)))
+      })
+      if (parseInt(schBParentUni) === parseInt(selUni)) {
+        const { data } = await supabase.from('faculties').select('*').eq('university_id', parseInt(selUni)).order('name')
+        if (data) setFacs(data)
       }
     } else if (schoolCase === 'university_with_faculties') {
       if (!schCUniName.trim()) return
@@ -428,7 +431,6 @@ export default function Upload() {
         type: schCType,
       }).select().single()
       if (newUni) {
-        setUnis(prev => [...prev, newUni].sort((a, b) => a.name.localeCompare(b.name)))
         for (const f of validFacs) {
           await supabase.from('faculties').insert({
             university_id: newUni.id,
@@ -436,6 +438,9 @@ export default function Upload() {
             type: f.type,
           })
         }
+        const { data } = await supabase.from('universities').select('*').order('name')
+        if (data) setUnis(data)
+        setSelUni(String(newUni.id))
       }
     } else {
       return
