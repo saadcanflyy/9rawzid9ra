@@ -149,6 +149,7 @@ export default function Browse() {
   const [selFil,  setSelFil]  = useState('')
   const [selSem,  setSelSem]  = useState('')
   const [selType, setSelType] = useState('')
+  const [fetchErr, setFetchErr] = useState('')
 
   // Load universities once
   useEffect(() => {
@@ -208,10 +209,11 @@ export default function Browse() {
       }
 
       const { data, error } = await q
-      if (error) console.error('Modules error:', error)
+      if (error) setFetchErr('Erreur lors du chargement des modules.')
+      else setFetchErr('')
       setMods(data || [])
     } catch (e) {
-      console.error(e)
+      setFetchErr('Erreur de connexion. Vérifie ta connexion internet.')
     }
     setLoading(false)
   }, [selUni, selFac, selFil, selSem, query, selType])
@@ -326,6 +328,11 @@ export default function Browse() {
             </div>
           )}
 
+          {fetchErr && (
+            <div style={{ margin:'0.5rem 1.5rem', padding:'8px 14px', background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:8, fontSize:'0.78rem', color:'#F87171', fontFamily:'DM Mono,monospace' }}>
+              {fetchErr}
+            </div>
+          )}
           <div className="results-bar">
             <span className="results-info">
               <b>{displayed.length}</b> module{displayed.length!==1?'s':''} trouvé{displayed.length!==1?'s':''}

@@ -1,4 +1,3 @@
-import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 
 const css = `
@@ -17,8 +16,6 @@ const FEATURES = [
 ]
 
 export default function AICoach() {
-  useNavigate()
-
   return (
     <div style={{ minHeight:'100vh', background:'#02040A', display:'flex', flexDirection:'column' }}>
       <style>{css}</style>

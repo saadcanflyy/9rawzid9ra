@@ -444,7 +444,6 @@ export default function SenpaiZone() {
       .eq('is_approved', true)
       .order('created_at', { ascending: false })
       .limit(100)
-    console.log('Feed posts loaded:', (data || []).length, error)
     setPosts(data || [])
     setLoading(false)
   }, [])
@@ -653,7 +652,6 @@ export default function SenpaiZone() {
     const content = text
     setSubmitting(true)
     const flagged = isFlagged(text)
-    console.log('Submitting post:', { content, title, composeType, composeMod, composeAnon })
     const uniId = parseInt(filterUni) || profile?.university_id || null
     const { data: inserted, error } = await supabase.from('senpai_posts').insert({
       author_id:     user.id,
@@ -668,12 +666,11 @@ export default function SenpaiZone() {
     })
     .select('id, created_at')
     .single()
-    console.log('Insert result:', { data: inserted, error })
     setSubmitting(false)
-    if (error) { alert(error.message); return }
+    if (error) { alert('Erreur lors de la publication. Réessaie.'); return }
     setComposeText(''); setComposeFocused(false); setComposeMod(null); setComposeAnon(false); setComposeType('cheat_code')
     if (flagged) {
-      alert('⚠️ Post soumis en attente de vérification.')
+      alert('Ton post a été soumis et sera visible après vérification.')
     } else if (inserted) {
       const uniName = unis.find(u => u.id === uniId)?.name || null
       const newPost = {

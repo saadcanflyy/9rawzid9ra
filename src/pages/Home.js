@@ -182,6 +182,7 @@ export default function Home() {
     supabase.from('documents').select('*', { count:'exact', head:true })
       .eq('is_verified', true)
       .then(({ count }) => { if (count) setDocCount(count) })
+      .catch(() => {})
   }, [])
 
   const onSearch = (e) => {
