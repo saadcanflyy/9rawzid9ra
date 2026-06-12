@@ -177,12 +177,16 @@ export default function Home() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [docCount, setDocCount] = useState(0)
+  const [user, setUser] = useState(null)
 
   useEffect(() => {
     supabase.from('documents').select('*', { count:'exact', head:true })
       .eq('is_verified', true)
       .then(({ count }) => { if (count) setDocCount(count) })
       .catch(() => {})
+    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null))
+    return () => subscription.unsubscribe()
   }, [])
 
   const onSearch = (e) => {
@@ -331,7 +335,9 @@ export default function Home() {
             </p>
           </div>
           <div className="cta-actions">
-            <button className="btn-primary" onClick={() => navigate('/register')}>Créer un compte</button>
+            {!user && (
+              <button className="btn-primary" onClick={() => navigate('/register')}>Créer un compte</button>
+            )}
             <button className="btn-outline" onClick={() => navigate('/upload')}>Uploader un document</button>
           </div>
         </div>
