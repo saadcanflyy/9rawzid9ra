@@ -1,5 +1,7 @@
 // src/App.js
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
+import { supabase } from './supabase'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import ModulePage from './pages/ModulePage'
@@ -56,6 +58,13 @@ function NotFound() {
 }
 
 function App() {
+  useEffect(() => {
+    // Restore session from localStorage on cold mount and start token refresh cycle
+    supabase.auth.getSession()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {})
+    return () => subscription.unsubscribe()
+  }, [])
+
   return (
     <BrowserRouter>
       <Routes>

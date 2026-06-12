@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -71,6 +71,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const isSubmittingRef = useRef(false)
 
   // Redirect if already logged in
   useEffect(() => {
@@ -84,23 +85,27 @@ export default function Login() {
 
   const handleLogin = async (e) => {
     e.preventDefault()
+    if (isSubmittingRef.current) return
     setError('')
     if (!email.trim() || !password) return setError('Email et mot de passe requis.')
+    isSubmittingRef.current = true
     setLoading(true)
-
-    const { error: err } = await supabase.auth.signInWithPassword({
-      email: email.trim(), password,
-    })
-
-    if (err) {
-      setError('Email ou mot de passe incorrect.')
+    try {
+      const { error: err } = await supabase.auth.signInWithPassword({
+        email: email.trim(), password,
+      })
+      if (err) {
+        setError('Email ou mot de passe incorrect.')
+        return
+      }
+      const from = location.state?.from || '/'
+      navigate(from, { replace: true })
+    } catch {
+      setError('Erreur de connexion. Réessaie.')
+    } finally {
+      isSubmittingRef.current = false
       setLoading(false)
-      return
     }
-
-    // Redirect back to intended page or home
-    const from = location.state?.from || '/'
-    navigate(from, { replace: true })
   }
 
   return (
