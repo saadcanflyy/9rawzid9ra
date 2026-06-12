@@ -353,6 +353,7 @@ export default function ModulePage() {
         .single()
 
       setMod(m)
+      if (m) document.title = `${m.name} — 9rawZid9ra`
 
       // Load documents (with uploader name)
       const { data: d } = await supabase

@@ -375,6 +375,7 @@ export default function Profile() {
       ])
 
       setProfile(prof || {})
+      document.title = prof?.name ? `${prof.name} — 9rawZid9ra` : 'Profil — 9rawZid9ra'
       setEditName(prof?.name || '')
       setEditBio(prof?.bio || '')
       setEditUni(prof?.university_id ? String(prof.university_id) : '')

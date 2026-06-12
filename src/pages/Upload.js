@@ -118,6 +118,10 @@ const css = `
   .err  { background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.2); color:var(--red); }
   .warn { background:rgba(251,211,77,0.06); border:1px solid rgba(251,211,77,0.2); color:var(--yellow); }
 
+  /* TOAST */
+  @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+  .toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(45,212,191,0.12); border:1px solid rgba(45,212,191,0.35); color:var(--teal2); border-radius:10px; padding:12px 22px; font-size:0.82rem; font-weight:600; font-family:'DM Mono',monospace; z-index:9999; white-space:nowrap; box-shadow:0 8px 32px rgba(0,0,0,0.5); animation:toastIn 0.2s ease; pointer-events:none; }
+
   /* SUCCESS */
   .success-wrap { text-align:center; padding:3rem 2rem; }
   .success-icon { width:64px; height:64px; border-radius:16px; background:rgba(45,212,191,0.1); border:1px solid rgba(45,212,191,0.2); display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; font-family:'DM Mono',monospace; font-size:1.5rem; color:var(--teal2); }
@@ -241,6 +245,10 @@ export default function Upload() {
   // Points state for success screen
   const [earnedPoints, setEarnedPoints] = useState(null)
 
+  // Toast
+  const [toast, setToast] = useState(null)
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3500) }
+
   // Doc info
   const [docType,   setDocType]   = useState('')
   const [year,      setYear]      = useState('')
@@ -254,6 +262,7 @@ export default function Upload() {
 
   // Auth check — redirect to login if not logged in
   useEffect(() => {
+    document.title = 'Uploader un document — 9rawZid9ra'
     let done = false
     const loginRedirect = () => {
       if (!done) { done = true; navigate('/login', { state: { from: '/upload', message: 'Connecte-toi pour continuer' } }) }
@@ -385,18 +394,15 @@ export default function Upload() {
         total_semesters: filiereNbSem ? parseInt(filiereNbSem) : null,
         status:          'approved',
       })
-      if (sugErr) console.error('[Filière] suggestion insert error:', sugErr)
-
       if (selFac) {
         const payload = { faculty_id: parseInt(selFac), name: filiereName.trim(), total_semesters: filiereNbSem ? parseInt(filiereNbSem) : 6 }
-        console.log('[Filière] Inserting filière:', payload)
         const { data: newFil, error: filErr } = await supabase.from('filieres').insert(payload).select().single()
         if (filErr) { console.error('[Filière] insert error:', filErr); setError('Erreur ajout filière : ' + filErr.message); return }
-        console.log('[Filière] Inserted:', newFil)
         const { data: updatedFils } = await supabase.from('filieres').select('*').eq('faculty_id', parseInt(selFac)).order('name')
         if (updatedFils) setFils(updatedFils)
         if (newFil) setSelFil(String(newFil.id))
       }
+      showToast('✓ Filière ajoutée et disponible !')
       setFiliereSent(true)
       setTimeout(() => { setFiliereSent(false); setShowFiliereForm(false); setFiliereName(''); setFiliereNbSem('') }, 3000)
     } catch (e) {
@@ -418,15 +424,14 @@ export default function Upload() {
           school_type: schAType, request_type: 'independent', status: 'approved',
         })
         const payload = { name: schAName.trim(), city: schACity.trim() || null, type: schAType }
-        console.log('[Case A] Inserting university:', payload)
         const { data: newUni, error: uniErr } = await supabase.from('universities').insert(payload).select().single()
         if (uniErr) { console.error('[Case A] error:', uniErr); setError('Erreur ajout université : ' + uniErr.message); return }
-        console.log('[Case A] Inserted:', newUni)
         const { data: allUnis } = await supabase.from('universities').select('*').order('name')
         if (allUnis) setUnis(allUnis.filter((u, i, arr) => arr.findIndex(x => x.id === u.id) === i))
         setSchoolCase(''); setSchAName(''); setSchACity(''); setSchAType('public')
         setShowSchoolForm(false)
         if (newUni) setSelUni(String(newUni.id))
+        showToast('✓ Établissement ajouté et disponible immédiatement !')
         return
 
       } else if (schoolCase === 'faculty') {
@@ -443,17 +448,14 @@ export default function Upload() {
               request_type: 'faculty', parent_university_id: parentUniId, status: 'approved',
             })
             const payload = { university_id: parentUniId, name: fac.name.trim(), type: fac.type }
-            console.log('[Case B] Inserting faculty:', payload)
             const { data: inserted, error: facErr } = await supabase.from('faculties').insert(payload).select().single()
             if (facErr) { console.error('[Case B] error:', facErr); setError(`Erreur ajout "${fac.name}" : ${facErr.message}`); return }
-            console.log('[Case B] Inserted:', inserted)
           }
         } finally {
           isSubmittingFacRef.current = false
         }
         const { data: updatedFacs, error: fetchErr } = await supabase.from('faculties').select('*').eq('university_id', parentUniId).order('name')
         if (fetchErr) console.error('[Case B] re-fetch error:', fetchErr)
-        console.log('[Case B] Updated facs from DB:', updatedFacs)
         if (updatedFacs) setFacs(updatedFacs)
         setFacsFetched(true)
         prefetchedForUniRef.current = String(parentUniId)
@@ -461,6 +463,7 @@ export default function Upload() {
         setSchoolCase(''); setSchBParentUni(''); setSchBFaculties([{ name: '', type: 'Faculté' }])
         setShowSchoolForm(false)
         setSelUni(String(parentUniId))
+        showToast('✓ Composantes ajoutées avec succès !')
         return
 
       } else if (schoolCase === 'university_with_faculties') {
@@ -472,19 +475,15 @@ export default function Upload() {
           details: validFacs.length > 0 ? validFacs : null, status: 'approved',
         })
         const uniPayload = { name: schCUniName.trim(), city: schCCity.trim() || null, type: schCType }
-        console.log('[Case C] Inserting university:', uniPayload)
         const { data: newUni, error: uniErr } = await supabase.from('universities').insert(uniPayload).select().single()
         if (uniErr) { console.error('[Case C] university error:', uniErr); setError('Erreur ajout université : ' + uniErr.message); return }
-        console.log('[Case C] Inserted university:', newUni)
         if (isSubmittingFacRef.current) return
         isSubmittingFacRef.current = true
         try {
           for (const fac of validFacs) {
             const facPayload = { university_id: newUni.id, name: fac.name, type: fac.type }
-            console.log('[Case C] Inserting faculty:', facPayload)
-            const { data: inserted, error: facErr } = await supabase.from('faculties').insert(facPayload).select().single()
+            const { error: facErr } = await supabase.from('faculties').insert(facPayload)
             if (facErr) console.error('[Case C] faculty error:', facErr, facPayload)
-            else console.log('[Case C] Inserted faculty:', inserted)
           }
         } finally {
           isSubmittingFacRef.current = false
@@ -492,7 +491,6 @@ export default function Upload() {
         const { data: allUnis } = await supabase.from('universities').select('*').order('name')
         if (allUnis) setUnis(allUnis.filter((u, i, arr) => arr.findIndex(x => x.id === u.id) === i))
         const { data: newFacs } = await supabase.from('faculties').select('*').eq('university_id', newUni.id).order('name')
-        console.log('[Case C] Faculties for new uni:', newFacs)
         if (newFacs) setFacs(newFacs)
         setFacsFetched(true)
         prefetchedForUniRef.current = String(newUni.id)
@@ -500,6 +498,7 @@ export default function Upload() {
       } else {
         return
       }
+      showToast('✓ Établissement ajouté et disponible immédiatement !')
       setSchoolSent(true)
     } catch (e) {
       console.error('[handleSchoolRequest] unexpected error:', e)
@@ -1255,6 +1254,7 @@ export default function Upload() {
           </>
         )}
       </div>
+      {toast && <div className="toast">{toast}</div>}
     </div>
   )
 }

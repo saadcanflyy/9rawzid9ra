@@ -98,6 +98,7 @@ export default function Register() {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   useEffect(() => {
+    document.title = 'Créer un compte — 9rawZid9ra'
     supabase.from('universities').select('id, name, city').order('name')
       .then(({ data }) => setUniversities(data || []))
   }, [])

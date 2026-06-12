@@ -153,6 +153,7 @@ export default function Browse() {
 
   // Load universities once
   useEffect(() => {
+    document.title = 'Explorer les modules — 9rawZid9ra'
     supabase.from('universities').select('*').order('name')
       .then(({ data }) => setUnis(data || []))
   }, [])

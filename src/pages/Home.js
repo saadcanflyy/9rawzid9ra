@@ -180,6 +180,7 @@ export default function Home() {
   const [user, setUser] = useState(null)
 
   useEffect(() => {
+    document.title = '9rawZid9ra — Annales & examens pour étudiants marocains'
     supabase.from('documents').select('*', { count:'exact', head:true })
       .eq('is_verified', true)
       .then(({ count }) => { if (count) setDocCount(count) })

@@ -409,6 +409,7 @@ export default function SenpaiZone() {
 
   // ── LOAD ──────────────────────────────────────────────────────────────────
   useEffect(() => {
+    document.title = 'Senpai Zone — 9rawZid9ra'
     supabase.auth.getUser().then(async ({ data: { user: u } }) => {
       setUser(u)
       if (u) {

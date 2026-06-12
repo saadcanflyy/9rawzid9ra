@@ -90,6 +90,7 @@ export default function MyModules() {
   const [loading,   setLoading]   = useState(true)
 
   useEffect(() => {
+    document.title = 'Mes modules — 9rawZid9ra'
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) { navigate('/login', { state: { from: '/my-modules' } }); return }
       loadBookmarks(user.id)

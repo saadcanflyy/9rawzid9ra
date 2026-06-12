@@ -75,6 +75,7 @@ export default function Login() {
 
   // Redirect if already logged in
   useEffect(() => {
+    document.title = 'Se connecter — 9rawZid9ra'
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const from = location.state?.from || '/'
