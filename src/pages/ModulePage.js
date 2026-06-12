@@ -1119,7 +1119,7 @@ export default function ModulePage() {
                 9rawZid9ra est 100% gratuit. Un pourboire nous aide à grandir.
               </div>
               <a
-                href="https://www.paypal.com/donate/?hosted_button_id=YOUR_BUTTON_ID"
+                href="https://paypal.me/saadga2003"
                 target="_blank"
                 rel="noreferrer"
                 style={{ display:'inline-block', background:'rgba(251,211,77,0.1)', border:'1px solid rgba(251,211,77,0.3)', color:'#FBD34D', borderRadius:8, padding:'7px 16px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:"'Outfit',sans-serif", textDecoration:'none', transition:'all 0.15s' }}

@@ -373,7 +373,7 @@ export default function Navbar({ activePage = '' }) {
                       <button className="nb-dd-item admin" onClick={() => { navigate('/admin'); setShowDropdown(false) }}>Panneau Admin</button>
                     )}
                     <div className="nb-dd-sep" />
-                    <button className="nb-dd-item" onClick={() => { window.open('https://www.paypal.com/donate/?hosted_button_id=YOUR_BUTTON_ID', '_blank'); setShowDropdown(false) }} style={{ color:'#FBD34D' }}>☕ Soutenir 9rawZid9ra</button>
+                    <a className="nb-dd-item" href="https://paypal.me/saadga2003" target="_blank" rel="noopener noreferrer" onClick={() => setShowDropdown(false)} style={{ color:'#FBD34D', textDecoration:'none' }}>☕ Soutenir 9rawZid9ra</a>
                     <div className="nb-dd-sep" />
                     <button className="nb-dd-item danger" onClick={handleLogout}>Se déconnecter</button>
                   </div>

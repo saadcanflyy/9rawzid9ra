@@ -345,14 +345,16 @@ export default function Home() {
 
       {/* FLOATING TIP BUTTON */}
       <div style={{ position:'fixed', bottom:'2rem', right:'2rem', zIndex:100 }}>
-        <button
-          onClick={() => window.open('https://www.paypal.com/donate/?hosted_button_id=YOUR_BUTTON_ID', '_blank')}
-          style={{ background:'linear-gradient(135deg,#FBD34D,#F59E0B)', color:'#02040A', border:'none', borderRadius:100, padding:'12px 20px', fontSize:'0.85rem', fontWeight:700, cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:8, boxShadow:'0 4px 20px rgba(251,211,77,0.35)', transition:'all 0.2s' }}
+        <a
+          href="https://paypal.me/saadga2003"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ background:'linear-gradient(135deg,#FBD34D,#F59E0B)', color:'#02040A', border:'none', borderRadius:100, padding:'12px 20px', fontSize:'0.85rem', fontWeight:700, cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:8, boxShadow:'0 4px 20px rgba(251,211,77,0.35)', transition:'all 0.2s', textDecoration:'none' }}
           onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px) scale(1.02)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(251,211,77,0.5)' }}
           onMouseLeave={e => { e.currentTarget.style.transform='translateY(0) scale(1)'; e.currentTarget.style.boxShadow='0 4px 20px rgba(251,211,77,0.35)' }}
         >
           ☕ Soutenir le projet
-        </button>
+        </a>
       </div>
 
       {/* FOOTER */}
