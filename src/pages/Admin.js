@@ -511,17 +511,21 @@ export default function Admin() {
 
   const loadMessages = async () => {
     setLoading(true)
-    // Cleanup messages older than 48h
     supabase.rpc('cleanup_old_messages').then()
-    const { data } = await supabase.from('messages')
-      .select('id, sender_id, content, read, created_at, is_from_admin, user_profiles!sender_id(id, name)')
+    // FK on sender_id points to auth.users, not user_profiles — fetch names separately
+    const { data: msgs } = await supabase.from('messages')
+      .select('id, sender_id, content, read, created_at')
       .eq('is_from_admin', false)
       .order('created_at', { ascending: false })
+    if (!msgs?.length) { setMsgSenders([]); setUnreadMsgCount(0); setLoading(false); return }
+    const senderIds = [...new Set(msgs.map(m => m.sender_id).filter(Boolean))]
+    const { data: profiles } = await supabase.from('user_profiles').select('id, name').in('id', senderIds)
+    const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.name]))
     const senderMap = {}
-    ;(data || []).forEach(m => {
+    msgs.forEach(m => {
       const sid = m.sender_id
       if (!senderMap[sid]) {
-        senderMap[sid] = { id: sid, name: m.user_profiles?.name || 'Anonyme', unread: 0, lastMsg: m.content, lastDate: m.created_at }
+        senderMap[sid] = { id: sid, name: nameMap[sid] || 'Anonyme', unread: 0, lastMsg: m.content, lastDate: m.created_at }
       }
       if (!m.read) senderMap[sid].unread++
     })

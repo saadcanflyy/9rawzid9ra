@@ -351,6 +351,8 @@ export default function Navbar({ activePage = '' }) {
                           navigate('/browse')
                         } else if (n.type === 'announcement') {
                           navigate('/')
+                        } else if (n.type === 'message_reply' || n.type === 'new_message') {
+                          window.dispatchEvent(new CustomEvent('open-messenger'))
                         } else if (n.post_id) {
                           localStorage.setItem('senpai_highlight_post', String(n.post_id))
                           navigate('/senpai')

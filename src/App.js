@@ -16,6 +16,7 @@ import AICoach from './pages/AICoach'
 import MyModules from './pages/MyModules'
 import WelcomeModal from './components/WelcomeModal'
 import ModeratorPanel from './pages/ModeratorPanel'
+import MessengerWidget from './components/MessengerWidget'
 
 const notFoundCss = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap');
@@ -136,6 +137,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <WelcomeModal />
+      <MessengerWidget />
     </BrowserRouter>
   )
 }
