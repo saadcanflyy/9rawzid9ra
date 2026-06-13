@@ -246,11 +246,8 @@ export default function Navbar({ activePage = '' }) {
     const channel = supabase
       .channel(`nb-notifs-${user.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        async payload => {
-          const { data } = await supabase.from('notifications')
-            .select('*, actor:user_profiles!actor_id(name)')
-            .eq('id', payload.new.id).single()
-          if (data) setNotifs(prev => [data, ...prev])
+        payload => {
+          setNotifs(prev => [payload.new, ...prev])
         })
       .subscribe()
     return () => supabase.removeChannel(channel)

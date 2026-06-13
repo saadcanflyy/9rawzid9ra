@@ -93,7 +93,7 @@ const css = `
   --text:#E2E8F0;--text2:#94A3B8;--text3:#4A5568;
 }
 html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif}
-.sz-page{min-height:100vh;background:var(--bg)}
+.sz-page{min-height:100vh;background:var(--bg);overflow-x:clip}
 
 /* ── 3-COLUMN GRID ── */
 .sz-main{

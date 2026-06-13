@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -225,8 +225,10 @@ export default function Admin() {
   const [moveBusy,      setMoveBusy]      = useState(false)
 
   // Messages tab
+  const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
   const [msgSenders,        setMsgSenders]        = useState([])
   const [selectedMsgUser,   setSelectedMsgUser]   = useState(null)
+  const selectedMsgUserRef                        = useRef(null)
   const [msgThread,         setMsgThread]         = useState([])
   const [replyText,         setReplyText]         = useState('')
   const [replySending,      setReplySending]      = useState(false)
@@ -519,8 +521,6 @@ export default function Admin() {
     supabase.from('notifications').insert({ user_id: id, type: notifType, content: notifContent, read: false }).then()
   }
 
-  const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
-
   const loadMessages = async () => {
     setLoading(true)
     const { data } = await supabase.rpc('admin_get_inbox')
@@ -539,6 +539,7 @@ export default function Admin() {
 
   const loadThread = async (sender) => {
     setSelectedMsgUser(sender)
+    selectedMsgUserRef.current = sender
     setMsgThread([])
     const { data } = await supabase.rpc('admin_get_thread', { p_user_id: sender.id })
     setMsgThread(data || [])
@@ -570,6 +571,37 @@ export default function Admin() {
     })
     setReplySending(false)
   }
+
+  // Real-time: live message updates for admin messages tab
+  useEffect(() => {
+    if (!isAdmin) return
+    const channel = supabase
+      .channel('admin-messages-rt')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'messages',
+        filter: `receiver_id=eq.${ADMIN_ID}`,
+      }, payload => {
+        const msg = payload.new
+        const senderId = msg.sender_id
+        const isConvoOpen = selectedMsgUserRef.current?.id === senderId
+        setMsgSenders(prev => {
+          const found = prev.find(s => s.id === senderId)
+          if (!found) { loadMessages(); return prev }
+          return prev.map(s => s.id === senderId
+            ? { ...s, unread: isConvoOpen ? 0 : s.unread + 1, lastMsg: msg.content, lastDate: msg.created_at }
+            : s
+          )
+        })
+        if (isConvoOpen) {
+          setMsgThread(prev => [...prev, msg])
+          supabase.from('messages').update({ is_read: true }).eq('id', msg.id).then()
+        } else {
+          setUnreadMsgCount(prev => prev + 1)
+        }
+      })
+      .subscribe()
+    return () => supabase.removeChannel(channel)
+  }, [isAdmin]) // eslint-disable-line
 
   const loadAnalytics = async () => {
     setLoading(true)
