@@ -201,11 +201,18 @@ export default function Admin() {
   const [filiereReqs,  setFiliereReqs]  = useState([])
   const [users,        setUsers]        = useState([])
   const [topUsers,     setTopUsers]     = useState([])
-  const [recentDocs,   setRecentDocs]   = useState([])
+  const [activityFeed, setActivityFeed] = useState([])
   const [flaggedPosts, setFlaggedPosts] = useState([])
 
   // Doc filter
   const [docFilter, setDocFilter] = useState('all')
+
+  // Move document state
+  const [movingDocId,   setMovingDocId]   = useState(null)
+  const [moveSearch,    setMoveSearch]    = useState('')
+  const [moveResults,   setMoveResults]   = useState([])
+  const [moveSelId,     setMoveSelId]     = useState(null)
+  const [moveBusy,      setMoveBusy]      = useState(false)
 
   // Rename state
   const [renamingId,  setRenamingId]  = useState(null)
@@ -246,7 +253,8 @@ export default function Admin() {
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
 
-    const [docs, mods, schools, usrs, docsMonth, docsLastMonth, usrsMonth, top10, recent, flagged, filieres_sug] = await Promise.all([
+    const [docs, mods, schools, usrs, docsMonth, docsLastMonth, usrsMonth, top10, flagged, filieres_sug,
+           feedDocs, feedSchools, feedFils, feedModSugs] = await Promise.all([
       supabase.from('documents').select('*', { count:'exact', head:true }),
       supabase.from('modules').select('*', { count:'exact', head:true }).eq('verified', false),
       supabase.from('school_requests').select('*', { count:'exact', head:true }).eq('status', 'pending'),
@@ -255,9 +263,12 @@ export default function Admin() {
       supabase.from('documents').select('*', { count:'exact', head:true }).gte('created_at', lastMonthStart).lt('created_at', monthStart),
       supabase.from('user_profiles').select('*', { count:'exact', head:true }).gte('created_at', monthStart),
       supabase.from('user_profiles').select('id, name, email, points, uploads_count').order('points', { ascending: false }).limit(10),
-      supabase.from('admin_documents').select('id, doc_type, module_name, uploader_name, created_at, files, academic_year').order('created_at', { ascending: false }).limit(10),
       supabase.from('senpai_posts').select('*', { count:'exact', head:true }).eq('is_approved', false),
       supabase.from('filiere_suggestions').select('*', { count:'exact', head:true }).eq('status', 'pending'),
+      supabase.from('admin_documents').select('id, doc_type, module_name, uploader_name, created_at, academic_year').order('created_at', { ascending: false }).limit(8),
+      supabase.from('school_requests').select('id, school_name, created_at, user_profiles(name)').order('created_at', { ascending: false }).limit(6),
+      supabase.from('filiere_suggestions').select('id, filiere_name, created_at, user_profiles(name)').order('created_at', { ascending: false }).limit(6),
+      supabase.from('modules').select('id, name, created_at').eq('verified', false).order('created_at', { ascending: false }).limit(6),
     ])
     setStats({
       pendingDocs:      docs.count         || 0,
@@ -270,8 +281,15 @@ export default function Admin() {
       flaggedPosts:     flagged.count      || 0,
       pendingFilieres:  filieres_sug.count || 0,
     })
-    setTopUsers(top10.data   || [])
-    setRecentDocs(recent.data || [])
+    setTopUsers(top10.data || [])
+
+    const combined = [
+      ...(feedDocs.data || []).map(d => ({ type:'document', label: d.module_name || 'Doc', sub: `${d.doc_type?.toUpperCase() || ''}${d.academic_year ? ' · '+d.academic_year : ''} · par ${d.uploader_name || 'Anonyme'}`, created_at: d.created_at })),
+      ...(feedSchools.data || []).map(s => ({ type:'school', label: s.school_name || 'École', sub: `par ${s.user_profiles?.name || 'Anonyme'}`, created_at: s.created_at })),
+      ...(feedFils.data || []).map(f => ({ type:'filiere', label: f.filiere_name || 'Filière', sub: `par ${f.user_profiles?.name || 'Anonyme'}`, created_at: f.created_at })),
+      ...(feedModSugs.data || []).map(m => ({ type:'module', label: m.name || 'Module', sub: 'En attente de vérif', created_at: m.created_at })),
+    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 20)
+    setActivityFeed(combined)
   }
 
   const loadDocs = async (filter) => {
@@ -382,6 +400,26 @@ export default function Admin() {
     await supabase.from('documents').update({ report_count: 0 }).eq('id', docId)
     await supabase.from('document_reactions').delete().eq('document_id', docId).eq('reaction_type', 'report')
     setPendingDocs(d => d.map(x => x.id === docId ? { ...x, report_count: 0 } : x))
+  }
+
+  const searchModules = async (q) => {
+    if (q.length < 2) { setMoveResults([]); return }
+    const { data } = await supabase.from('modules')
+      .select('id, name, filieres(name, semester)')
+      .ilike('name', `%${q}%`)
+      .limit(8)
+    setMoveResults(data || [])
+  }
+
+  const moveDoc = async (docId, moduleId) => {
+    setMoveBusy(true)
+    await supabase.from('documents').update({ module_id: moduleId }).eq('id', docId)
+    setMoveBusy(false)
+    setMovingDocId(null)
+    setMoveSearch('')
+    setMoveResults([])
+    setMoveSelId(null)
+    setPendingDocs(d => d.map(x => x.id === docId ? { ...x, module_id: moduleId } : x))
   }
 
   const approveMod = async (mod) => {
@@ -568,21 +606,28 @@ export default function Admin() {
 
                 {/* RECENT ACTIVITY */}
                 <div>
-                  <div className="overview-col-title">// activité récente</div>
+                  <div className="overview-col-title">// activité récente des utilisateurs</div>
                   <div className="feed">
-                    {recentDocs.map(d => (
-                      <div key={d.id} className="feed-item">
-                        <div className="feed-dot" />
-                        <div className="feed-info">
-                          <div className="feed-main">{d.module_name || 'Module inconnu'}</div>
-                          <div className="feed-sub">
-                            {d.doc_type?.toUpperCase()}{d.academic_year ? ` · ${d.academic_year}` : ''} · par {d.uploader_name || 'Anonyme'}
+                    {activityFeed.map((item, i) => {
+                      const typeStyle = item.type === 'document'
+                        ? { bg:'rgba(74,222,128,0.1)', color:'#4ADE80', border:'rgba(74,222,128,0.25)', label:'DOC' }
+                        : item.type === 'school'
+                        ? { bg:'rgba(79,142,247,0.1)', color:'#7BB3FF', border:'rgba(79,142,247,0.25)', label:'ÉCOLE' }
+                        : item.type === 'filiere'
+                        ? { bg:'rgba(45,212,191,0.1)', color:'#5EEAD4', border:'rgba(45,212,191,0.25)', label:'FILIÈRE' }
+                        : { bg:'rgba(251,211,77,0.1)', color:'#FBD34D', border:'rgba(251,211,77,0.25)', label:'MODULE' }
+                      return (
+                        <div key={i} className="feed-item">
+                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.55rem', fontWeight:700, padding:'1px 5px', borderRadius:3, background:typeStyle.bg, color:typeStyle.color, border:`1px solid ${typeStyle.border}`, flexShrink:0 }}>{typeStyle.label}</span>
+                          <div className="feed-info">
+                            <div className="feed-main">{item.label}</div>
+                            <div className="feed-sub">{item.sub}</div>
                           </div>
+                          <div className="feed-time">{fmt(item.created_at)}</div>
                         </div>
-                        <div className="feed-time">{fmt(d.created_at)}</div>
-                      </div>
-                    ))}
-                    {recentDocs.length === 0 && <div className="empty">// aucune activité récente</div>}
+                      )
+                    })}
+                    {activityFeed.length === 0 && <div className="empty">// aucune activité récente</div>}
                   </div>
                 </div>
               </div>
@@ -642,11 +687,41 @@ export default function Admin() {
                             <div className="actions">
                               {d.files?.[0] && <a href={d.files[0]} target="_blank" rel="noreferrer"><button className="act-btn act-view">Voir</button></a>}
                               <button className="act-btn act-approve" onClick={() => verifyDoc(d.id)}>Approuver</button>
+                              <button className="act-btn act-rename" onClick={() => { setMovingDocId(movingDocId === d.id ? null : d.id); setMoveSearch(''); setMoveResults([]); setMoveSelId(null) }}>Déplacer</button>
                               <button className="act-btn act-reject" onClick={() => handleDeleteDoc(d)}>Supprimer</button>
                               {d.report_count > 0 && (
                                 <button className="act-btn act-rename" onClick={() => handleIgnoreReports(d.id)}>Ignorer</button>
                               )}
                             </div>
+                            {movingDocId === d.id && (
+                              <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(79,142,247,0.05)', border:'1px solid rgba(79,142,247,0.2)', borderRadius:8 }}>
+                                <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--accent2)', marginBottom:6 }}>// déplacer vers un autre module</div>
+                                <input
+                                  style={{ width:'100%', background:'var(--s2)', border:'1px solid var(--border)', borderRadius:6, padding:'6px 10px', color:'var(--text)', fontSize:'0.78rem', fontFamily:'Outfit,sans-serif', outline:'none', marginBottom:6 }}
+                                  placeholder="Recherche module (min 2 chars)..."
+                                  value={moveSearch}
+                                  onChange={e => { setMoveSearch(e.target.value); searchModules(e.target.value); setMoveSelId(null) }}
+                                />
+                                {moveResults.length > 0 && (
+                                  <div style={{ display:'flex', flexDirection:'column', gap:3, marginBottom:6 }}>
+                                    {moveResults.map(m => (
+                                      <div key={m.id}
+                                        onClick={() => setMoveSelId(m.id)}
+                                        style={{ padding:'5px 8px', borderRadius:5, cursor:'pointer', fontSize:'0.76rem', background: moveSelId === m.id ? 'rgba(79,142,247,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${moveSelId === m.id ? 'rgba(79,142,247,0.4)' : 'transparent'}`, color: moveSelId === m.id ? 'var(--accent2)' : 'var(--text2)' }}>
+                                        {m.name}
+                                        {m.filieres?.name && <span style={{ color:'var(--text3)', fontSize:'0.68rem', marginLeft:6, fontFamily:'DM Mono,monospace' }}>{m.filieres.name}{m.filieres.semester ? ` · S${m.filieres.semester}` : ''}</span>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <button
+                                  disabled={!moveSelId || moveBusy}
+                                  onClick={() => moveDoc(d.id, moveSelId)}
+                                  style={{ background: moveSelId ? 'rgba(79,142,247,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${moveSelId ? 'rgba(79,142,247,0.3)' : 'var(--border)'}`, color: moveSelId ? 'var(--accent2)' : 'var(--text3)', borderRadius:6, padding:'5px 12px', fontSize:'0.76rem', fontWeight:600, cursor: moveSelId ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif' }}>
+                                  {moveBusy ? 'Déplacement...' : 'Confirmer'}
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}

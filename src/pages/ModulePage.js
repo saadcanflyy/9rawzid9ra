@@ -358,7 +358,7 @@ export default function ModulePage() {
       // Load documents (with uploader name)
       const { data: d } = await supabase
         .from('documents')
-        .select('*, user_profiles!uploader_id(name)')
+        .select('*, user_profiles!uploader_id(name, is_fondateur)')
         .eq('module_id', parseInt(id))
         .order('created_at', { ascending: false })
       setDocs(d || [])
@@ -428,7 +428,7 @@ export default function ModulePage() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'documents' }, async payload => {
         if (String(payload.new.module_id) !== String(id)) return
         const { data } = await supabase
-          .from('documents').select('*, user_profiles!uploader_id(name)').eq('id', payload.new.id).single()
+          .from('documents').select('*, user_profiles!uploader_id(name, is_fondateur)').eq('id', payload.new.id).single()
         if (data) setDocs(prev => prev.some(d => d.id === data.id) ? prev : [data, ...prev])
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'documents' }, payload => {
@@ -446,7 +446,7 @@ export default function ModulePage() {
         setUser(session.user)
         // re-fetch full docs to get current helpful_count from DB
         const { data: freshDocs } = await supabase.from('documents')
-          .select('*, user_profiles!uploader_id(name)')
+          .select('*, user_profiles!uploader_id(name, is_fondateur)')
           .eq('module_id', parseInt(id))
           .order('created_at', { ascending: false })
         if (freshDocs) { setDocs(freshDocs); docsRef.current = freshDocs }
@@ -838,6 +838,9 @@ export default function ModulePage() {
                             >
                               ↑ {doc.user_profiles?.name || 'Anonyme'}
                             </span>
+                            {doc.user_profiles?.is_fondateur && (
+                              <span style={{ background:'#FBD34D', color:'#02040A', borderRadius:4, padding:'1px 6px', fontSize:'0.58rem', fontWeight:700, fontFamily:'DM Mono,monospace', flexShrink:0 }}>🏆</span>
+                            )}
                             <span style={{ marginLeft:4, background: doc.is_verified ? 'rgba(45,212,191,0.1)' : 'rgba(251,211,77,0.1)', color: doc.is_verified ? '#2DD4BF' : '#FBD34D', border:`1px solid ${doc.is_verified ? 'rgba(45,212,191,0.2)' : 'rgba(251,211,77,0.2)'}`, borderRadius:4, padding:'1px 7px', fontSize:'0.6rem' }}>
                               {doc.is_verified ? 'Vérifié' : 'En attente'}
                             </span>

@@ -568,6 +568,17 @@ export default function Profile() {
                   👑 Admin
                 </span>
               )}
+              {profile?.is_fondateur && (
+                <span style={{
+                  display:'inline-flex', alignItems:'center', gap:4,
+                  background:'#FBD34D', color:'#02040A',
+                  borderRadius:6, padding:'2px 8px',
+                  fontFamily:'DM Mono,monospace', fontSize:'11px', fontWeight:700,
+                  letterSpacing:'0.5px',
+                }}>
+                  🏆 Fondateur
+                </span>
+              )}
             </div>
             {profile?.bio && (
               <p className="profile-bio">{profile.bio}</p>
@@ -699,7 +710,7 @@ export default function Profile() {
                         )}
                       </div>
                       <div className="upload-right">
-                        <span className="dl-count">{doc.downloads || 0} DL</span>
+                        <span className="dl-count">⬇ {doc.downloads || 0} téléchargements</span>
                         <span className="upload-date">{fmtShort(doc.created_at)}</span>
                         <span className={doc.is_verified ? 'tag-verified' : 'tag-pending'}>
                           {doc.is_verified ? 'VÉRIFIÉ' : 'EN ATTENTE'}

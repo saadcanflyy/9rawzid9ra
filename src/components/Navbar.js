@@ -183,7 +183,7 @@ export default function Navbar({ activePage = '' }) {
   }, [location.pathname])
 
   const loadProfile = async (uid) => {
-    const { data } = await supabase.from('user_profiles').select('name, email, is_admin, points, uploads_count').eq('id', uid).single()
+    const { data } = await supabase.from('user_profiles').select('name, email, is_admin, is_fondateur, points, uploads_count').eq('id', uid).single()
     if (data) setProfile(data)
   }
 
@@ -363,6 +363,11 @@ export default function Navbar({ activePage = '' }) {
                       <div className="nb-dd-name">
                         {profile?.name || 'Étudiant'}
                         {profile?.is_admin && <span className="nb-admin-tag">ADMIN</span>}
+                        {profile?.is_fondateur && (
+                          <span style={{ display:'inline-flex', alignItems:'center', background:'#FBD34D', color:'#02040A', borderRadius:5, padding:'1px 7px', fontFamily:'DM Mono,monospace', fontSize:'0.58rem', fontWeight:700, marginLeft:4 }}>
+                            🏆 Fondateur
+                          </span>
+                        )}
                       </div>
                       <div className="nb-dd-email">{user.email}</div>
                       <div className="nb-dd-points">{profile?.points || 0} points · {profile?.uploads_count || 0} uploads</div>

@@ -440,7 +440,7 @@ export default function SenpaiZone() {
     setLoading(true)
     const { data, error } = await supabase
       .from('senpai_posts')
-      .select('*, user_profiles(name, universities(name)), senpai_votes(user_id), modules(id, name)')
+      .select('*, user_profiles(name, is_fondateur, universities(name)), senpai_votes(user_id), modules(id, name)')
       .is('parent_id', null)
       .eq('is_approved', true)
       .order('created_at', { ascending: false })
@@ -471,7 +471,7 @@ export default function SenpaiZone() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'senpai_posts' }, async payload => {
         const { data } = await supabase
           .from('senpai_posts')
-          .select('*, user_profiles(name, universities(name)), senpai_votes(user_id), modules(id, name)')
+          .select('*, user_profiles(name, is_fondateur, universities(name)), senpai_votes(user_id), modules(id, name)')
           .eq('id', payload.new.id)
           .single()
         if (data && data.is_approved) {
@@ -781,6 +781,9 @@ export default function SenpaiZone() {
                 <span className="sz-post-name" onClick={!anon ? e => { e.stopPropagation(); navigate(`/user/${post.author_id}`) } : undefined}>
                   {name}
                 </span>
+                {!anon && post.user_profiles?.is_fondateur && (
+                  <span style={{ background:'#FBD34D', color:'#02040A', borderRadius:4, padding:'1px 6px', fontSize:'0.6rem', fontWeight:700, fontFamily:'DM Mono,monospace', flexShrink:0 }}>🏆</span>
+                )}
                 {uni && <><span className="sz-post-sep">·</span><span className="sz-post-sub">{uni}</span></>}
                 {anon && <span className="sz-anon-badge">Anonyme</span>}
                 <span className="sz-post-sep">·</span>
@@ -898,6 +901,9 @@ export default function SenpaiZone() {
                       onClick={!anon ? () => { navigate(`/user/${viewPost.author_id}`); setViewPost(null) } : undefined}>
                       {name}
                     </span>
+                    {!anon && viewPost.user_profiles?.is_fondateur && (
+                      <span style={{ background:'#FBD34D', color:'#02040A', borderRadius:4, padding:'1px 6px', fontSize:'0.6rem', fontWeight:700, fontFamily:'DM Mono,monospace' }}>🏆</span>
+                    )}
                     {!isOwn(viewPost) && user && (
                       <button className={`sz-follow-inline ${isF ? 'on' : ''}`} style={{ marginLeft: 0 }}
                         onClick={e => handleFollow(viewPost.author_id, e)}>
