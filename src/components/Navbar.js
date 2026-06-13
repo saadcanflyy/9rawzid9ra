@@ -269,6 +269,28 @@ export default function Navbar({ activePage = '' }) {
 
   const navigate_ = (path) => { navigate(path); setMenuOpen(false) }
 
+  const displayNotifs = (() => {
+    const result = []
+    const msgMap = new Map()
+    for (const n of notifs) {
+      const isMsg = n.type === 'new_message' || n.type === 'message_reply'
+      if (isMsg) {
+        const sep = (n.content || '').indexOf(' : ')
+        const sender = sep > 0 ? n.content.slice(0, sep).trim() : (n.content || 'Message')
+        if (msgMap.has(sender)) {
+          const idx = msgMap.get(sender)
+          result[idx] = { ...result[idx], groupCount: result[idx].groupCount + 1, groupUnread: result[idx].groupUnread || !n.read, groupIds: [...result[idx].groupIds, n.id] }
+        } else {
+          msgMap.set(sender, result.length)
+          result.push({ ...n, groupCount: 1, groupSender: sender, groupUnread: !n.read, groupIds: [n.id] })
+        }
+      } else {
+        result.push(n)
+      }
+    }
+    return result
+  })()
+
   return (
     <>
       <style>{css}</style>
@@ -328,41 +350,59 @@ export default function Navbar({ activePage = '' }) {
                     </div>
                     {notifs.length === 0 ? (
                       <div className="nb-notifs-empty">Aucune notification pour l'instant</div>
-                    ) : notifs.map(n => {
+                    ) : displayNotifs.map(n => {
+                      const isGroupedMsg = n.type === 'new_message' || n.type === 'message_reply'
+                      const isUnread = isGroupedMsg ? n.groupUnread : !n.read
                       const actorName = n.actor?.name || 'Quelqu\'un'
                       const renderText = NOTIF_TEXT[n.type]
                       const handleClick = async () => {
                         setShowNotifs(false)
-                        if (!n.read) {
-                          await supabase.from('notifications').update({ read: true }).eq('id', n.id)
-                          setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))
-                        }
-                        const rid = n.related_id
-                        if (n.type === 'follow') navigate(`/user/${rid || n.actor_id}`)
-                        else if (n.type === 'reply') {
-                          if (rid) localStorage.setItem('senpai_highlight_post', String(rid))
-                          navigate('/senpai')
-                        } else if (['helpful','reaction','comment','download','request_fulfilled'].includes(n.type)) {
-                          navigate(`/module/${rid}`)
-                        } else if (n.type === 'doc_request') {
-                          navigate('/browse')
-                        } else if (n.type === 'announcement') {
-                          navigate('/')
-                        } else if (n.type === 'message_reply' || n.type === 'new_message') {
+                        if (isGroupedMsg) {
+                          if (n.groupUnread) {
+                            await supabase.from('notifications').update({ read: true }).in('id', n.groupIds)
+                            setNotifs(prev => prev.map(x => n.groupIds.includes(x.id) ? { ...x, read: true } : x))
+                          }
                           window.dispatchEvent(new CustomEvent('open-messenger'))
-                        } else if (n.post_id) {
-                          localStorage.setItem('senpai_highlight_post', String(n.post_id))
-                          navigate('/senpai')
                         } else {
-                          navigate('/profile')
+                          if (!n.read) {
+                            await supabase.from('notifications').update({ read: true }).eq('id', n.id)
+                            setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))
+                          }
+                          const rid = n.related_id
+                          if (n.type === 'follow') navigate(`/user/${rid || n.actor_id}`)
+                          else if (n.type === 'reply') {
+                            if (rid) localStorage.setItem('senpai_highlight_post', String(rid))
+                            navigate('/senpai')
+                          } else if (['helpful','reaction','comment','download','request_fulfilled'].includes(n.type)) {
+                            navigate(`/module/${rid}`)
+                          } else if (n.type === 'doc_request') {
+                            navigate('/browse')
+                          } else if (n.type === 'announcement') {
+                            navigate('/')
+                          } else if (n.post_id) {
+                            localStorage.setItem('senpai_highlight_post', String(n.post_id))
+                            navigate('/senpai')
+                          } else {
+                            navigate('/profile')
+                          }
                         }
                       }
+                      let textNode
+                      if (isGroupedMsg) {
+                        const count = n.groupCount
+                        const sender = n.groupSender
+                        textNode = count > 1
+                          ? <><b>{sender}</b> · <span style={{background:'rgba(79,142,247,0.15)',color:'var(--accent2)',borderRadius:4,padding:'1px 6px',fontSize:'0.72rem',fontWeight:700}}>{count} messages</span></>
+                          : <><b>{sender}</b>: {(n.content || '').split(' : ').slice(1).join(' : ') || 'message'}</>
+                      } else {
+                        textNode = renderText ? renderText(actorName) : (n.content || actorName)
+                      }
                       return (
-                        <div key={n.id} className={`nb-notif-item ${n.read ? '' : 'unread'}`} onClick={handleClick} style={{ cursor:'pointer' }}>
-                          <div className="nb-notif-dot" style={{ background: n.read ? 'transparent' : '#4F8EF7', border: n.read ? '1px solid #1C2A45' : 'none' }} />
+                        <div key={n.id} className={`nb-notif-item ${isUnread ? 'unread' : ''}`} onClick={handleClick} style={{ cursor:'pointer' }}>
+                          <div className="nb-notif-dot" style={{ background: isUnread ? '#4F8EF7' : 'transparent', border: isUnread ? 'none' : '1px solid #1C2A45' }} />
                           <div className="nb-notif-body">
-                            <div className="nb-notif-text">{renderText ? renderText(actorName) : (n.content || actorName)}</div>
-                            {n.post_title && <div className="nb-notif-sub">"{n.post_title}"</div>}
+                            <div className="nb-notif-text">{textNode}</div>
+                            {!isGroupedMsg && n.post_title && <div className="nb-notif-sub">"{n.post_title}"</div>}
                             <div className="nb-notif-meta">{fmtAgo(n.created_at)}</div>
                           </div>
                         </div>

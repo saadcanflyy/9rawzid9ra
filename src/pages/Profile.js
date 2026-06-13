@@ -261,6 +261,43 @@ const css = `
     .upload-card { padding:1rem; }
     .sp-item { padding:0.75rem 1rem; }
   }
+
+  /* ── FOLLOW LIST MODAL ── */
+  .fl-overlay {
+    position:fixed; inset:0; background:rgba(2,4,10,0.82); z-index:1000;
+    display:flex; align-items:center; justify-content:center; padding:1rem;
+  }
+  .fl-modal {
+    background:var(--surface); border:1px solid var(--border); border-radius:14px;
+    width:100%; max-width:380px; max-height:72vh; display:flex; flex-direction:column; overflow:hidden;
+  }
+  .fl-modal-head {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px; border-bottom:1px solid var(--border); flex-shrink:0;
+  }
+  .fl-modal-title { font-family:'Outfit',sans-serif; font-size:0.92rem; font-weight:600; color:var(--white); }
+  .fl-close {
+    background:none; border:none; color:var(--text3); font-size:1.4rem; cursor:pointer;
+    padding:2px 8px; line-height:1; border-radius:6px; transition:color 0.15s;
+  }
+  .fl-close:hover { color:var(--white); }
+  .fl-list { overflow-y:auto; flex:1; padding:6px 0; }
+  .fl-item {
+    display:flex; align-items:center; gap:12px; padding:10px 18px;
+    cursor:pointer; transition:background 0.12s;
+  }
+  .fl-item:hover { background:var(--s2); }
+  .fl-avatar {
+    width:38px; height:38px; border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),var(--teal));
+    display:flex; align-items:center; justify-content:center;
+    font-family:'DM Mono',monospace; font-size:0.78rem; font-weight:700; color:#fff; flex-shrink:0;
+  }
+  .fl-name { font-family:'Outfit',sans-serif; font-size:0.88rem; font-weight:500; color:var(--white); }
+  .fl-uni  { font-size:0.72rem; color:var(--text2); margin-top:1px; }
+  .fl-empty { padding:2.5rem; text-align:center; color:var(--text3); font-size:0.83rem; font-family:'Outfit',sans-serif; }
+  .social-stat-click { cursor:pointer; transition:opacity 0.15s; }
+  .social-stat-click:hover { opacity:0.75; }
 `
 
 const PT_COLORS = {
@@ -327,6 +364,11 @@ export default function Profile() {
   const [followingCount, setFollowingCount] = useState(0)
   const [isFollowing,    setIsFollowing]    = useState(false)
   const [followBusy,     setFollowBusy]     = useState(false)
+  const [showFollowersList, setShowFollowersList] = useState(false)
+  const [showFollowingList, setShowFollowingList] = useState(false)
+  const [followersList,     setFollowersList]     = useState([])
+  const [followingList,     setFollowingList]     = useState([])
+  const [listLoading,       setListLoading]       = useState(false)
 
   // Doc edit state
   const [editingDocId,  setEditingDocId]  = useState(null)
@@ -526,6 +568,30 @@ export default function Profile() {
     }
   }
 
+  async function openFollowers() {
+    setShowFollowersList(true)
+    setListLoading(true)
+    const { data: follows } = await supabase.from('user_follows').select('follower_id').eq('following_id', profile.id)
+    if (follows?.length) {
+      const ids = follows.map(f => f.follower_id)
+      const { data: users } = await supabase.from('user_profiles').select('id, name, universities(name)').in('id', ids)
+      setFollowersList(users || [])
+    } else { setFollowersList([]) }
+    setListLoading(false)
+  }
+
+  async function openFollowing() {
+    setShowFollowingList(true)
+    setListLoading(true)
+    const { data: follows } = await supabase.from('user_follows').select('following_id').eq('follower_id', profile.id)
+    if (follows?.length) {
+      const ids = follows.map(f => f.following_id)
+      const { data: users } = await supabase.from('user_profiles').select('id, name, universities(name)').in('id', ids)
+      setFollowingList(users || [])
+    } else { setFollowingList([]) }
+    setListLoading(false)
+  }
+
   if (loading) return (
     <div className="page">
       <style>{css}</style>
@@ -623,12 +689,12 @@ export default function Profile() {
 
         {/* ── SOCIAL ROW ── */}
         <div className="social-row">
-          <div className="social-stat">
+          <div className="social-stat social-stat-click" onClick={openFollowers}>
             <span className="social-n">{followersCount}</span>
             <span className="social-l">Abonnés</span>
           </div>
           <div className="social-sep"/>
-          <div className="social-stat">
+          <div className="social-stat social-stat-click" onClick={openFollowing}>
             <span className="social-n">{followingCount}</span>
             <span className="social-l">Abonnements</span>
           </div>
@@ -995,6 +1061,57 @@ export default function Profile() {
         )}
 
       </div>
+
+    {showFollowersList && (
+      <div className="fl-overlay" onClick={() => setShowFollowersList(false)}>
+        <div className="fl-modal" onClick={e => e.stopPropagation()}>
+          <div className="fl-modal-head">
+            <span className="fl-modal-title">Abonnés · {followersCount}</span>
+            <button className="fl-close" onClick={() => setShowFollowersList(false)}>×</button>
+          </div>
+          <div className="fl-list">
+            {listLoading ? (
+              <div className="fl-empty">Chargement...</div>
+            ) : followersList.length === 0 ? (
+              <div className="fl-empty">Aucun abonné pour l'instant</div>
+            ) : followersList.map(u => (
+              <div key={u.id} className="fl-item" onClick={() => { setShowFollowersList(false); navigate(`/user/${u.id}`) }}>
+                <div className="fl-avatar">{(u.name || '?').charAt(0).toUpperCase()}</div>
+                <div>
+                  <div className="fl-name">{u.name}</div>
+                  {u.universities?.name && <div className="fl-uni">{u.universities.name}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
+    {showFollowingList && (
+      <div className="fl-overlay" onClick={() => setShowFollowingList(false)}>
+        <div className="fl-modal" onClick={e => e.stopPropagation()}>
+          <div className="fl-modal-head">
+            <span className="fl-modal-title">Abonnements · {followingCount}</span>
+            <button className="fl-close" onClick={() => setShowFollowingList(false)}>×</button>
+          </div>
+          <div className="fl-list">
+            {listLoading ? (
+              <div className="fl-empty">Chargement...</div>
+            ) : followingList.length === 0 ? (
+              <div className="fl-empty">Aucun abonnement pour l'instant</div>
+            ) : followingList.map(u => (
+              <div key={u.id} className="fl-item" onClick={() => { setShowFollowingList(false); navigate(`/user/${u.id}`) }}>
+                <div className="fl-avatar">{(u.name || '?').charAt(0).toUpperCase()}</div>
+                <div>
+                  <div className="fl-name">{u.name}</div>
+                  {u.universities?.name && <div className="fl-uni">{u.universities.name}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )}
 
     </div>
   )
