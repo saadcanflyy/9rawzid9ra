@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import { supabase } from './supabase'
+import { AuthProvider } from './context/AuthContext'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import ModulePage from './pages/ModulePage'
@@ -118,6 +119,7 @@ function App() {
   if (bannedUser) return <BanScreen banInfo={bannedUser} />
 
   return (
+    <AuthProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
@@ -139,6 +141,7 @@ function App() {
       <WelcomeModal />
       <MessengerWidget />
     </BrowserRouter>
+    </AuthProvider>
   )
 }
 

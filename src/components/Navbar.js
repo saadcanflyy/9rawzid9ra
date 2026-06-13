@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { useAuth } from '../context/AuthContext'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
@@ -154,8 +155,7 @@ const NOTIF_TEXT = {
 export default function Navbar({ activePage = '' }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
+  const { user, profile } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -164,28 +164,16 @@ export default function Navbar({ activePage = '' }) {
   const [showNotifs, setShowNotifs] = useState(false)
   const notifRef = useRef(null)
 
+  // Load notifs when user becomes available
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user || null)
-      if (session?.user) { loadProfile(session.user.id); loadNotifs(session.user.id) }
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null)
-      if (session?.user) { loadProfile(session.user.id); loadNotifs(session.user.id) }
-      else { setProfile(null); setNotifs([]) }
-    })
-    return () => subscription.unsubscribe()
-  }, [])
+    if (user) loadNotifs(user.id)
+    else setNotifs([])
+  }, [user?.id]) // eslint-disable-line
 
+  // Close mobile menu on navigation
   useEffect(() => {
-    if (user) loadProfile(user.id)
     setMenuOpen(false)
   }, [location.pathname])
-
-  const loadProfile = async (uid) => {
-    const { data } = await supabase.from('user_profiles').select('name, email, is_admin, is_moderator, is_fondateur, points, uploads_count').eq('id', uid).single()
-    if (data) setProfile(data)
-  }
 
   const loadNotifs = async (uid) => {
     const { data } = await supabase.from('notifications')
@@ -206,8 +194,6 @@ export default function Navbar({ activePage = '' }) {
     await supabase.auth.signOut()
     setShowDropdown(false)
     setMenuOpen(false)
-    setUser(null)
-    setProfile(null)
     navigate('/')
   }
 

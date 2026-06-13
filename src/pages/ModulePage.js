@@ -371,8 +371,9 @@ export default function ModulePage() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-
-      const { data: { user: u } } = await supabase.auth.getUser()
+      try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const u = session?.user || null
       setUser(u)
 
       // Load module with full path
@@ -438,8 +439,7 @@ export default function ModulePage() {
         setRelated(rel || [])
       }
 
-      setLoading(false)
-
+      // Non-blocking: senpai posts
       supabase.from('senpai_posts')
         .select('*, user_profiles(name, universities(name)), senpai_votes(user_id)')
         .eq('module_id', parseInt(id))
@@ -447,6 +447,12 @@ export default function ModulePage() {
         .order('helpful_count', { ascending: false })
         .limit(3)
         .then(({ data }) => setSenpaiPosts(data || []))
+
+      } catch (err) {
+        console.error('ModulePage load error:', err)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [id])
@@ -526,19 +532,13 @@ export default function ModulePage() {
 
   const maxCount = Math.max(...Object.values(typeCounts), 1)
 
-  const handleDownload = async (doc) => {
-    // Check if user is logged in
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { navigate('/login', { state: { from: `/module/${doc.module_id}`, message: 'Connecte-toi pour continuer' } }); return }
-
-    // Log download
-    await supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id })
-    await supabase.from('documents').update({ downloads: (doc.downloads || 0) + 1 }).eq('id', doc.id)
-
-    // Open file
-    if (doc.files && doc.files.length > 0) {
-      window.open(doc.files[0], '_blank')
-    }
+  const handleDownload = (doc) => {
+    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
+    // Open immediately (must be synchronous — async breaks browser popup policy)
+    if (doc.files && doc.files.length > 0) window.open(doc.files[0], '_blank')
+    // Log in background (fire-and-forget)
+    supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id }).then()
+    supabase.from('documents').update({ downloads: (doc.downloads || 0) + 1 }).eq('id', doc.id).then()
   }
 
   // ── HELPFUL ──────────────────────────────────────────────────────────────
@@ -882,15 +882,14 @@ export default function ModulePage() {
                           <div style={{ display:'flex', flexDirection:'column', gap:6, flexShrink:0 }}>
                             {doc.files.map((fileUrl, i) => (
                               <button key={i}
-                                onClick={async e => {
+                                onClick={e => {
                                   e.stopPropagation()
-                                  const { data: { user } } = await supabase.auth.getUser()
-                                  if (!user) { navigate('/login', { state: { from: `/module/${doc.module_id}`, message: 'Connecte-toi pour continuer' } }); return }
-                                  if (i === 0) {
-                                    await supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id })
-                                    await supabase.from('documents').update({ downloads: (doc.downloads || 0) + 1 }).eq('id', doc.id)
-                                  }
+                                  if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
                                   window.open(fileUrl, '_blank')
+                                  if (i === 0) {
+                                    supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id }).then()
+                                    supabase.from('documents').update({ downloads: (doc.downloads || 0) + 1 }).eq('id', doc.id).then()
+                                  }
                                 }}
                                 style={{ background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.2)', color:'#7BB3FF', borderRadius:6, padding:'5px 12px', fontSize:'0.72rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}
                                 onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.15)'; e.currentTarget.style.borderColor='#4F8EF7' }}
