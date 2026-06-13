@@ -509,21 +509,19 @@ export default function Admin() {
     supabase.from('notifications').insert({ user_id: id, type: notifType, content: notifContent, read: false }).then()
   }
 
+  const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
+
   const loadMessages = async () => {
     setLoading(true)
-    supabase.rpc('cleanup_old_messages').then()
-    // Use SECURITY DEFINER RPC to bypass any RLS ambiguity
-    const { data: msgs } = await supabase.rpc('admin_get_inbox')
-    if (!msgs?.length) { setMsgSenders([]); setUnreadMsgCount(0); setLoading(false); return }
-    const senderMap = {}
-    msgs.forEach(m => {
-      const sid = m.sender_id
-      if (!senderMap[sid]) {
-        senderMap[sid] = { id: sid, name: m.sender_name || 'Anonyme', unread: 0, lastMsg: m.content, lastDate: m.created_at }
-      }
-      if (!m.read) senderMap[sid].unread++
-    })
-    const senders = Object.values(senderMap).sort((a, b) => new Date(b.lastDate) - new Date(a.lastDate))
+    const { data } = await supabase.rpc('admin_get_inbox')
+    if (!data?.length) { setMsgSenders([]); setUnreadMsgCount(0); setLoading(false); return }
+    const senders = data.map(row => ({
+      id:       row.user_id,
+      name:     row.username || 'Anonyme',
+      unread:   Number(row.unread_count) || 0,
+      lastMsg:  row.last_message,
+      lastDate: row.last_message_time,
+    }))
     setMsgSenders(senders)
     setUnreadMsgCount(senders.reduce((s, u) => s + u.unread, 0))
     setLoading(false)
@@ -534,7 +532,8 @@ export default function Admin() {
     setMsgThread([])
     const { data } = await supabase.rpc('admin_get_thread', { p_user_id: sender.id })
     setMsgThread(data || [])
-    await supabase.rpc('admin_mark_messages_read', { p_sender_id: sender.id })
+    await supabase.from('messages').update({ is_read: true })
+      .eq('receiver_id', ADMIN_ID).eq('sender_id', sender.id).eq('is_read', false)
     setMsgSenders(prev => prev.map(s => s.id === sender.id ? { ...s, unread: 0 } : s))
     setUnreadMsgCount(prev => {
       const u = msgSenders.find(s => s.id === sender.id)
@@ -545,22 +544,20 @@ export default function Admin() {
   const sendReply = async () => {
     if (!replyText.trim() || replySending || !selectedMsgUser) return
     setReplySending(true)
-    const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
+    const content = replyText.trim()
+    setReplyText('')
     const { data: newMsg } = await supabase.from('messages').insert({
-      sender_id: ADMIN_ID,
-      is_from_admin: true,
-      target_user_id: selectedMsgUser.id,
-      content: replyText.trim(),
-      read: true,
+      sender_id:   ADMIN_ID,
+      receiver_id: selectedMsgUser.id,
+      content,
     }).select().single()
     if (newMsg) setMsgThread(prev => [...prev, newMsg])
     await supabase.from('notifications').insert({
       user_id: selectedMsgUser.id,
-      type: 'message_reply',
-      content: `Saad GENIUS vous a répondu : ${replyText.trim().slice(0, 80)}`,
-      read: false,
+      type:    'message_reply',
+      content: `Saad GENIUS vous a répondu : ${content.slice(0, 80)}`,
+      read:    false,
     })
-    setReplyText('')
     setReplySending(false)
   }
 
@@ -1216,54 +1213,97 @@ export default function Admin() {
             <>
               <div className="section-title">// messages des utilisateurs</div>
               {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel" style={{height:56}}/>) : (
-                <div style={{ display:'flex', gap:14, height:'calc(100vh - 200px)', minHeight:400 }}>
-                  {/* Left panel — sender list */}
-                  <div style={{ width:220, flexShrink:0, display:'flex', flexDirection:'column', gap:6, overflowY:'auto' }}>
-                    {msgSenders.length === 0 && <div className="empty" style={{padding:'2rem 1rem'}}>// aucun message</div>}
-                    {msgSenders.map(s => (
-                      <div key={s.id} onClick={() => loadThread(s)}
-                        style={{ background: selectedMsgUser?.id === s.id ? 'rgba(79,142,247,0.1)' : 'var(--surface)', border:`1px solid ${selectedMsgUser?.id === s.id ? 'rgba(79,142,247,0.3)' : 'var(--border)'}`, borderRadius:10, padding:'10px 14px', cursor:'pointer', transition:'all 0.15s' }}>
-                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3 }}>
-                          <span style={{ fontSize:'0.82rem', fontWeight:600, color:'var(--text)' }}>{s.name}</span>
-                          {s.unread > 0 && <span style={{ background:'var(--accent)', color:'#fff', borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.6rem', fontWeight:700, flexShrink:0 }}>{s.unread}</span>}
+                <div style={{ display:'flex', gap:0, height:'calc(100vh - 170px)', minHeight:400, border:'1px solid var(--border)', borderRadius:12, overflow:'hidden' }}>
+
+                  {/* Left panel — conversation list */}
+                  <div style={{ width:280, flexShrink:0, borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', background:'var(--surface)', overflowY:'auto' }}>
+                    <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--text3)', letterSpacing:'1.5px' }}>
+                      // CONVERSATIONS
+                    </div>
+                    {msgSenders.length === 0 && (
+                      <div className="empty" style={{padding:'3rem 1rem'}}>// aucun message</div>
+                    )}
+                    {msgSenders.map(s => {
+                      const initial = (s.name || '?')[0].toUpperCase()
+                      const isSelected = selectedMsgUser?.id === s.id
+                      const colors = ['#4F8EF7','#2DD4BF','#F59E0B','#C4B5FD','#4ADE80','#F87171']
+                      const color = colors[s.id.charCodeAt(0) % colors.length]
+                      return (
+                        <div key={s.id} onClick={() => loadThread(s)}
+                          style={{
+                            display:'flex', alignItems:'center', gap:10, padding:'12px 14px', cursor:'pointer',
+                            background: isSelected ? 'rgba(79,142,247,0.08)' : 'transparent',
+                            borderLeft: isSelected ? '3px solid var(--accent)' : '3px solid transparent',
+                            transition:'all 0.15s',
+                          }}
+                        >
+                          <div style={{ width:36, height:36, borderRadius:'50%', background:`${color}22`, border:`1px solid ${color}44`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.82rem', fontWeight:700, color, flexShrink:0 }}>
+                            {initial}
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
+                              <span style={{ fontSize:'0.82rem', fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
+                              {s.unread > 0 && (
+                                <span style={{ background:'var(--red)', color:'#fff', borderRadius:10, padding:'1px 6px', fontSize:'0.58rem', fontWeight:700, flexShrink:0, marginLeft:6, fontFamily:'DM Mono,monospace' }}>
+                                  {s.unread}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize:'0.72rem', color:'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                              {s.lastMsg?.slice(0, 42) || '—'}
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ fontSize:'0.72rem', color:'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.lastMsg?.slice(0,45)}</div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
 
                   {/* Right panel — thread */}
-                  <div style={{ flex:1, display:'flex', flexDirection:'column', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, overflow:'hidden' }}>
+                  <div style={{ flex:1, display:'flex', flexDirection:'column', background:'var(--surface)', overflow:'hidden' }}>
                     {!selectedMsgUser ? (
-                      <div className="empty" style={{margin:'auto'}}>// sélectionne une conversation</div>
+                      <div style={{ margin:'auto', textAlign:'center', color:'var(--text3)', fontFamily:'DM Mono,monospace', fontSize:'0.72rem' }}>
+                        💬 Sélectionne une conversation
+                      </div>
                     ) : (
                       <>
-                        <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', fontFamily:'DM Mono,monospace', fontSize:'0.68rem', color:'var(--accent2)', letterSpacing:'1px' }}>
-                          // conv avec {selectedMsgUser.name}
+                        <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10, flexShrink:0, background:'var(--s2)' }}>
+                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--accent2)', letterSpacing:'1px' }}>
+                            // {selectedMsgUser.name}
+                          </span>
                         </div>
-                        <div style={{ flex:1, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:8 }}>
-                          {msgThread.length === 0 && <div className="empty" style={{margin:'auto'}}>// chargement...</div>}
-                          {msgThread.map(m => (
-                            <div key={m.id} style={{ display:'flex', justifyContent: m.is_from_admin ? 'flex-start' : 'flex-end' }}>
-                              <div style={{
-                                maxWidth:'75%', padding:'8px 12px',
-                                borderRadius: m.is_from_admin ? '4px 12px 12px 12px' : '12px 4px 12px 12px',
-                                background: m.is_from_admin ? 'var(--s2)' : 'rgba(79,142,247,0.15)',
-                                border: `1px solid ${m.is_from_admin ? 'var(--border)' : 'rgba(79,142,247,0.3)'}`,
-                              }}>
-                                <div style={{ fontSize:'0.82rem', color:'var(--text)', lineHeight:1.55, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{m.content}</div>
-                                <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'var(--text3)', marginTop:4, textAlign: m.is_from_admin ? 'left' : 'right' }}>{fmt(m.created_at)}</div>
+                        <div style={{ flex:1, overflowY:'auto', padding:'14px 16px', display:'flex', flexDirection:'column', gap:8 }}>
+                          {msgThread.length === 0 && (
+                            <div style={{ margin:'auto', fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--text3)' }}>chargement...</div>
+                          )}
+                          {msgThread.map(m => {
+                            const fromAdmin = m.sender_id === ADMIN_ID
+                            return (
+                              <div key={m.id} style={{ display:'flex', justifyContent: fromAdmin ? 'flex-end' : 'flex-start' }}>
+                                <div style={{
+                                  maxWidth:'72%', padding:'8px 12px',
+                                  borderRadius: fromAdmin ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
+                                  background: fromAdmin ? 'rgba(79,142,247,0.18)' : 'var(--s2)',
+                                  border: `1px solid ${fromAdmin ? 'rgba(79,142,247,0.35)' : 'var(--border)'}`,
+                                }}>
+                                  {fromAdmin && (
+                                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.56rem', color:'var(--accent2)', marginBottom:4 }}>Vous</div>
+                                  )}
+                                  <div style={{ fontSize:'0.82rem', color:'var(--text)', lineHeight:1.55, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{m.content}</div>
+                                  <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'var(--text3)', marginTop:4, textAlign: fromAdmin ? 'right' : 'left' }}>{fmt(m.created_at)}</div>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
-                        <div style={{ padding:'10px 12px', borderTop:'1px solid var(--border)', display:'flex', gap:8 }}>
+                        <div style={{ padding:'10px 12px', borderTop:'1px solid var(--border)', display:'flex', gap:8, flexShrink:0 }}>
                           <input
                             value={replyText}
                             onChange={e => setReplyText(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
                             placeholder="Répondre..."
-                            style={{ flex:1, background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 12px', color:'var(--text)', fontSize:'0.82rem', fontFamily:'Outfit,sans-serif', outline:'none' }}
+                            style={{ flex:1, background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 12px', color:'var(--text)', fontSize:'0.82rem', fontFamily:'Outfit,sans-serif', outline:'none', transition:'border-color 0.15s' }}
+                            onFocus={e => e.target.style.borderColor='rgba(79,142,247,0.4)'}
+                            onBlur={e => e.target.style.borderColor='var(--border)'}
                           />
                           <button onClick={sendReply} disabled={!replyText.trim() || replySending}
                             style={{ background: replyText.trim() ? 'var(--accent)' : 'var(--border)', color:'#fff', border:'none', borderRadius:8, padding:'8px 16px', fontSize:'0.8rem', fontWeight:600, cursor: replyText.trim() ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}>

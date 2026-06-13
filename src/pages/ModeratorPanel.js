@@ -164,6 +164,16 @@ export default function ModeratorPanel() {
   const [banBusy,    setBanBusy]    = useState(false)
   const [filieresList, setFilieresList] = useState([])
 
+  // Messages state
+  const [msgConvos,      setMsgConvos]      = useState([])
+  const [selectedConvo,  setSelectedConvo]  = useState(null)
+  const [msgThread,      setMsgThread]      = useState([])
+  const [replyText,      setReplyText]      = useState('')
+  const [replySending,   setReplySending]   = useState(false)
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0)
+
+  const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
+
   const fmt = (d) => new Date(d).toLocaleDateString('fr-MA', { day:'2-digit', month:'short', year:'2-digit' })
 
   useEffect(() => {
@@ -191,6 +201,7 @@ export default function ModeratorPanel() {
     if (activeTab === 'filieres') loadFilieres()
     if (activeTab === 'modules') loadModules()
     if (activeTab === 'users') loadUsers()
+    if (activeTab === 'messages') loadMessages()
   }, [activeTab, profile]) // eslint-disable-line
 
   const loadStats = async () => {
@@ -352,6 +363,49 @@ export default function ModeratorPanel() {
     }
   }
 
+  const loadMessages = async () => {
+    setLoading(true)
+    const { data } = await supabase.rpc('admin_get_inbox')
+    if (!data?.length) { setMsgConvos([]); setUnreadMsgCount(0); setLoading(false); return }
+    const convos = data.map(row => ({
+      id:       row.user_id,
+      name:     row.username || 'Anonyme',
+      unread:   Number(row.unread_count) || 0,
+      lastMsg:  row.last_message,
+      lastDate: row.last_message_time,
+    }))
+    setMsgConvos(convos)
+    setUnreadMsgCount(convos.reduce((s, c) => s + c.unread, 0))
+    setLoading(false)
+  }
+
+  const loadThread = async (conv) => {
+    setSelectedConvo(conv)
+    setMsgThread([])
+    const { data } = await supabase.rpc('admin_get_thread', { p_user_id: conv.id })
+    setMsgThread(data || [])
+    await supabase.rpc('admin_get_inbox').then()
+    setMsgConvos(prev => prev.map(c => c.id === conv.id ? { ...c, unread: 0 } : c))
+    setUnreadMsgCount(prev => Math.max(0, prev - (conv.unread || 0)))
+  }
+
+  const sendReply = async () => {
+    if (!replyText.trim() || replySending || !selectedConvo) return
+    setReplySending(true)
+    const content = replyText.trim()
+    setReplyText('')
+    await supabase.rpc('mod_send_message', { p_receiver_id: selectedConvo.id, p_content: content })
+    const { data } = await supabase.rpc('admin_get_thread', { p_user_id: selectedConvo.id })
+    setMsgThread(data || [])
+    await supabase.from('notifications').insert({
+      user_id: selectedConvo.id,
+      type:    'message_reply',
+      content: `Support 9rawZid9ra : ${content.slice(0, 80)}`,
+      read:    false,
+    })
+    setReplySending(false)
+  }
+
   const searchMods = async (q) => {
     if (q.length < 2) { loadModules(); return }
     const { data } = await supabase.from('modules')
@@ -390,6 +444,7 @@ export default function ModeratorPanel() {
     { k:'filieres',  label:'Filières', icon:'≡', count: stats?.pendingFils },
     { k:'modules',   label:'Modules', icon:'#' },
     { k:'users',     label:'Utilisateurs', icon:'::' },
+    { k:'messages',  label:'Messages', icon:'✉', count: unreadMsgCount },
   ]
 
   return (
@@ -752,6 +807,116 @@ export default function ModeratorPanel() {
                       </div>
                     )
                   })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* MESSAGES */}
+          {activeTab === 'messages' && (
+            <>
+              <div className="section-title">// messages des utilisateurs</div>
+              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel" style={{height:56}}/>) : (
+                <div style={{ display:'flex', gap:0, height:'calc(100vh - 170px)', minHeight:400, border:'1px solid var(--border)', borderRadius:12, overflow:'hidden' }}>
+
+                  {/* Left panel */}
+                  <div style={{ width:280, flexShrink:0, borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', background:'var(--surface)', overflowY:'auto' }}>
+                    <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--text3)', letterSpacing:'1.5px' }}>
+                      // CONVERSATIONS
+                    </div>
+                    {msgConvos.length === 0 && (
+                      <div className="empty" style={{padding:'3rem 1rem'}}>// aucun message</div>
+                    )}
+                    {msgConvos.map(c => {
+                      const initial = (c.name || '?')[0].toUpperCase()
+                      const isSelected = selectedConvo?.id === c.id
+                      const colors = ['#4F8EF7','#2DD4BF','#F59E0B','#C4B5FD','#4ADE80','#F87171']
+                      const color = colors[c.id.charCodeAt(0) % colors.length]
+                      return (
+                        <div key={c.id} onClick={() => loadThread(c)}
+                          style={{
+                            display:'flex', alignItems:'center', gap:10, padding:'12px 14px', cursor:'pointer',
+                            background: isSelected ? 'rgba(45,212,191,0.06)' : 'transparent',
+                            borderLeft: isSelected ? '3px solid var(--teal)' : '3px solid transparent',
+                            transition:'all 0.15s',
+                          }}
+                        >
+                          <div style={{ width:36, height:36, borderRadius:'50%', background:`${color}22`, border:`1px solid ${color}44`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.82rem', fontWeight:700, color, flexShrink:0 }}>
+                            {initial}
+                          </div>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
+                              <span style={{ fontSize:'0.82rem', fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</span>
+                              {c.unread > 0 && (
+                                <span style={{ background:'var(--red)', color:'#fff', borderRadius:10, padding:'1px 6px', fontSize:'0.58rem', fontWeight:700, flexShrink:0, marginLeft:6, fontFamily:'DM Mono,monospace' }}>
+                                  {c.unread}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ fontSize:'0.72rem', color:'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                              {c.lastMsg?.slice(0, 42) || '—'}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Right panel */}
+                  <div style={{ flex:1, display:'flex', flexDirection:'column', background:'var(--surface)', overflow:'hidden' }}>
+                    {!selectedConvo ? (
+                      <div style={{ margin:'auto', textAlign:'center', color:'var(--text3)', fontFamily:'DM Mono,monospace', fontSize:'0.72rem' }}>
+                        💬 Sélectionne une conversation
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10, flexShrink:0, background:'var(--s2)' }}>
+                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--teal2)', letterSpacing:'1px' }}>
+                            // {selectedConvo.name}
+                          </span>
+                        </div>
+                        <div style={{ flex:1, overflowY:'auto', padding:'14px 16px', display:'flex', flexDirection:'column', gap:8 }}>
+                          {msgThread.length === 0 && (
+                            <div style={{ margin:'auto', fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--text3)' }}>chargement...</div>
+                          )}
+                          {msgThread.map(m => {
+                            const fromAdmin = m.sender_id === ADMIN_ID
+                            return (
+                              <div key={m.id} style={{ display:'flex', justifyContent: fromAdmin ? 'flex-end' : 'flex-start' }}>
+                                <div style={{
+                                  maxWidth:'72%', padding:'8px 12px',
+                                  borderRadius: fromAdmin ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
+                                  background: fromAdmin ? 'rgba(45,212,191,0.15)' : 'var(--s2)',
+                                  border: `1px solid ${fromAdmin ? 'rgba(45,212,191,0.3)' : 'var(--border)'}`,
+                                }}>
+                                  {fromAdmin && (
+                                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.56rem', color:'var(--teal2)', marginBottom:4 }}>Support 9rawZid9ra</div>
+                                  )}
+                                  <div style={{ fontSize:'0.82rem', color:'var(--text)', lineHeight:1.55, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{m.content}</div>
+                                  <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'var(--text3)', marginTop:4, textAlign: fromAdmin ? 'right' : 'left' }}>{fmt(m.created_at)}</div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                        <div style={{ padding:'10px 12px', borderTop:'1px solid var(--border)', display:'flex', gap:8, flexShrink:0 }}>
+                          <input
+                            value={replyText}
+                            onChange={e => setReplyText(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
+                            placeholder="Répondre (envoyé en tant que Support)..."
+                            style={{ flex:1, background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 12px', color:'var(--text)', fontSize:'0.82rem', fontFamily:'Outfit,sans-serif', outline:'none', transition:'border-color 0.15s' }}
+                            onFocus={e => e.target.style.borderColor='rgba(45,212,191,0.4)'}
+                            onBlur={e => e.target.style.borderColor='var(--border)'}
+                          />
+                          <button onClick={sendReply} disabled={!replyText.trim() || replySending}
+                            style={{ background: replyText.trim() ? 'var(--teal)' : 'var(--border)', color:'#fff', border:'none', borderRadius:8, padding:'8px 16px', fontSize:'0.8rem', fontWeight:600, cursor: replyText.trim() ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}>
+                            {replySending ? '...' : 'Envoyer'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </>
