@@ -124,7 +124,7 @@ export default function Login() {
         const isPerm = !profile.banned_until
         const isFuture = profile.banned_until && new Date(profile.banned_until) > new Date()
         if (isPerm || isFuture) {
-          await supabase.auth.signOut()
+          // Don't call signOut here — App.js checkBan will sign out and show BanScreen
           setBanInfo({ reason: profile.ban_reason, until: profile.banned_until })
           return
         }
