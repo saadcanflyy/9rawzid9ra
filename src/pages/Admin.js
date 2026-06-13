@@ -173,6 +173,9 @@ const css = `
     .msg-right  { min-height:320px; }
   }
 
+  /* ANALYTICS GRIDS */
+  .an-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem; }
+
   @media(max-width:768px) {
     .layout { flex-direction:column; height:auto; overflow:visible; }
     .sidebar { width:100%; height:auto; border-right:none; border-bottom:1px solid var(--border); padding:0.75rem 1rem; display:flex; flex-direction:row; overflow-x:auto; gap:4px; flex-wrap:nowrap; }
@@ -181,17 +184,23 @@ const css = `
     .main { padding:1rem; overflow:visible; height:auto; }
     .overview-cols { grid-template-columns:1fr; }
     .table-wrap { overflow-x:auto; }
-    .table { min-width:600px; }
+    .table { min-width:480px; }
+    .table th, .table td { padding:8px 10px; font-size:0.75rem; }
     .stats-grid { grid-template-columns:repeat(2,1fr); }
     .nav { padding:0 1rem; }
     .nav-left { gap:0.75rem; }
     .admin-badge { display:none; }
+    .an-grid2 { grid-template-columns:1fr; }
   }
   @media(max-width:480px) {
-    .stats-grid { grid-template-columns:1fr 1fr; }
+    .stats-grid { grid-template-columns:1fr 1fr; gap:8px; }
+    .stat-card { padding:0.85rem 1rem; }
     .sidebar { gap:3px; }
     .nav-item-label { font-size:0.75rem; }
     .report-grid { grid-template-columns:1fr 1fr; }
+    .table { min-width:380px; }
+    .table th, .table td { padding:6px 8px; font-size:0.7rem; }
+    .an-grid2 { gap:1rem; }
   }
 `
 
@@ -582,21 +591,12 @@ export default function Admin() {
         filter: `receiver_id=eq.${ADMIN_ID}`,
       }, payload => {
         const msg = payload.new
-        const senderId = msg.sender_id
-        const isConvoOpen = selectedMsgUserRef.current?.id === senderId
-        setMsgSenders(prev => {
-          const found = prev.find(s => s.id === senderId)
-          if (!found) { loadMessages(); return prev }
-          return prev.map(s => s.id === senderId
-            ? { ...s, unread: isConvoOpen ? 0 : s.unread + 1, lastMsg: msg.content, lastDate: msg.created_at }
-            : s
-          )
-        })
-        if (isConvoOpen) {
+        // Refresh inbox list (updates unread counts, last message, new conversations)
+        loadMessages()
+        // If this sender's thread is currently open, append the message live
+        if (selectedMsgUserRef.current?.id === msg.sender_id) {
           setMsgThread(prev => [...prev, msg])
           supabase.from('messages').update({ is_read: true }).eq('id', msg.id).then()
-        } else {
-          setUnreadMsgCount(prev => prev + 1)
         }
       })
       .subscribe()
@@ -1379,7 +1379,7 @@ export default function Admin() {
                   </div>
 
                   {/* GROWTH CHARTS */}
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'2rem' }}>
+                  <div className="an-grid2">
                     {[
                       { label:'// inscriptions (30j)', data: analytics.usersPerDay, color:'var(--accent)' },
                       { label:'// uploads (30j)', data: analytics.docsPerDay, color:'var(--teal)' },
@@ -1403,7 +1403,7 @@ export default function Admin() {
                   </div>
 
                   {/* TOP MODULES + TOP UPLOADERS */}
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'2rem' }}>
+                  <div className="an-grid2">
                     {/* Top modules */}
                     <div>
                       <div className="section-title">// top modules téléchargés</div>
