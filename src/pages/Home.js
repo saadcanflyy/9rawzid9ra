@@ -413,7 +413,7 @@ export default function Home() {
       </div>
 
       {/* FLOATING TIP BUTTON */}
-      <div style={{ position:'fixed', bottom:'96px', right:'24px', zIndex:100 }}>
+      <div style={{ position:'fixed', bottom:'24px', right:'24px', zIndex:100 }}>
         <a
           href="https://paypal.me/saadga2003"
           target="_blank"

@@ -8,7 +8,7 @@ const css = `
   @keyframes mw-spin  { to { transform:rotate(360deg); } }
   @keyframes mw-pulse { 0%,100% { box-shadow:0 8px 28px rgba(79,142,247,0.45); } 50% { box-shadow:0 8px 36px rgba(79,142,247,0.75), 0 0 0 6px rgba(79,142,247,0.12); } }
   .mw-panel {
-    position:fixed; bottom:88px; right:24px; z-index:9998;
+    position:fixed; bottom:152px; right:24px; z-index:9998;
     width:360px; height:500px;
     background:#070C18; border:1px solid #1C2A45; border-radius:16px;
     box-shadow:0 24px 64px rgba(0,0,0,0.75), 0 0 0 1px rgba(79,142,247,0.06);
@@ -28,7 +28,7 @@ const css = `
   .mw-textarea:focus { border-color:rgba(79,142,247,0.4); }
   .mw-textarea::placeholder { color:#4A5568; }
   @media(max-width:480px) {
-    .mw-panel { width:calc(100vw - 32px); right:16px; bottom:84px; }
+    .mw-panel { width:calc(100vw - 32px); right:16px; bottom:148px; }
   }
 `
 
@@ -319,7 +319,7 @@ export default function MessengerWidget() {
         onClick={() => setIsOpen(o => !o)}
         title="Contacter l'admin"
         style={{
-          position:'fixed', bottom:24, right:24, zIndex:9999,
+          position:'fixed', bottom:88, right:24, zIndex:9999,
           width:56, height:56, borderRadius:'50%',
           background: isOpen ? '#0C1222' : 'linear-gradient(135deg,#4F8EF7,#2DD4BF)',
           border: isOpen ? '1px solid #2D4A7A' : 'none',

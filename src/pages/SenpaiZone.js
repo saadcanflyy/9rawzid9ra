@@ -218,9 +218,11 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
 .sz-anon-badge{font-family:'DM Mono',monospace;font-size:0.58rem;color:var(--text3);
   background:rgba(148,163,184,0.06);border:1px solid var(--border);border-radius:3px;
   padding:1px 5px;flex-shrink:0}
-.sz-post-title{font-size:0.93rem;font-weight:700;color:#fff;line-height:1.3;margin-bottom:4px}
+.sz-post-title{font-size:0.93rem;font-weight:700;color:#fff;line-height:1.3;margin-bottom:4px;
+  word-break:break-word;overflow-wrap:break-word}
 .sz-post-content{font-size:0.81rem;color:var(--text2);line-height:1.65;
-  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+  word-break:break-word;overflow-wrap:break-word}
 .sz-post-content.expanded{-webkit-line-clamp:unset;overflow:visible}
 .sz-see-more{background:none;border:none;color:var(--a2);font-size:0.78rem;cursor:pointer;
   font-family:'Outfit',sans-serif;padding:2px 0;margin-top:3px;display:block}

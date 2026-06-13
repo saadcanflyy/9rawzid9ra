@@ -126,6 +126,16 @@ const css = `
   .overview-cols { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
   .overview-col-title { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:0.85rem; }
 
+  /* MESSAGES RESPONSIVE */
+  .msg-layout { display:flex; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .msg-left   { width:280px; flex-shrink:0; border-right:1px solid var(--border); display:flex; flex-direction:column; background:var(--surface); overflow-y:auto; }
+  .msg-right  { flex:1; display:flex; flex-direction:column; background:var(--surface); overflow:hidden; min-width:0; }
+  @media(max-width:700px) {
+    .msg-layout { flex-direction:column; height:auto !important; }
+    .msg-left   { width:100%; max-height:220px; border-right:none; border-bottom:1px solid var(--border); }
+    .msg-right  { min-height:320px; }
+  }
+
   @media(max-width:900px) {
     .layout { flex-direction:column; height:auto; overflow:visible; }
     .sidebar { width:100%; height:auto; border-right:none; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:4px; padding:0.75rem; }
@@ -817,10 +827,10 @@ export default function ModeratorPanel() {
             <>
               <div className="section-title">// messages des utilisateurs</div>
               {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel" style={{height:56}}/>) : (
-                <div style={{ display:'flex', gap:0, height:'calc(100vh - 170px)', minHeight:400, border:'1px solid var(--border)', borderRadius:12, overflow:'hidden' }}>
+                <div className="msg-layout" style={{ height:'calc(100vh - 170px)', minHeight:400 }}>
 
                   {/* Left panel */}
-                  <div style={{ width:280, flexShrink:0, borderRight:'1px solid var(--border)', display:'flex', flexDirection:'column', background:'var(--surface)', overflowY:'auto' }}>
+                  <div className="msg-left">
                     <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--text3)', letterSpacing:'1.5px' }}>
                       // CONVERSATIONS
                     </div>
@@ -863,7 +873,7 @@ export default function ModeratorPanel() {
                   </div>
 
                   {/* Right panel */}
-                  <div style={{ flex:1, display:'flex', flexDirection:'column', background:'var(--surface)', overflow:'hidden' }}>
+                  <div className="msg-right">
                     {!selectedConvo ? (
                       <div style={{ margin:'auto', textAlign:'center', color:'var(--text3)', fontFamily:'DM Mono,monospace', fontSize:'0.72rem' }}>
                         💬 Sélectionne une conversation
