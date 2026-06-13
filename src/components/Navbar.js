@@ -183,7 +183,7 @@ export default function Navbar({ activePage = '' }) {
   }, [location.pathname])
 
   const loadProfile = async (uid) => {
-    const { data } = await supabase.from('user_profiles').select('name, email, is_admin, is_fondateur, points, uploads_count').eq('id', uid).single()
+    const { data } = await supabase.from('user_profiles').select('name, email, is_admin, is_moderator, is_fondateur, points, uploads_count').eq('id', uid).single()
     if (data) setProfile(data)
   }
 
@@ -377,6 +377,9 @@ export default function Navbar({ activePage = '' }) {
                     {profile?.is_admin && (
                       <button className="nb-dd-item admin" onClick={() => { navigate('/admin'); setShowDropdown(false) }}>Panneau Admin</button>
                     )}
+                    {profile?.is_moderator && !profile?.is_admin && (
+                      <button className="nb-dd-item" style={{color:'var(--teal2)'}} onClick={() => { navigate('/moderator'); setShowDropdown(false) }}>Panneau Modérateur</button>
+                    )}
                     <div className="nb-dd-sep" />
                     <a className="nb-dd-item" href="https://paypal.me/saadga2003" target="_blank" rel="noopener noreferrer" onClick={() => setShowDropdown(false)} style={{ color:'#FBD34D', textDecoration:'none' }}>☕ Soutenir 9rawZid9ra</a>
                     <div className="nb-dd-sep" />
@@ -427,6 +430,9 @@ export default function Navbar({ activePage = '' }) {
             <button className="nb-drawer-link" onClick={() => navigate_('/upload')} style={{ color:'#7BB3FF' }}>+ Uploader un doc</button>
             {profile?.is_admin && (
               <button className="nb-drawer-link" onClick={() => navigate_('/admin')} style={{ color:'#F87171' }}>Panneau Admin</button>
+            )}
+            {profile?.is_moderator && !profile?.is_admin && (
+              <button className="nb-drawer-link" onClick={() => navigate_('/moderator')} style={{ color:'var(--teal2,#5EEAD4)' }}>Panneau Modérateur</button>
             )}
             <div className="nb-drawer-sep"/>
             <button className="nb-drawer-link" onClick={handleLogout} style={{ color:'#F87171' }}>Se déconnecter</button>

@@ -15,6 +15,7 @@ import SenpaiZone from './pages/SenpaiZone'
 import AICoach from './pages/AICoach'
 import MyModules from './pages/MyModules'
 import WelcomeModal from './components/WelcomeModal'
+import ModeratorPanel from './pages/ModeratorPanel'
 
 const notFoundCss = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap');
@@ -83,6 +84,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/moderator" element={<ModeratorPanel />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/user/:id" element={<Profile />} />

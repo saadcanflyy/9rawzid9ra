@@ -472,6 +472,13 @@ export default function Admin() {
     setUsers(u => u.map(x => x.id === id ? { ...x, is_banned: !currentBan } : x))
   }
 
+  const toggleModerator = async (id, currentMod) => {
+    const msg = currentMod ? 'Retirer le rôle Modérateur ?' : 'Donner le rôle Modérateur à cet utilisateur ?'
+    if (!window.confirm(msg)) return
+    await supabase.from('user_profiles').update({ is_moderator: !currentMod }).eq('id', id)
+    setUsers(u => u.map(x => x.id === id ? { ...x, is_moderator: !currentMod } : x))
+  }
+
   const fmt = (d) => new Date(d).toLocaleDateString('fr-MA', { day:'2-digit', month:'short', year:'2-digit' })
 
   if (authLoading) return <div className="page"><style>{css}</style><div style={{padding:'4rem',textAlign:'center',fontFamily:'DM Mono',fontSize:'0.75rem',color:'var(--text3)'}}>Chargement...</div></div>
@@ -864,7 +871,12 @@ export default function Admin() {
                       {users.map(u => (
                         <tr key={u.id}>
                           <td>
-                            <div className="table-name">{u.name || 'Sans nom'}</div>
+                            <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap'}}>
+                              <span className="table-name">{u.name || 'Sans nom'}</span>
+                              {u.is_moderator && !u.is_admin && (
+                                <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',fontWeight:700,padding:'1px 6px',borderRadius:3,background:'rgba(45,212,191,0.1)',color:'var(--teal2)',border:'1px solid rgba(45,212,191,0.25)'}}>MOD</span>
+                              )}
+                            </div>
                             <div className="table-mono" style={{color:'var(--text3)'}}>{u.email}</div>
                           </td>
                           <td className="table-mono">{u.points || 0}</td>
@@ -876,11 +888,21 @@ export default function Admin() {
                             </span>
                           </td>
                           <td>
-                            {!u.is_admin && (
-                              <button className={`act-btn ${u.is_banned ? 'act-approve' : 'act-ban'}`} onClick={() => banUser(u.id, u.is_banned)}>
-                                {u.is_banned ? 'Débannir' : 'Bannir'}
-                              </button>
-                            )}
+                            <div className="actions">
+                              {!u.is_admin && (
+                                <button
+                                  className="act-btn"
+                                  style={u.is_moderator ? {background:'rgba(45,212,191,0.1)',color:'var(--teal2)',border:'1px solid rgba(45,212,191,0.25)'} : {background:'rgba(45,212,191,0.05)',color:'var(--text3)',border:'1px solid var(--border)'}}
+                                  onClick={() => toggleModerator(u.id, u.is_moderator)}>
+                                  {u.is_moderator ? 'Retirer MOD' : '+ MOD'}
+                                </button>
+                              )}
+                              {!u.is_admin && (
+                                <button className={`act-btn ${u.is_banned ? 'act-approve' : 'act-ban'}`} onClick={() => banUser(u.id, u.is_banned)}>
+                                  {u.is_banned ? 'Débannir' : 'Bannir'}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
