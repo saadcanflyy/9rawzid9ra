@@ -465,11 +465,12 @@ export default function Profile() {
     setShowMsgModal(true)
     setMsgText('')
     setMsgLoading(true)
-    const { data } = await supabase.from('messages')
-      .select('*')
-      .or(`and(sender_id.eq.${currentUser.id},is_from_admin.eq.false),and(is_from_admin.eq.true,target_user_id.eq.${currentUser.id})`)
-      .order('created_at', { ascending: true })
-    setMsgThread(data || [])
+    const [{ data: mine }, { data: replies }] = await Promise.all([
+      supabase.from('messages').select('*').eq('sender_id', currentUser.id).eq('is_from_admin', false),
+      supabase.from('messages').select('*').eq('is_from_admin', true).eq('target_user_id', currentUser.id),
+    ])
+    const all = [...(mine || []), ...(replies || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    setMsgThread(all)
     setMsgLoading(false)
   }
 
@@ -612,6 +613,18 @@ export default function Profile() {
                   letterSpacing:'0.5px',
                 }}>
                   🏆 Fondateur
+                </span>
+              )}
+              {profile?.is_moderator && !profile?.is_admin && (
+                <span style={{
+                  display:'inline-flex', alignItems:'center', gap:4,
+                  background:'rgba(45,212,191,0.12)', color:'#2DD4BF',
+                  border:'1px solid rgba(45,212,191,0.3)',
+                  borderRadius:6, padding:'2px 8px',
+                  fontFamily:'DM Mono,monospace', fontSize:'11px', fontWeight:700,
+                  letterSpacing:'0.5px',
+                }}>
+                  🛡 MOD
                 </span>
               )}
             </div>

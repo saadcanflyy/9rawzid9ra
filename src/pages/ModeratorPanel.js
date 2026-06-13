@@ -249,9 +249,9 @@ export default function ModeratorPanel() {
   const loadModules = async () => {
     setLoading(true)
     const [{ data: mods }, { data: fils }] = await Promise.all([
-      supabase.from('modules').select('*, filieres(name, semester, faculties(name, universities(name)))')
+      supabase.from('modules').select('*, filieres(name, total_semesters)')
         .order('created_at', { ascending: false }).limit(100),
-      supabase.from('filieres').select('id, name, semester, faculties(universities(name))').order('name'),
+      supabase.from('filieres').select('id, name, total_semesters').order('name'),
     ])
     setModules(mods || [])
     setFilieresList(fils || [])
@@ -314,7 +314,7 @@ export default function ModeratorPanel() {
       filiere_id: parseInt(newModFilId),
       semester: newModSem ? parseInt(newModSem) : null,
       verified: true,
-    }).select('*, filieres(name, semester, faculties(name, universities(name)))').single()
+    }).select('*, filieres(name, total_semesters)').single()
     if (data) {
       setModules(m => [data, ...m])
       setNewModName('')
@@ -326,7 +326,7 @@ export default function ModeratorPanel() {
   const searchMods = async (q) => {
     if (q.length < 2) { loadModules(); return }
     const { data } = await supabase.from('modules')
-      .select('*, filieres(name, semester, faculties(name, universities(name)))')
+      .select('*, filieres(name, total_semesters)')
       .ilike('name', `%${q}%`).limit(50)
     setModules(data || [])
   }
@@ -601,7 +601,7 @@ export default function ModeratorPanel() {
                     <select className="field-input" style={{width:200}} value={newModFilId} onChange={e => setNewModFilId(e.target.value)}>
                       <option value="">— Choisir —</option>
                       {filieresList.map(f => (
-                        <option key={f.id} value={f.id}>{f.name}{f.semester ? ` (S${f.semester})` : ''} — {f.faculties?.universities?.name || ''}</option>
+                        <option key={f.id} value={f.id}>{f.name}{f.total_semesters ? ` (${f.total_semesters}S)` : ''}</option>
                       ))}
                     </select>
                   </div>

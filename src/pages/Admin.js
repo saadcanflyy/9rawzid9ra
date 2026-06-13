@@ -511,6 +511,8 @@ export default function Admin() {
 
   const loadMessages = async () => {
     setLoading(true)
+    // Cleanup messages older than 48h
+    supabase.rpc('cleanup_old_messages').then()
     const { data } = await supabase.from('messages')
       .select('id, sender_id, content, read, created_at, is_from_admin, user_profiles!sender_id(id, name)')
       .eq('is_from_admin', false)
@@ -532,9 +534,10 @@ export default function Admin() {
   const loadThread = async (sender) => {
     setSelectedMsgUser(sender)
     setMsgThread([])
+    // Admin has ALL access — fetch all rows linked to this user
     const { data } = await supabase.from('messages')
       .select('*')
-      .or(`and(sender_id.eq.${sender.id},is_from_admin.eq.false),and(is_from_admin.eq.true,target_user_id.eq.${sender.id})`)
+      .or(`sender_id.eq.${sender.id},target_user_id.eq.${sender.id}`)
       .order('created_at', { ascending: true })
     setMsgThread(data || [])
     await supabase.from('messages').update({ read: true }).eq('sender_id', sender.id).eq('is_from_admin', false)
@@ -569,22 +572,34 @@ export default function Admin() {
 
   const loadAnalytics = async () => {
     setLoading(true)
-    const [usersDay, docsDay, topMods, totalDocs, totalUsers, flaggedContent] = await Promise.all([
+    const [usersDay, docsDay, topMods, extra, uploaders] = await Promise.all([
       supabase.rpc('get_users_per_day'),
       supabase.rpc('get_docs_per_day'),
       supabase.rpc('get_top_modules_by_downloads'),
-      supabase.from('documents').select('*', { count:'exact', head:true }),
-      supabase.from('user_profiles').select('*', { count:'exact', head:true }),
-      supabase.from('documents').select('*', { count:'exact', head:true }).eq('is_flagged', true),
+      supabase.rpc('get_analytics_extra'),
+      supabase.rpc('get_top_uploaders'),
     ])
+    const ext = extra.data?.[0] || {}
     setAnalytics({
       usersPerDay: usersDay.data || [],
       docsPerDay: docsDay.data || [],
       topModules: (topMods.data || []).map(r => ({ name: r.name, total: Number(r.total) })),
-      totalDocs: totalDocs.count || 0,
-      totalUsers: totalUsers.count || 0,
-      flaggedDocs: flaggedContent.count || 0,
+      topUploaders: (uploaders.data || []).map(r => ({ name: r.name, uploads: Number(r.uploads), points: r.points })),
+      totalDocs: Number(ext.new_docs_7d || 0) + Number(ext.total_downloads || 0),  // will be overwritten below
+      totalUsers: 0,
+      flaggedDocs: 0,
+      newUsers7d: Number(ext.new_users_7d || 0),
+      newDocs7d: Number(ext.new_docs_7d || 0),
+      totalDownloads: Number(ext.total_downloads || 0),
+      activeUploaders: Number(ext.active_uploaders || 0),
     })
+    // Get accurate total counts separately
+    const [tdocs, tusers, tflagged] = await Promise.all([
+      supabase.from('documents').select('*', { count:'exact', head:true }),
+      supabase.from('user_profiles').select('*', { count:'exact', head:true }),
+      supabase.from('documents').select('*', { count:'exact', head:true }).eq('is_flagged', true),
+    ])
+    setAnalytics(a => ({ ...a, totalDocs: tdocs.count || 0, totalUsers: tusers.count || 0, flaggedDocs: tflagged.count || 0 }))
     setLoading(false)
   }
 
@@ -1273,41 +1288,96 @@ export default function Admin() {
           {activeTab === 'analytics' && (
             <>
               <div className="section-title">// analytiques plateforme</div>
-              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel" style={{height:80}}/>) : analytics && (
+              {loading ? Array(6).fill(0).map((_,i) => <div key={i} className="skel" style={{height:80,marginBottom:8}}/>) : analytics ? (
                 <>
-                  {/* HEALTH */}
+                  {/* HEALTH GRID */}
                   <div className="section-title" style={{marginTop:0}}>// santé plateforme</div>
-                  <div className="stats-grid" style={{marginBottom:'2rem'}}>
+                  <div className="stats-grid" style={{marginBottom:'1.5rem'}}>
                     <div className="stat-card"><div className="stat-val blue">{analytics.totalDocs}</div><div className="stat-label">Documents total</div></div>
                     <div className="stat-card"><div className="stat-val blue">{analytics.totalUsers}</div><div className="stat-label">Utilisateurs</div></div>
+                    <div className="stat-card"><div className="stat-val blue">{analytics.totalDownloads}</div><div className="stat-label">Téléchargements total</div></div>
                     <div className="stat-card"><div className={`stat-val ${analytics.flaggedDocs > 0 ? 'red' : 'green'}`}>{analytics.flaggedDocs}</div><div className="stat-label">Docs signalés</div></div>
+                    <div className="stat-card"><div className="stat-val green">+{analytics.newUsers7d}</div><div className="stat-label">Nouveaux users (7j)</div></div>
+                    <div className="stat-card"><div className="stat-val green">+{analytics.newDocs7d}</div><div className="stat-label">Nouveaux docs (7j)</div></div>
+                    <div className="stat-card"><div className="stat-val blue">{analytics.activeUploaders}</div><div className="stat-label">Uploadeurs actifs</div></div>
                   </div>
 
-                  {/* TOP MODULES */}
-                  <div className="section-title">// top 10 modules les plus téléchargés</div>
-                  <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1.1rem 1.25rem', marginBottom:'2rem' }}>
-                    {analytics.topModules.length === 0
-                      ? <div className="empty" style={{padding:'1rem 0'}}>// pas encore de données</div>
-                      : analytics.topModules.map((m, i) => (
-                        <div key={i} style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
-                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color: i===0?'#F59E0B':i===1?'#94A3B8':i===2?'#CD7F32':'var(--text3)', width:24, textAlign:'right', flexShrink:0 }}>
-                            {i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`}
-                          </span>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3 }}>
-                              <span style={{ fontSize:'0.8rem', fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.name}</span>
-                              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.68rem', color:'var(--accent2)', flexShrink:0, marginLeft:8 }}>{m.total} DL</span>
+                  {/* GROWTH CHARTS */}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'2rem' }}>
+                    {[
+                      { label:'// inscriptions (30j)', data: analytics.usersPerDay, color:'var(--accent)' },
+                      { label:'// uploads (30j)', data: analytics.docsPerDay, color:'var(--teal)' },
+                    ].map(({ label, data, color }) => {
+                      const max = Math.max(...(data.map(d => Number(d.count))), 1)
+                      return (
+                        <div key={label} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1rem 1.25rem' }}>
+                          <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'var(--text3)', letterSpacing:'1px', marginBottom:'0.75rem' }}>{label}</div>
+                          {data.length === 0 ? (
+                            <div style={{ color:'var(--text3)', fontFamily:'DM Mono,monospace', fontSize:'0.68rem', textAlign:'center', padding:'1rem 0' }}>// pas encore de données</div>
+                          ) : (
+                            <div style={{ display:'flex', alignItems:'flex-end', gap:3, height:60 }}>
+                              {data.map((d, i) => (
+                                <div key={i} title={`${d.date}: ${d.count}`} style={{ flex:1, background:color, borderRadius:'2px 2px 0 0', opacity:0.7, minHeight:2, height:`${Math.round((Number(d.count) / max) * 60)}px`, transition:'height 0.3s' }} />
+                              ))}
                             </div>
-                            <div style={{ height:5, background:'var(--border)', borderRadius:3, overflow:'hidden' }}>
-                              <div style={{ height:'100%', background:`linear-gradient(90deg,var(--accent),var(--teal))`, width:`${Math.round((m.total / (analytics.topModules[0]?.total || 1)) * 100)}%`, borderRadius:3, transition:'width 0.4s' }} />
-                            </div>
-                          </div>
+                          )}
                         </div>
-                    ))}
+                      )
+                    })}
+                  </div>
+
+                  {/* TOP MODULES + TOP UPLOADERS */}
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'2rem' }}>
+                    {/* Top modules */}
+                    <div>
+                      <div className="section-title">// top modules téléchargés</div>
+                      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1rem 1.25rem' }}>
+                        {analytics.topModules.length === 0
+                          ? <div className="empty" style={{padding:'1rem 0'}}>// pas de données</div>
+                          : analytics.topModules.map((m, i) => (
+                            <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+                              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color: i===0?'#F59E0B':i===1?'#94A3B8':i===2?'#CD7F32':'var(--text3)', width:20, textAlign:'right', flexShrink:0 }}>
+                                {i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`}
+                              </span>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+                                  <span style={{ fontSize:'0.78rem', fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.name}</span>
+                                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--accent2)', flexShrink:0, marginLeft:8 }}>{m.total} DL</span>
+                                </div>
+                                <div style={{ height:4, background:'var(--border)', borderRadius:2, overflow:'hidden' }}>
+                                  <div style={{ height:'100%', background:`linear-gradient(90deg,var(--accent),var(--teal))`, width:`${Math.round((m.total / (analytics.topModules[0]?.total || 1)) * 100)}%`, borderRadius:2 }} />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+
+                    {/* Top uploaders */}
+                    <div>
+                      <div className="section-title">// top uploadeurs</div>
+                      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1rem 1.25rem' }}>
+                        {(analytics.topUploaders || []).length === 0
+                          ? <div className="empty" style={{padding:'1rem 0'}}>// pas de données</div>
+                          : (analytics.topUploaders || []).map((u, i) => (
+                            <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+                              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--text3)', width:20, textAlign:'right', flexShrink:0 }}>#{i+1}</span>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+                                  <span style={{ fontSize:'0.78rem', fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{u.name}</span>
+                                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--teal)', flexShrink:0, marginLeft:8 }}>{u.uploads} docs · {u.points}pts</span>
+                                </div>
+                                <div style={{ height:4, background:'var(--border)', borderRadius:2, overflow:'hidden' }}>
+                                  <div style={{ height:'100%', background:'var(--teal)', width:`${Math.round((u.uploads / ((analytics.topUploaders[0]?.uploads) || 1)) * 100)}%`, borderRadius:2 }} />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
                   </div>
                 </>
-              )}
-              {!analytics && !loading && <div className="empty">// données non disponibles</div>}
+              ) : !loading && <div className="empty">// données non disponibles</div>}
             </>
           )}
 
