@@ -267,7 +267,7 @@ export default function ModeratorPanel() {
   const loadUsers = async () => {
     setLoading(true)
     const { data } = await supabase.from('user_profiles')
-      .select('id, name, uploads_count, points, is_banned, banned_until, ban_reason, universities(name)')
+      .select('id, name, uploads_count, points, is_admin, is_banned, banned_until, ban_reason, universities(name)')
       .order('created_at', { ascending: false }).limit(100)
     setUsers(data || [])
     setLoading(false)
@@ -716,11 +716,13 @@ export default function ModeratorPanel() {
                             {u.is_banned && <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',background:'rgba(248,113,113,0.1)',color:'#F87171',border:'1px solid rgba(248,113,113,0.25)',borderRadius:4,padding:'1px 7px'}}>BANNI</span>}
                           </div>
                           <div className="actions">
-                            {u.is_banned
-                              ? <button className="act-btn act-approve" onClick={() => unbanUser(u.id)}>Débannir</button>
-                              : <button className="act-btn act-ban" onClick={() => { setBanningId(isBanning ? null : u.id); setBanReason('') }}>
-                                  {isBanning ? 'Annuler' : 'Bannir'}
-                                </button>
+                            {u.is_admin
+                              ? <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--text3)',padding:'5px 10px'}}>admin</span>
+                              : u.is_banned
+                                ? <button className="act-btn act-approve" onClick={() => unbanUser(u.id)}>Débannir</button>
+                                : <button className="act-btn act-ban" onClick={() => { setBanningId(isBanning ? null : u.id); setBanReason('') }}>
+                                    {isBanning ? 'Annuler' : 'Bannir'}
+                                  </button>
                             }
                           </div>
                         </div>
