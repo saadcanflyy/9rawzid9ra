@@ -93,7 +93,7 @@ const css = `
   --text:#E2E8F0;--text2:#94A3B8;--text3:#4A5568;
 }
 html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif}
-.sz-page{min-height:100vh;background:var(--bg);overflow-x:clip}
+.sz-page{min-height:100vh;background:var(--bg)}
 
 /* ── 3-COLUMN GRID ── */
 .sz-main{
@@ -112,6 +112,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
   padding:1.25rem 0.875rem;
   display:flex;flex-direction:column;gap:2px;
   scrollbar-width:thin;scrollbar-color:var(--border) transparent;
+  min-width:0;
 }
 .sz-left-section{font-family:'DM Mono',monospace;font-size:0.58rem;color:var(--text3);
   text-transform:uppercase;letter-spacing:2px;padding:10px 12px 4px;margin-top:8px}
@@ -135,7 +136,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
 .sz-uni-select:hover{border-color:var(--bhi)}
 
 /* ── CENTER FEED ── */
-.sz-center{border-right:1px solid var(--border);min-height:calc(100vh - 58px)}
+.sz-center{border-right:1px solid var(--border);min-height:calc(100vh - 58px);min-width:0}
 
 /* ── COMPOSE BOX ── */
 .sz-compose{border-bottom:1px solid var(--border);padding:14px 16px;cursor:text}
@@ -299,7 +300,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
 /* ── RIGHT SIDEBAR ── */
 .sz-right{position:sticky;top:58px;height:calc(100vh - 58px);overflow-y:auto;
   padding:1.25rem 1rem;display:flex;flex-direction:column;gap:14px;
-  scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+  scrollbar-width:thin;scrollbar-color:var(--border) transparent;min-width:0}
 .sz-widget{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
 .sz-widget-head{padding:10px 14px;border-bottom:1px solid var(--border);
   font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--text3);
