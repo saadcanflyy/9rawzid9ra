@@ -106,14 +106,7 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       checkBan(session)
     })
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') supabase.auth.getSession()
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-    return () => {
-      subscription.unsubscribe()
-      document.removeEventListener('visibilitychange', handleVisibility)
-    }
+    return () => subscription.unsubscribe()
   }, [])
 
   if (bannedUser) return <BanScreen banInfo={bannedUser} />

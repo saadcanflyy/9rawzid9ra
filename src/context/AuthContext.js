@@ -39,12 +39,21 @@ export function AuthProvider({ children }) {
       if (u) loadProfile(u.id)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const u = session?.user || null
-      setUser(u)
-      userRef.current = u
-      if (u) loadProfile(u.id)
-      else setProfile(null)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Only clear state on explicit sign-out — never clear on failed queries or
+      // temporary session gaps (TOKEN_REFRESHED, INITIAL_SESSION, etc.)
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+        userRef.current = null
+        setProfile(null)
+        return
+      }
+      if (session?.user) {
+        const u = session.user
+        setUser(u)
+        userRef.current = u
+        loadProfile(u.id)
+      }
     })
 
     return () => subscription.unsubscribe()
