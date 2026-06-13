@@ -215,8 +215,12 @@ export default function Admin() {
   const [moveBusy,      setMoveBusy]      = useState(false)
 
   // Messages tab
-  const [messages,      setMessages]      = useState([])
-  const [unreadMsgCount,setUnreadMsgCount]= useState(0)
+  const [msgSenders,        setMsgSenders]        = useState([])
+  const [selectedMsgUser,   setSelectedMsgUser]   = useState(null)
+  const [msgThread,         setMsgThread]         = useState([])
+  const [replyText,         setReplyText]         = useState('')
+  const [replySending,      setReplySending]      = useState(false)
+  const [unreadMsgCount,    setUnreadMsgCount]    = useState(0)
 
   // Analytics tab
   const [analytics,     setAnalytics]     = useState(null)
@@ -508,53 +512,75 @@ export default function Admin() {
   const loadMessages = async () => {
     setLoading(true)
     const { data } = await supabase.from('messages')
-      .select('*, user_profiles!sender_id(name)')
+      .select('id, sender_id, content, read, created_at, is_from_admin, user_profiles!sender_id(id, name)')
+      .eq('is_from_admin', false)
       .order('created_at', { ascending: false })
-      .limit(100)
-    setMessages(data || [])
-    const unread = (data || []).filter(m => !m.read).length
-    setUnreadMsgCount(unread)
+    const senderMap = {}
+    ;(data || []).forEach(m => {
+      const sid = m.sender_id
+      if (!senderMap[sid]) {
+        senderMap[sid] = { id: sid, name: m.user_profiles?.name || 'Anonyme', unread: 0, lastMsg: m.content, lastDate: m.created_at }
+      }
+      if (!m.read) senderMap[sid].unread++
+    })
+    const senders = Object.values(senderMap).sort((a, b) => new Date(b.lastDate) - new Date(a.lastDate))
+    setMsgSenders(senders)
+    setUnreadMsgCount(senders.reduce((s, u) => s + u.unread, 0))
     setLoading(false)
   }
 
-  const markMsgRead = async (id) => {
-    await supabase.from('messages').update({ read: true }).eq('id', id)
-    setMessages(m => m.map(x => x.id === id ? { ...x, read: true } : x))
-    setUnreadMsgCount(c => Math.max(0, c - 1))
+  const loadThread = async (sender) => {
+    setSelectedMsgUser(sender)
+    setMsgThread([])
+    const { data } = await supabase.from('messages')
+      .select('*')
+      .or(`and(sender_id.eq.${sender.id},is_from_admin.eq.false),and(is_from_admin.eq.true,target_user_id.eq.${sender.id})`)
+      .order('created_at', { ascending: true })
+    setMsgThread(data || [])
+    await supabase.from('messages').update({ read: true }).eq('sender_id', sender.id).eq('is_from_admin', false)
+    setMsgSenders(prev => prev.map(s => s.id === sender.id ? { ...s, unread: 0 } : s))
+    setUnreadMsgCount(prev => {
+      const u = msgSenders.find(s => s.id === sender.id)
+      return Math.max(0, prev - (u?.unread || 0))
+    })
+  }
+
+  const sendReply = async () => {
+    if (!replyText.trim() || replySending || !selectedMsgUser) return
+    setReplySending(true)
+    const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
+    const { data: newMsg } = await supabase.from('messages').insert({
+      sender_id: ADMIN_ID,
+      is_from_admin: true,
+      target_user_id: selectedMsgUser.id,
+      content: replyText.trim(),
+      read: true,
+    }).select().single()
+    if (newMsg) setMsgThread(prev => [...prev, newMsg])
+    await supabase.from('notifications').insert({
+      user_id: selectedMsgUser.id,
+      type: 'message_reply',
+      content: `Saad GENIUS vous a répondu : ${replyText.trim().slice(0, 80)}`,
+      read: false,
+    })
+    setReplyText('')
+    setReplySending(false)
   }
 
   const loadAnalytics = async () => {
     setLoading(true)
-    const [usersDay, docsDay, topMods, topUnis, totalDocs, totalUsers, flaggedContent, storage] = await Promise.all([
-      supabase.rpc('get_users_per_day').catch(() => ({ data: null })),
-      supabase.rpc('get_docs_per_day').catch(() => ({ data: null })),
-      supabase.from('documents')
-        .select('module_id, downloads, modules!inner(name)')
-        .order('downloads', { ascending: false })
-        .limit(200),
-      supabase.rpc('get_top_unis_by_docs').catch(() => ({ data: null })),
+    const [usersDay, docsDay, topMods, totalDocs, totalUsers, flaggedContent] = await Promise.all([
+      supabase.rpc('get_users_per_day'),
+      supabase.rpc('get_docs_per_day'),
+      supabase.rpc('get_top_modules_by_downloads'),
       supabase.from('documents').select('*', { count:'exact', head:true }),
       supabase.from('user_profiles').select('*', { count:'exact', head:true }),
       supabase.from('documents').select('*', { count:'exact', head:true }).eq('is_flagged', true),
-      Promise.resolve({ data: null }),
     ])
-
-    // Aggregate top modules from documents
-    const modMap = {}
-    ;(docsDay.data ? [] : (topMods.data || [])).forEach(d => {
-      const name = d.modules?.name
-      if (!name) return
-      modMap[name] = (modMap[name] || 0) + (d.downloads || 0)
-    })
-    const topModsList = Object.entries(modMap)
-      .sort((a, b) => b[1] - a[1]).slice(0, 10)
-      .map(([name, total]) => ({ name, total }))
-
     setAnalytics({
       usersPerDay: usersDay.data || [],
       docsPerDay: docsDay.data || [],
-      topModules: topModsList,
-      topUnis: topUnis.data || [],
+      topModules: (topMods.data || []).map(r => ({ name: r.name, total: Number(r.total) })),
       totalDocs: totalDocs.count || 0,
       totalUsers: totalUsers.count || 0,
       flaggedDocs: flaggedContent.count || 0,
@@ -567,7 +593,7 @@ export default function Admin() {
     setAnnSending(true)
     const { data: allUsers } = await supabase.from('user_profiles').select('id').neq('id', user.id)
     if (allUsers && allUsers.length > 0) {
-      const inserts = allUsers.map(u => ({ user_id: u.id, type: 'announcement', content: annText.trim(), read: false }))
+      const inserts = allUsers.map(u => ({ user_id: u.id, type: 'announcement', content: `📢 Saad GENIUS : ${annText.trim()}`, read: false }))
       await supabase.from('notifications').insert(inserts)
     }
     setAnnResult(`Annonce envoyée à ${allUsers?.length || 0} utilisateurs ✓`)
@@ -1180,23 +1206,64 @@ export default function Admin() {
           {activeTab === 'messages' && (
             <>
               <div className="section-title">// messages des utilisateurs</div>
-              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               messages.length === 0 ? <div className="empty">// aucun message</div> : (
-                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                  {messages.map(m => (
-                    <div key={m.id}
-                      onClick={() => !m.read && markMsgRead(m.id)}
-                      style={{ background: m.read ? 'var(--surface)' : 'rgba(79,142,247,0.05)', border:`1px solid ${m.read ? 'var(--border)' : 'rgba(79,142,247,0.25)'}`, borderRadius:10, padding:'0.85rem 1.1rem', cursor: m.read ? 'default' : 'pointer', transition:'all 0.15s' }}>
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                          {!m.read && <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--accent)', display:'inline-block', flexShrink:0 }} />}
-                          <span style={{ fontSize:'0.82rem', fontWeight:600, color:'var(--text)' }}>{m.user_profiles?.name || 'Anonyme'}</span>
+              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel" style={{height:56}}/>) : (
+                <div style={{ display:'flex', gap:14, height:'calc(100vh - 200px)', minHeight:400 }}>
+                  {/* Left panel — sender list */}
+                  <div style={{ width:220, flexShrink:0, display:'flex', flexDirection:'column', gap:6, overflowY:'auto' }}>
+                    {msgSenders.length === 0 && <div className="empty" style={{padding:'2rem 1rem'}}>// aucun message</div>}
+                    {msgSenders.map(s => (
+                      <div key={s.id} onClick={() => loadThread(s)}
+                        style={{ background: selectedMsgUser?.id === s.id ? 'rgba(79,142,247,0.1)' : 'var(--surface)', border:`1px solid ${selectedMsgUser?.id === s.id ? 'rgba(79,142,247,0.3)' : 'var(--border)'}`, borderRadius:10, padding:'10px 14px', cursor:'pointer', transition:'all 0.15s' }}>
+                        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3 }}>
+                          <span style={{ fontSize:'0.82rem', fontWeight:600, color:'var(--text)' }}>{s.name}</span>
+                          {s.unread > 0 && <span style={{ background:'var(--accent)', color:'#fff', borderRadius:'50%', width:18, height:18, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.6rem', fontWeight:700, flexShrink:0 }}>{s.unread}</span>}
                         </div>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'var(--text3)' }}>{fmt(m.created_at)}</span>
+                        <div style={{ fontSize:'0.72rem', color:'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.lastMsg?.slice(0,45)}</div>
                       </div>
-                      <div style={{ fontSize:'0.85rem', color:'var(--text2)', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{m.content}</div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
+
+                  {/* Right panel — thread */}
+                  <div style={{ flex:1, display:'flex', flexDirection:'column', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12, overflow:'hidden' }}>
+                    {!selectedMsgUser ? (
+                      <div className="empty" style={{margin:'auto'}}>// sélectionne une conversation</div>
+                    ) : (
+                      <>
+                        <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', fontFamily:'DM Mono,monospace', fontSize:'0.68rem', color:'var(--accent2)', letterSpacing:'1px' }}>
+                          // conv avec {selectedMsgUser.name}
+                        </div>
+                        <div style={{ flex:1, overflowY:'auto', padding:'12px 16px', display:'flex', flexDirection:'column', gap:8 }}>
+                          {msgThread.length === 0 && <div className="empty" style={{margin:'auto'}}>// chargement...</div>}
+                          {msgThread.map(m => (
+                            <div key={m.id} style={{ display:'flex', justifyContent: m.is_from_admin ? 'flex-start' : 'flex-end' }}>
+                              <div style={{
+                                maxWidth:'75%', padding:'8px 12px',
+                                borderRadius: m.is_from_admin ? '4px 12px 12px 12px' : '12px 4px 12px 12px',
+                                background: m.is_from_admin ? 'var(--s2)' : 'rgba(79,142,247,0.15)',
+                                border: `1px solid ${m.is_from_admin ? 'var(--border)' : 'rgba(79,142,247,0.3)'}`,
+                              }}>
+                                <div style={{ fontSize:'0.82rem', color:'var(--text)', lineHeight:1.55, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{m.content}</div>
+                                <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'var(--text3)', marginTop:4, textAlign: m.is_from_admin ? 'left' : 'right' }}>{fmt(m.created_at)}</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ padding:'10px 12px', borderTop:'1px solid var(--border)', display:'flex', gap:8 }}>
+                          <input
+                            value={replyText}
+                            onChange={e => setReplyText(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
+                            placeholder="Répondre..."
+                            style={{ flex:1, background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 12px', color:'var(--text)', fontSize:'0.82rem', fontFamily:'Outfit,sans-serif', outline:'none' }}
+                          />
+                          <button onClick={sendReply} disabled={!replyText.trim() || replySending}
+                            style={{ background: replyText.trim() ? 'var(--accent)' : 'var(--border)', color:'#fff', border:'none', borderRadius:8, padding:'8px 16px', fontSize:'0.8rem', fontWeight:600, cursor: replyText.trim() ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}>
+                            {replySending ? '...' : 'Envoyer'}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </>

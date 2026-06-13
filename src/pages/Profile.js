@@ -331,7 +331,8 @@ export default function Profile() {
   const [showMsgModal,  setShowMsgModal]  = useState(false)
   const [msgText,       setMsgText]       = useState('')
   const [msgSending,    setMsgSending]    = useState(false)
-  const [msgSent,       setMsgSent]       = useState(false)
+  const [msgThread,     setMsgThread]     = useState([])
+  const [msgLoading,    setMsgLoading]    = useState(false)
 
   // Doc edit state
   const [editingDocId,  setEditingDocId]  = useState(null)
@@ -460,12 +461,29 @@ export default function Profile() {
   const isAdminProfile = targetId === ADMIN_ID
   const canSendMessage = isAdminProfile && currentUser && !isOwnProfile
 
+  const openMsgModal = async () => {
+    setShowMsgModal(true)
+    setMsgText('')
+    setMsgLoading(true)
+    const { data } = await supabase.from('messages')
+      .select('*')
+      .or(`and(sender_id.eq.${currentUser.id},is_from_admin.eq.false),and(is_from_admin.eq.true,target_user_id.eq.${currentUser.id})`)
+      .order('created_at', { ascending: true })
+    setMsgThread(data || [])
+    setMsgLoading(false)
+  }
+
   const sendMessage = async () => {
     if (!msgText.trim() || msgSending) return
     setMsgSending(true)
-    await supabase.from('messages').insert({ sender_id: currentUser.id, content: msgText.trim() })
+    const { data: newMsg } = await supabase.from('messages').insert({
+      sender_id: currentUser.id,
+      is_from_admin: false,
+      content: msgText.trim(),
+    }).select().single()
+    if (newMsg) setMsgThread(prev => [...prev, newMsg])
+    setMsgText('')
     setMsgSending(false)
-    setMsgSent(true)
   }
 
   const startEditDoc = (doc) => {
@@ -649,7 +667,7 @@ export default function Profile() {
           )}
           {canSendMessage && (
             <button
-              onClick={() => { setShowMsgModal(true); setMsgSent(false); setMsgText('') }}
+              onClick={openMsgModal}
               style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', borderRadius:8, background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.25)', color:'var(--accent2)', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
             >
               ✉ Message
@@ -999,36 +1017,51 @@ export default function Profile() {
 
       {/* MESSAGE MODAL */}
     {showMsgModal && (
-      <div onClick={() => setShowMsgModal(false)} style={{ position:'fixed', inset:0, background:'rgba(2,4,10,0.85)', backdropFilter:'blur(8px)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1.5rem' }}>
-        <div onClick={e => e.stopPropagation()} style={{ background:'#070C18', border:'1px solid #1C2A45', borderRadius:16, padding:'1.75rem', width:'100%', maxWidth:440, position:'relative' }}>
-          <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#5EEAD4', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'0.75rem' }}>// message à Saad GENIUS</div>
-          {msgSent ? (
-            <div style={{ textAlign:'center', padding:'1.5rem 0' }}>
-              <div style={{ fontSize:'1.3rem', marginBottom:8 }}>🙏</div>
-              <div style={{ fontSize:'0.92rem', fontWeight:600, color:'#fff', marginBottom:4 }}>Message envoyé !</div>
-              <div style={{ fontSize:'0.8rem', color:'#94A3B8' }}>Je vous répondrai bientôt.</div>
-            </div>
-          ) : (
-            <>
-              <textarea
-                style={{ width:'100%', background:'#0C1222', border:'1px solid #1C2A45', borderRadius:10, padding:'12px 14px', color:'#E2E8F0', fontSize:'0.88rem', fontFamily:'Outfit,sans-serif', outline:'none', resize:'vertical', minHeight:120, marginBottom:8 }}
-                placeholder="Votre message..."
-                maxLength={500}
-                value={msgText}
-                onChange={e => setMsgText(e.target.value)}
-                autoFocus
-              />
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568' }}>{msgText.length} / 500</span>
-                <div style={{ display:'flex', gap:8 }}>
-                  <button onClick={() => setShowMsgModal(false)} style={{ background:'none', border:'1px solid #1C2A45', color:'#94A3B8', borderRadius:8, padding:'8px 16px', fontSize:'0.82rem', cursor:'pointer', fontFamily:'Outfit,sans-serif' }}>Annuler</button>
-                  <button onClick={sendMessage} disabled={!msgText.trim() || msgSending} style={{ background: msgText.trim() ? 'linear-gradient(135deg,#4F8EF7,#3A6ED4)' : '#1C2A45', color: msgText.trim() ? '#fff' : '#4A5568', border:'none', borderRadius:8, padding:'8px 18px', fontSize:'0.82rem', fontWeight:600, cursor: msgText.trim() ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif' }}>
-                    {msgSending ? 'Envoi...' : 'Envoyer'}
-                  </button>
+      <div onClick={() => setShowMsgModal(false)} style={{ position:'fixed', inset:0, background:'rgba(2,4,10,0.88)', backdropFilter:'blur(10px)', zIndex:9000, display:'flex', alignItems:'center', justifyContent:'center', padding:'1.5rem' }}>
+        <div onClick={e => e.stopPropagation()} style={{ background:'#070C18', border:'1px solid #1C2A45', borderRadius:16, width:'100%', maxWidth:480, height:520, display:'flex', flexDirection:'column', overflow:'hidden', position:'relative' }}>
+          {/* Header */}
+          <div style={{ padding:'14px 18px', borderBottom:'1px solid #1C2A45', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#5EEAD4', letterSpacing:'1.5px', textTransform:'uppercase' }}>// conv avec Saad GENIUS</div>
+            <button onClick={() => setShowMsgModal(false)} style={{ background:'none', border:'none', color:'#4A5568', cursor:'pointer', fontSize:'1rem', lineHeight:1, padding:4 }}>✕</button>
+          </div>
+          {/* Thread */}
+          <div style={{ flex:1, overflowY:'auto', padding:'14px 16px', display:'flex', flexDirection:'column', gap:8 }}>
+            {msgLoading && <div style={{ textAlign:'center', fontFamily:'DM Mono,monospace', fontSize:'0.68rem', color:'#4A5568', padding:'2rem 0' }}>chargement...</div>}
+            {!msgLoading && msgThread.length === 0 && (
+              <div style={{ textAlign:'center', fontFamily:'DM Mono,monospace', fontSize:'0.68rem', color:'#4A5568', padding:'2rem 0' }}>// aucun message — envoyez le premier !</div>
+            )}
+            {msgThread.map(m => (
+              <div key={m.id} style={{ display:'flex', justifyContent: m.is_from_admin ? 'flex-start' : 'flex-end' }}>
+                <div style={{
+                  maxWidth:'78%', padding:'8px 12px',
+                  borderRadius: m.is_from_admin ? '4px 12px 12px 12px' : '12px 4px 12px 12px',
+                  background: m.is_from_admin ? '#0C1222' : 'rgba(79,142,247,0.18)',
+                  border: `1px solid ${m.is_from_admin ? '#1C2A45' : 'rgba(79,142,247,0.35)'}`,
+                }}>
+                  {m.is_from_admin && <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'#5EEAD4', marginBottom:4 }}>Saad GENIUS</div>}
+                  <div style={{ fontSize:'0.84rem', color:'#E2E8F0', lineHeight:1.55, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{m.content}</div>
+                  <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'#4A5568', marginTop:4, textAlign: m.is_from_admin ? 'left' : 'right' }}>
+                    {new Date(m.created_at).toLocaleDateString('fr-MA', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+                  </div>
                 </div>
               </div>
-            </>
-          )}
+            ))}
+          </div>
+          {/* Input */}
+          <div style={{ padding:'10px 12px', borderTop:'1px solid #1C2A45', display:'flex', gap:8 }}>
+            <input
+              value={msgText}
+              onChange={e => setMsgText(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
+              placeholder="Votre message..."
+              maxLength={500}
+              style={{ flex:1, background:'#0C1222', border:'1px solid #1C2A45', borderRadius:8, padding:'9px 12px', color:'#E2E8F0', fontSize:'0.84rem', fontFamily:'Outfit,sans-serif', outline:'none' }}
+            />
+            <button onClick={sendMessage} disabled={!msgText.trim() || msgSending}
+              style={{ background: msgText.trim() ? 'linear-gradient(135deg,#4F8EF7,#3A6ED4)' : '#1C2A45', color: msgText.trim() ? '#fff' : '#4A5568', border:'none', borderRadius:8, padding:'9px 18px', fontSize:'0.82rem', fontWeight:600, cursor: msgText.trim() ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif', flexShrink:0 }}>
+              {msgSending ? '...' : 'Envoyer'}
+            </button>
+          </div>
         </div>
       </div>
     )}
