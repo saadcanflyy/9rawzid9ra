@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -68,6 +68,7 @@ const css = `
 
   /* Success */
   .success-icon { width:56px; height:56px; border-radius:14px; background:rgba(45,212,191,0.08); border:1px solid rgba(45,212,191,0.2); display:flex; align-items:center; justify-content:center; margin-bottom:1.5rem; font-family:'DM Mono',monospace; font-size:1.3rem; color:var(--teal2); }
+  @keyframes spin { to { transform:rotate(360deg); } }
 `
 
 export default function ForgotPassword() {
@@ -80,6 +81,8 @@ export default function ForgotPassword() {
   const [newPass, setNewPass] = useState('')
   const [confirmPass, setConfirmPass] = useState('')
   const [resendTimer, setResendTimer] = useState(0)
+  const isSendingRef = useRef(false)
+  const isResettingRef = useRef(false)
 
   useEffect(() => {
     if (resendTimer <= 0) return
@@ -90,35 +93,47 @@ export default function ForgotPassword() {
   // Step 1 — Send OTP to email
   const handleSendOtp = async (e) => {
     e.preventDefault(); setError('')
+    if (isSendingRef.current) return
     if (!email.trim()) return setError("L'adresse email est requise.")
+    isSendingRef.current = true
     setLoading(true)
-    const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim())
-    if (err) { setError(err.message); setLoading(false); return }
-    setStep(2); setResendTimer(60); setLoading(false)
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim())
+      if (err) { setError(err.message); return }
+      setStep(2); setResendTimer(60)
+    } catch {
+      setError("Erreur réseau. Vérifie ta connexion et réessaie.")
+    } finally {
+      isSendingRef.current = false
+      setLoading(false)
+    }
   }
 
   // Step 2 — Verify OTP + set new password
   const handleReset = async (e) => {
     e.preventDefault(); setError('')
+    if (isResettingRef.current) return
     const token = otp.join('')
     if (token.length < 6) return setError('Saisis les 6 chiffres du code.')
-    if (newPass.length < 6) return setError('Mot de passe: minimum 6 caractères.')
+    const pwdOk = newPass.length >= 8 && /[a-zA-Z]/.test(newPass) && /[0-9]/.test(newPass)
+    if (!pwdOk) return setError('Mot de passe: minimum 8 caractères, une lettre et un chiffre.')
     if (newPass !== confirmPass) return setError('Les mots de passe ne correspondent pas.')
+    isResettingRef.current = true
     setLoading(true)
-
-    // First verify OTP
-    const { error: otpErr } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token,
-      type: 'recovery',
-    })
-    if (otpErr) { setError('Code incorrect ou expiré.'); setLoading(false); return }
-
-    // Then update password
-    const { error: passErr } = await supabase.auth.updateUser({ password: newPass })
-    if (passErr) { setError(passErr.message); setLoading(false); return }
-
-    setStep(3); setLoading(false)
+    try {
+      const { error: otpErr } = await supabase.auth.verifyOtp({
+        email: email.trim(), token, type: 'recovery',
+      })
+      if (otpErr) { setError('Code incorrect ou expiré.'); return }
+      const { error: passErr } = await supabase.auth.updateUser({ password: newPass })
+      if (passErr) { setError(passErr.message); return }
+      setStep(3)
+    } catch {
+      setError("Erreur réseau. Vérifie ta connexion et réessaie.")
+    } finally {
+      isResettingRef.current = false
+      setLoading(false)
+    }
   }
 
   const handleOtpInput = (i, val) => {
@@ -181,7 +196,14 @@ export default function ForgotPassword() {
               <input className="input" type="email" placeholder="ton@email.com"
                 value={email} onChange={e => setEmail(e.target.value)} autoFocus/>
               <button type="submit" className="submit" disabled={loading}>
-                {loading ? 'Envoi du code...' : 'Envoyer le code'}
+                {loading ? (
+                  <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                    <svg style={{ animation:'spin 0.8s linear infinite', flexShrink:0 }} width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    </svg>
+                    Envoi du code...
+                  </span>
+                ) : 'Envoyer le code'}
               </button>
             </form>
             <button className="back-btn" onClick={() => navigate('/login')}>
@@ -231,11 +253,18 @@ export default function ForgotPassword() {
                 <input className="input" type="password" placeholder="••••••••"
                   value={confirmPass} onChange={e => setConfirmPass(e.target.value)}
                   style={{marginBottom:0}}/>
-                <div className="hint">Minimum 6 caractères</div>
+                <div className="hint">Minimum 8 caractères · une lettre + un chiffre</div>
               </div>
 
               <button type="submit" className="submit" disabled={loading} style={{marginTop:'1.25rem'}}>
-                {loading ? 'Réinitialisation...' : 'Réinitialiser le mot de passe'}
+                {loading ? (
+                  <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                    <svg style={{ animation:'spin 0.8s linear infinite', flexShrink:0 }} width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                      <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                    </svg>
+                    Réinitialisation...
+                  </span>
+                ) : 'Réinitialiser le mot de passe'}
               </button>
             </form>
             <button className="back-btn" onClick={() => { setStep(1); setError(''); setOtp(['','','','','','']); }}>

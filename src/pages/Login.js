@@ -61,6 +61,7 @@ const css = `
   .register-box p { font-size:0.82rem; color:var(--text2); margin-bottom:0.75rem; }
   .register-box button { width:100%; background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:9px; font-size:0.82rem; font-weight:500; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; }
   .register-box button:hover { border-color:var(--accent); color:var(--accent2); }
+  @keyframes spin { to { transform:rotate(360deg); } }
   @media(max-width:768px){ .page{grid-template-columns:1fr;} .left{display:none;} .right{padding:2rem 1.5rem;} }
 `
 
@@ -108,9 +109,10 @@ export default function Login() {
     isSubmittingRef.current = true
     setLoading(true)
     try {
-      const { data, error: err } = await supabase.auth.signInWithPassword({
-        email: email.trim(), password,
-      })
+      const { data, error: err } = await Promise.race([
+        supabase.auth.signInWithPassword({ email: email.trim(), password }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000)),
+      ])
       if (err) {
         setError('Email ou mot de passe incorrect.')
         return
@@ -131,8 +133,12 @@ export default function Login() {
       }
       const from = location.state?.from || '/'
       navigate(from, { replace: true })
-    } catch {
-      setError('Erreur de connexion. Réessaie.')
+    } catch (e) {
+      if (e?.message === 'TIMEOUT') {
+        setError('La connexion prend trop de temps. Vérifie ta connexion internet.')
+      } else {
+        setError('Erreur de connexion. Réessaie.')
+      }
     } finally {
       isSubmittingRef.current = false
       setLoading(false)
@@ -217,7 +223,14 @@ export default function Login() {
               </div>
             </div>
             <button type="submit" className="submit" disabled={loading}>
-              {loading ? 'Connexion...' : 'Se connecter'}
+              {loading ? (
+                <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  <svg style={{ animation:'spin 0.8s linear infinite', flexShrink:0 }} width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                  </svg>
+                  Connexion...
+                </span>
+              ) : 'Se connecter'}
             </button>
           </form>
           <div className="register-box">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -79,6 +79,7 @@ const css = `
   .otp-back { background:none; border:none; color:var(--text3); font-size:0.78rem; cursor:pointer; font-family:'DM Mono',monospace; padding:0; margin-top:1rem; display:block; width:100%; text-align:center; transition:color 0.15s; }
   .otp-back:hover { color:var(--text2); }
 
+  @keyframes spin { to { transform:rotate(360deg); } }
   @media(max-width:768px){ .page{grid-template-columns:1fr;} .left{display:none;} .right{padding:2rem 1.5rem;} }
   @media(max-width:480px){ .field-row{grid-template-columns:1fr;} .right{padding:1.5rem 1rem;} }
 `
@@ -96,6 +97,7 @@ export default function Register() {
   const [universities, setUniversities] = useState([])
   const [form, setForm] = useState({ name:'', email:'', password:'', confirm:'', university_id:'' })
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+  const isSubmittingRef = useRef(false)
 
   useEffect(() => {
     document.title = 'Créer un compte — 9rawZid9ra'
@@ -105,6 +107,7 @@ export default function Register() {
 
   const handleRegister = async (e) => {
     e.preventDefault()
+    if (isSubmittingRef.current) return
     setError('')
     setPwdError('')
     if (!form.name.trim())              return setError('Le nom est requis.')
@@ -113,20 +116,36 @@ export default function Register() {
     if (!pwdOk) return setPwdError('Le mot de passe doit contenir au moins une lettre et un chiffre')
     if (form.password !== form.confirm) return setError('Les mots de passe ne correspondent pas.')
 
+    isSubmittingRef.current = true
     setLoading(true)
-    const { data, error: err } = await supabase.auth.signUp({
-      email: form.email.trim(),
-      password: form.password,
-      options: { data: { name: form.name.trim(), university_id: form.university_id || null } },
-    })
-    setLoading(false)
-    if (err) { setError(err.message); return }
-
-    if (data?.user && !data?.session) {
-      setStep('otp')
-    } else {
-      setSuccess(true)
-      setTimeout(() => navigate('/'), 1800)
+    try {
+      const { data, error: err } = await supabase.auth.signUp({
+        email: form.email.trim(),
+        password: form.password,
+        options: { data: { name: form.name.trim(), university_id: form.university_id || null } },
+      })
+      if (err) {
+        const msg = err.message.toLowerCase()
+        if (msg.includes('already') || msg.includes('registered') || msg.includes('exists')) {
+          setError('Un compte avec cet email existe déjà.')
+        } else if (msg.includes('rate limit') || msg.includes('too many')) {
+          setError('Trop de tentatives. Réessaie dans quelques minutes.')
+        } else {
+          setError("Erreur lors de la création du compte. Réessaie.")
+        }
+        return
+      }
+      if (data?.user && !data?.session) {
+        setStep('otp')
+      } else {
+        setSuccess(true)
+        setTimeout(() => navigate('/'), 1800)
+      }
+    } catch {
+      setError("Erreur réseau. Vérifie ta connexion et réessaie.")
+    } finally {
+      isSubmittingRef.current = false
+      setLoading(false)
     }
   }
 
@@ -265,7 +284,14 @@ export default function Register() {
                   : <div className="hint">Minimum 8 caractères, une lettre et un chiffre</div>
                 }
                 <button type="submit" className="submit" disabled={loading}>
-                  {loading ? 'Création du compte...' : 'Créer mon compte'}
+                  {loading ? (
+                    <span style={{ display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                      <svg style={{ animation:'spin 0.8s linear infinite', flexShrink:0 }} width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                      </svg>
+                      Création du compte...
+                    </span>
+                  ) : 'Créer mon compte'}
                 </button>
               </form>
             </>
