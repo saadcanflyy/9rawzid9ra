@@ -31,12 +31,14 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    // Validate cached session with server (runs once)
+    // Validate cached session — only UPDATE user, never clear it here.
+    // Clearing is handled exclusively by onAuthStateChange(SIGNED_OUT) below.
     supabase.auth.getSession().then(({ data: { session } }) => {
-      const u = session?.user || null
-      setUser(u)
-      userRef.current = u
-      if (u) loadProfile(u.id)
+      if (session?.user) {
+        setUser(session.user)
+        userRef.current = session.user
+        loadProfile(session.user.id)
+      }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {

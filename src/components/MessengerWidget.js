@@ -55,12 +55,11 @@ export default function MessengerWidget() {
       if (session?.user) init(session.user)
       else setProfileLoaded(true)
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) init(session.user)
-      else {
+      else if (event === 'SIGNED_OUT') {
         setUser(null); setProfile(null); setProfileLoaded(false)
         setThread([]); setUnread(0); setIsOpen(false)
-        // small delay so the guard re-evaluates after state settles
         setTimeout(() => setProfileLoaded(true), 50)
       }
     })

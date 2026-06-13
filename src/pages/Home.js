@@ -206,12 +206,11 @@ export default function Home() {
       .then(({ count }) => { if (count) setDocCount(count) })
       .catch(() => {})
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) loadFollowingState(session.user.id)
+      if (session?.user) { setUser(session.user); loadFollowingState(session.user.id) }
     })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) loadFollowingState(session.user.id)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) { setUser(session.user); loadFollowingState(session.user.id) }
+      else if (event === 'SIGNED_OUT') setUser(null)
     })
     return () => subscription.unsubscribe()
   }, [])
