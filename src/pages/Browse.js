@@ -180,7 +180,7 @@ export default function Browse() {
     try {
       let q = supabase
         .from('modules')
-        .select('*, filieres(name, faculties(name, universities(name))), documents(id)')
+        .select('*, filieres(name, faculties(name, universities(name)))')
         .order('semester')
         .order('name')
         .limit(300)
@@ -367,7 +367,7 @@ export default function Browse() {
                     {m.filieres?.name} · {m.filieres?.faculties?.name}
                   </div>
                   <div className="mod-footer">
-                    <span className="mod-docs"><b>{m.documents?.length || 0}</b> docs</span>
+                    <span className="mod-docs">{m.filieres?.faculties?.universities?.name || ''}</span>
                     <span className="mod-arr">→</span>
                   </div>
                 </div>

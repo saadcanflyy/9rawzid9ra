@@ -413,7 +413,8 @@ export default function SenpaiZone() {
   // ── LOAD ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     document.title = 'Senpai Zone — 9rawZid9ra'
-    supabase.auth.getUser().then(async ({ data: { user: u } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const u = session?.user || null
       setUser(u)
       if (u) {
         const [{ data: prof }, { data: fols }] = await Promise.all([
@@ -441,15 +442,20 @@ export default function SenpaiZone() {
 
   const loadPosts = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('senpai_posts')
-      .select('*, user_profiles(name, is_fondateur, universities(name)), senpai_votes(user_id), modules(id, name)')
-      .is('parent_id', null)
-      .eq('is_approved', true)
-      .order('created_at', { ascending: false })
-      .limit(100)
-    setPosts(data || [])
-    setLoading(false)
+    try {
+      const { data, error } = await supabase
+        .from('senpai_posts')
+        .select('*, user_profiles(name, is_fondateur), senpai_votes(user_id), modules(id, name)')
+        .is('parent_id', null)
+        .eq('is_approved', true)
+        .order('created_at', { ascending: false })
+        .limit(100)
+      if (!error) setPosts(data || [])
+    } catch (e) {
+      console.error('loadPosts error:', e)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   // module search for compose
