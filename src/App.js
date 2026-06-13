@@ -1,5 +1,5 @@
 // src/App.js
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import { supabase } from './supabase'
 import Home from './pages/Home'
@@ -75,16 +75,23 @@ function BanScreen({ banInfo }) {
 
 function App() {
   const [bannedUser, setBannedUser] = useState(null)
+  const banSignOutRef = useRef(false)
 
   useEffect(() => {
     const checkBan = async (session) => {
-      if (!session?.user) { setBannedUser(null); return }
+      if (!session?.user) {
+        // This SIGNED_OUT was triggered by our own ban sign-out — don't clear the screen
+        if (banSignOutRef.current) { banSignOutRef.current = false; return }
+        setBannedUser(null)
+        return
+      }
       const { data } = await supabase.from('user_profiles')
         .select('is_banned, banned_until, ban_reason').eq('id', session.user.id).single()
       if (data?.is_banned) {
         const isPerm = !data.banned_until
         const isFuture = data.banned_until && new Date(data.banned_until) > new Date()
         if (isPerm || isFuture) {
+          banSignOutRef.current = true
           setBannedUser(data)
           await supabase.auth.signOut()
           return
