@@ -279,10 +279,10 @@ export default function Navbar({ activePage = '' }) {
         const sender = sep > 0 ? n.content.slice(0, sep).trim() : (n.content || 'Message')
         if (msgMap.has(sender)) {
           const idx = msgMap.get(sender)
-          result[idx] = { ...result[idx], groupCount: result[idx].groupCount + 1, groupUnread: result[idx].groupUnread || !n.read, groupIds: [...result[idx].groupIds, n.id] }
+          result[idx] = { ...result[idx], groupCount: result[idx].groupCount + (!n.read ? 1 : 0), groupUnread: result[idx].groupUnread || !n.read, groupIds: [...result[idx].groupIds, n.id] }
         } else {
           msgMap.set(sender, result.length)
-          result.push({ ...n, groupCount: 1, groupSender: sender, groupUnread: !n.read, groupIds: [n.id] })
+          result.push({ ...n, groupCount: !n.read ? 1 : 0, groupSender: sender, groupUnread: !n.read, groupIds: [n.id] })
         }
       } else {
         result.push(n)
@@ -391,8 +391,8 @@ export default function Navbar({ activePage = '' }) {
                       if (isGroupedMsg) {
                         const count = n.groupCount
                         const sender = n.groupSender
-                        textNode = count > 1
-                          ? <><b>{sender}</b> · <span style={{background:'rgba(79,142,247,0.15)',color:'var(--accent2)',borderRadius:4,padding:'1px 6px',fontSize:'0.72rem',fontWeight:700}}>{count} messages</span></>
+                        textNode = count > 0
+                          ? <><b>{sender}</b> · <span style={{background:'rgba(79,142,247,0.15)',color:'var(--accent2)',borderRadius:4,padding:'1px 6px',fontSize:'0.72rem',fontWeight:700}}>{count} nouveau{count > 1 ? 'x' : ''} message{count > 1 ? 's' : ''}</span></>
                           : <><b>{sender}</b>: {(n.content || '').split(' : ').slice(1).join(' : ') || 'message'}</>
                       } else {
                         textNode = renderText ? renderText(actorName) : (n.content || actorName)
