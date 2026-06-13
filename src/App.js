@@ -1,5 +1,5 @@
 // src/App.js
-import { useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import { supabase } from './supabase'
 import Home from './pages/Home'
@@ -58,12 +58,45 @@ function NotFound() {
   )
 }
 
+function BanScreen({ banInfo }) {
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-MA', { day:'2-digit', month:'long', year:'numeric' }) : 'Permanent'
+  return (
+    <div style={{ minHeight:'100vh', background:'#02040A', display:'flex', alignItems:'center', justifyContent:'center', padding:'2rem', fontFamily:'Outfit,sans-serif' }}>
+      <div style={{ maxWidth:440, textAlign:'center' }}>
+        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568', letterSpacing:'2px', marginBottom:'1rem' }}>// compte suspendu</div>
+        <div style={{ fontSize:'1.5rem', fontWeight:700, color:'#fff', marginBottom:'0.5rem' }}>Ton compte a été suspendu.</div>
+        {banInfo.ban_reason && <div style={{ fontSize:'0.88rem', color:'#94A3B8', marginBottom:'0.5rem' }}>Raison : <span style={{color:'#E2E8F0'}}>{banInfo.ban_reason}</span></div>}
+        <div style={{ fontSize:'0.85rem', color:'#94A3B8', marginBottom:'1.5rem' }}>Jusqu'au : <span style={{color:'#F87171'}}>{fmtDate(banInfo.banned_until)}</span></div>
+        <div style={{ fontSize:'0.78rem', color:'#4A5568', fontFamily:'DM Mono,monospace' }}>Contact : saadga2003@gmail.com</div>
+      </div>
+    </div>
+  )
+}
+
 function App() {
+  const [bannedUser, setBannedUser] = useState(null)
+
   useEffect(() => {
-    // Restore session from localStorage on cold mount and start token refresh cycle
-    supabase.auth.getSession()
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {})
-    // Re-check session whenever the user switches back to this tab
+    const checkBan = async (session) => {
+      if (!session?.user) { setBannedUser(null); return }
+      const { data } = await supabase.from('user_profiles')
+        .select('is_banned, banned_until, ban_reason').eq('id', session.user.id).single()
+      if (data?.is_banned) {
+        const isPerm = !data.banned_until
+        const isFuture = data.banned_until && new Date(data.banned_until) > new Date()
+        if (isPerm || isFuture) {
+          setBannedUser(data)
+          await supabase.auth.signOut()
+          return
+        }
+      }
+      setBannedUser(null)
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => checkBan(session))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      checkBan(session)
+    })
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') supabase.auth.getSession()
     }
@@ -73,6 +106,8 @@ function App() {
       document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [])
+
+  if (bannedUser) return <BanScreen banInfo={bannedUser} />
 
   return (
     <BrowserRouter>

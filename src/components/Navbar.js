@@ -312,7 +312,7 @@ export default function Navbar({ activePage = '' }) {
 
               {/* Bell */}
               <div className="nb-bell-wrap" ref={notifRef}>
-                <button className="nb-bell" onClick={() => { setShowNotifs(v => !v); if (!showNotifs) markAllRead() }}>
+                <button className="nb-bell" onClick={() => setShowNotifs(v => !v)}>
                   <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                     <path d="M13.73 21a2 2 0 01-3.46 0"/>
@@ -334,17 +334,35 @@ export default function Navbar({ activePage = '' }) {
                     ) : notifs.map(n => {
                       const actorName = n.actor?.name || 'Quelqu\'un'
                       const renderText = NOTIF_TEXT[n.type]
-                      const handleClick = () => {
+                      const handleClick = async () => {
                         setShowNotifs(false)
-                        if (n.type === 'follow') navigate(`/user/${n.actor_id}`)
-                        else if (n.type === 'doc_request') navigate('/browse')
-                        else if (n.post_id) navigate(`/senpai?post=${n.post_id}`)
+                        if (!n.read) {
+                          await supabase.from('notifications').update({ read: true }).eq('id', n.id)
+                          setNotifs(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x))
+                        }
+                        const rid = n.related_id
+                        if (n.type === 'follow') navigate(`/user/${rid || n.actor_id}`)
+                        else if (n.type === 'reply') {
+                          if (rid) localStorage.setItem('senpai_highlight_post', String(rid))
+                          navigate('/senpai')
+                        } else if (['helpful','reaction','comment','download','request_fulfilled'].includes(n.type)) {
+                          navigate(`/module/${rid}`)
+                        } else if (n.type === 'doc_request') {
+                          navigate('/browse')
+                        } else if (n.type === 'announcement') {
+                          navigate('/')
+                        } else if (n.post_id) {
+                          localStorage.setItem('senpai_highlight_post', String(n.post_id))
+                          navigate('/senpai')
+                        } else {
+                          navigate('/profile')
+                        }
                       }
                       return (
-                        <div key={n.id} className={`nb-notif-item ${n.read ? '' : 'unread'}`} onClick={handleClick}>
+                        <div key={n.id} className={`nb-notif-item ${n.read ? '' : 'unread'}`} onClick={handleClick} style={{ cursor:'pointer' }}>
                           <div className="nb-notif-dot" style={{ background: n.read ? 'transparent' : '#4F8EF7', border: n.read ? '1px solid #1C2A45' : 'none' }} />
                           <div className="nb-notif-body">
-                            <div className="nb-notif-text">{renderText ? renderText(actorName) : actorName}</div>
+                            <div className="nb-notif-text">{renderText ? renderText(actorName) : (n.content || actorName)}</div>
                             {n.post_title && <div className="nb-notif-sub">"{n.post_title}"</div>}
                             <div className="nb-notif-meta">{fmtAgo(n.created_at)}</div>
                           </div>

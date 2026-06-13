@@ -134,6 +134,19 @@ const css = `
   .footer-bar-link:hover { color:var(--accent2); }
   .footer-dev { font-size:0.7rem; color:var(--text3); font-family:'DM Mono',monospace; }
 
+  .suggest-wrap { max-width:960px; margin:0 auto; padding:0 2rem 2rem; }
+  .suggest-card { background:var(--surface); border:1px solid rgba(79,142,247,0.2); border-radius:14px; padding:1.1rem 1.4rem; display:flex; align-items:center; gap:1rem; position:relative; }
+  .suggest-card::before { content:''; position:absolute; inset:0; border-radius:14px; background:linear-gradient(135deg,rgba(79,142,247,0.04),rgba(45,212,191,0.02)); pointer-events:none; }
+  .suggest-av { width:42px; height:42px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--teal)); display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:1rem; font-weight:700; color:#fff; flex-shrink:0; }
+  .suggest-info { flex:1; min-width:0; }
+  .suggest-tag { font-family:'DM Mono',monospace; font-size:0.58rem; color:var(--accent2); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:2px; }
+  .suggest-name { font-size:0.88rem; font-weight:700; color:var(--white); }
+  .suggest-bio { font-size:0.75rem; color:var(--text2); }
+  .suggest-follow-btn { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:7px 18px; font-size:0.78rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; flex-shrink:0; }
+  .suggest-follow-btn.done { background:rgba(74,222,128,0.1); color:var(--green); border:1px solid rgba(74,222,128,0.22); cursor:default; }
+  .suggest-dismiss { position:absolute; top:8px; right:10px; background:none; border:none; color:var(--text3); cursor:pointer; font-size:0.85rem; line-height:1; padding:2px; transition:color 0.15s; }
+  .suggest-dismiss:hover { color:var(--text); }
+
   @media(max-width:768px) {
     .hero { padding:2.5rem 1.25rem 3.5rem; min-height:auto; }
     .hero-inner h1 { font-size:2.1rem; }
@@ -173,11 +186,18 @@ const STEPS = [
   { n:'04', title:'Contribue & progresse', desc:'Upload tes propres annales, gagne des points et aide les étudiants de ta promo.' },
 ]
 
+const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
+
 export default function Home() {
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [docCount, setDocCount] = useState(0)
   const [user, setUser] = useState(null)
+  const [followingCount, setFollowingCount] = useState(null)
+  const [suggestFollowing, setSuggestFollowing] = useState(false)
+  const [suggestDismissed, setSuggestDismissed] = useState(() =>
+    localStorage.getItem('suggest_admin_dismissed') === 'true'
+  )
 
   useEffect(() => {
     document.title = '9rawZid9ra — Annales & examens pour étudiants marocains'
@@ -185,10 +205,36 @@ export default function Home() {
       .eq('is_verified', true)
       .then(({ count }) => { if (count) setDocCount(count) })
       .catch(() => {})
-    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null))
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => setUser(session?.user ?? null))
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+      if (session?.user) loadFollowingState(session.user.id)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null)
+      if (session?.user) loadFollowingState(session.user.id)
+    })
     return () => subscription.unsubscribe()
   }, [])
+
+  const loadFollowingState = async (uid) => {
+    const { count } = await supabase.from('user_follows').select('*', { count:'exact', head:true }).eq('follower_id', uid)
+    setFollowingCount(count || 0)
+    const { data: alreadyF } = await supabase.from('user_follows').select('id').eq('follower_id', uid).eq('following_id', ADMIN_ID).maybeSingle()
+    setSuggestFollowing(!!alreadyF)
+  }
+
+  const handleSuggestFollow = async () => {
+    if (!user || suggestFollowing) return
+    await supabase.from('user_follows').insert({ follower_id: user.id, following_id: ADMIN_ID })
+    setSuggestFollowing(true)
+  }
+
+  const dismissSuggest = () => {
+    setSuggestDismissed(true)
+    localStorage.setItem('suggest_admin_dismissed', 'true')
+  }
+
+  const showSuggest = user && followingCount === 0 && !suggestDismissed
 
   const onSearch = (e) => {
     e.preventDefault()
@@ -259,6 +305,28 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* SUGGEST ADMIN FOLLOW */}
+      {showSuggest && (
+        <div className="suggest-wrap">
+          <div className="suggest-card">
+            <button className="suggest-dismiss" onClick={dismissSuggest} title="Masquer">✕</button>
+            <div className="suggest-av">S</div>
+            <div className="suggest-info">
+              <div className="suggest-tag">// suggestion</div>
+              <div className="suggest-name">Saad GENIUS</div>
+              <div className="suggest-bio">Créateur de 9rawZid9ra 🇲🇦 — Suis-moi pour rester informé des nouveautés</div>
+            </div>
+            <button
+              className={`suggest-follow-btn ${suggestFollowing ? 'done' : ''}`}
+              onClick={handleSuggestFollow}
+              disabled={suggestFollowing}
+            >
+              {suggestFollowing ? 'Abonné ✓' : 'Suivre'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* SCHOOLS */}
       <section className="section">

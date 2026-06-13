@@ -214,6 +214,24 @@ export default function Admin() {
   const [moveSelId,     setMoveSelId]     = useState(null)
   const [moveBusy,      setMoveBusy]      = useState(false)
 
+  // Messages tab
+  const [messages,      setMessages]      = useState([])
+  const [unreadMsgCount,setUnreadMsgCount]= useState(0)
+
+  // Analytics tab
+  const [analytics,     setAnalytics]     = useState(null)
+
+  // Announcement
+  const [annText,       setAnnText]       = useState('')
+  const [annSending,    setAnnSending]    = useState(false)
+  const [annResult,     setAnnResult]     = useState(null)
+
+  // Ban inline form
+  const [banningId,     setBanningId]     = useState(null)
+  const [banDuration,   setBanDuration]   = useState('7d')
+  const [banReason,     setBanReason]     = useState('')
+  const [banBusy,       setBanBusy]       = useState(false)
+
   // Rename state
   const [renamingId,  setRenamingId]  = useState(null)
   const [renameVal,   setRenameVal]   = useState('')
@@ -241,6 +259,8 @@ export default function Admin() {
     if (activeTab === 'filieres') loadFilieres()
     if (activeTab === 'users') loadUsers()
     if (activeTab === 'senpai') loadSenpai()
+    if (activeTab === 'messages') loadMessages()
+    if (activeTab === 'analytics') loadAnalytics()
   }, [activeTab, isAdmin]) // eslint-disable-line
 
   // Reload docs when filter changes
@@ -479,6 +499,98 @@ export default function Admin() {
     setUsers(u => u.map(x => x.id === id ? { ...x, is_moderator: !currentMod } : x))
   }
 
+  const loadMessages = async () => {
+    setLoading(true)
+    const { data } = await supabase.from('messages')
+      .select('*, user_profiles!sender_id(name)')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    setMessages(data || [])
+    const unread = (data || []).filter(m => !m.read).length
+    setUnreadMsgCount(unread)
+    setLoading(false)
+  }
+
+  const markMsgRead = async (id) => {
+    await supabase.from('messages').update({ read: true }).eq('id', id)
+    setMessages(m => m.map(x => x.id === id ? { ...x, read: true } : x))
+    setUnreadMsgCount(c => Math.max(0, c - 1))
+  }
+
+  const loadAnalytics = async () => {
+    setLoading(true)
+    const [usersDay, docsDay, topMods, topUnis, totalDocs, totalUsers, flaggedContent, storage] = await Promise.all([
+      supabase.rpc('get_users_per_day').catch(() => ({ data: null })),
+      supabase.rpc('get_docs_per_day').catch(() => ({ data: null })),
+      supabase.from('documents')
+        .select('module_id, downloads, modules!inner(name)')
+        .order('downloads', { ascending: false })
+        .limit(200),
+      supabase.rpc('get_top_unis_by_docs').catch(() => ({ data: null })),
+      supabase.from('documents').select('*', { count:'exact', head:true }),
+      supabase.from('user_profiles').select('*', { count:'exact', head:true }),
+      supabase.from('documents').select('*', { count:'exact', head:true }).eq('is_flagged', true),
+      Promise.resolve({ data: null }),
+    ])
+
+    // Aggregate top modules from documents
+    const modMap = {}
+    ;(docsDay.data ? [] : (topMods.data || [])).forEach(d => {
+      const name = d.modules?.name
+      if (!name) return
+      modMap[name] = (modMap[name] || 0) + (d.downloads || 0)
+    })
+    const topModsList = Object.entries(modMap)
+      .sort((a, b) => b[1] - a[1]).slice(0, 10)
+      .map(([name, total]) => ({ name, total }))
+
+    setAnalytics({
+      usersPerDay: usersDay.data || [],
+      docsPerDay: docsDay.data || [],
+      topModules: topModsList,
+      topUnis: topUnis.data || [],
+      totalDocs: totalDocs.count || 0,
+      totalUsers: totalUsers.count || 0,
+      flaggedDocs: flaggedContent.count || 0,
+    })
+    setLoading(false)
+  }
+
+  const sendAnnouncement = async () => {
+    if (!annText.trim() || annSending) return
+    setAnnSending(true)
+    const { data: allUsers } = await supabase.from('user_profiles').select('id').neq('id', user.id)
+    if (allUsers && allUsers.length > 0) {
+      const inserts = allUsers.map(u => ({ user_id: u.id, type: 'announcement', content: annText.trim(), read: false }))
+      await supabase.from('notifications').insert(inserts)
+    }
+    setAnnResult(`Annonce envoyée à ${allUsers?.length || 0} utilisateurs ✓`)
+    setAnnText('')
+    setAnnSending(false)
+    setTimeout(() => setAnnResult(null), 5000)
+  }
+
+  const confirmBan = async (u) => {
+    setBanBusy(true)
+    const durations = { '24h': 1, '7d': 7, '30d': 30, 'perm': null }
+    const days = durations[banDuration]
+    const bannedUntil = days ? new Date(Date.now() + days * 86400000).toISOString() : null
+    await supabase.from('user_profiles').update({
+      is_banned: true,
+      banned_until: bannedUntil,
+      ban_reason: banReason.trim() || null,
+    }).eq('id', u.id)
+    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_banned: true, banned_until: bannedUntil, ban_reason: banReason.trim() || null } : x))
+    setBanningId(null)
+    setBanReason('')
+    setBanBusy(false)
+  }
+
+  const unbanUser = async (id) => {
+    await supabase.from('user_profiles').update({ is_banned: false, banned_until: null, ban_reason: null }).eq('id', id)
+    setUsers(prev => prev.map(x => x.id === id ? { ...x, is_banned: false, banned_until: null, ban_reason: null } : x))
+  }
+
   const fmt = (d) => new Date(d).toLocaleDateString('fr-MA', { day:'2-digit', month:'short', year:'2-digit' })
 
   if (authLoading) return <div className="page"><style>{css}</style><div style={{padding:'4rem',textAlign:'center',fontFamily:'DM Mono',fontSize:'0.75rem',color:'var(--text3)'}}>Chargement...</div></div>
@@ -497,13 +609,15 @@ export default function Admin() {
   )
 
   const TABS = [
-    { k:'overview',  label:'Vue d\'ensemble', icon:'~>' },
-    { k:'documents', label:'Documents',        icon:'[]', count: stats?.pendingDocs },
-    { k:'modules',   label:'Modules',          icon:'#',  count: stats?.pendingMods },
-    { k:'schools',   label:'Écoles',           icon:'@',  count: stats?.pendingSchools },
-    { k:'filieres',  label:'Filières',         icon:'≡',  count: stats?.pendingFilieres },
-    { k:'users',     label:'Utilisateurs',     icon:'::' },
-    { k:'senpai',    label:'Senpai Zone',      icon:'🧠', count: stats?.flaggedPosts },
+    { k:'overview',   label:'Vue d\'ensemble', icon:'~>' },
+    { k:'documents',  label:'Documents',        icon:'[]', count: stats?.pendingDocs },
+    { k:'modules',    label:'Modules',          icon:'#',  count: stats?.pendingMods },
+    { k:'schools',    label:'Écoles',           icon:'@',  count: stats?.pendingSchools },
+    { k:'filieres',   label:'Filières',         icon:'≡',  count: stats?.pendingFilieres },
+    { k:'users',      label:'Utilisateurs',     icon:'::' },
+    { k:'senpai',     label:'Senpai Zone',      icon:'🧠', count: stats?.flaggedPosts },
+    { k:'messages',   label:'Messages',         icon:'✉',  count: unreadMsgCount },
+    { k:'analytics',  label:'Analytiques',      icon:'📊' },
   ]
 
   return (
@@ -542,6 +656,29 @@ export default function Admin() {
           {/* OVERVIEW */}
           {activeTab === 'overview' && (
             <>
+              {/* ANNOUNCEMENT */}
+              <div className="section-title">// envoyer une annonce</div>
+              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1.1rem 1.25rem', marginBottom:'1.75rem' }}>
+                <textarea
+                  style={{ width:'100%', background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 14px', color:'var(--text)', fontSize:'0.85rem', fontFamily:'Outfit,sans-serif', outline:'none', resize:'vertical', minHeight:70, marginBottom:8 }}
+                  placeholder="Message de l'annonce... (max 200 caractères)"
+                  maxLength={200}
+                  value={annText}
+                  onChange={e => setAnnText(e.target.value)}
+                />
+                <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+                  <button
+                    onClick={sendAnnouncement}
+                    disabled={!annText.trim() || annSending}
+                    style={{ background: annText.trim() ? 'rgba(79,142,247,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${annText.trim() ? 'rgba(79,142,247,0.3)' : 'var(--border)'}`, color: annText.trim() ? 'var(--accent2)' : 'var(--text3)', borderRadius:7, padding:'7px 16px', fontSize:'0.78rem', fontWeight:600, cursor: annText.trim() ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif' }}
+                  >
+                    {annSending ? 'Envoi...' : '📢 Envoyer à tous les utilisateurs'}
+                  </button>
+                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'var(--text3)' }}>{annText.length} / 200</span>
+                  {annResult && <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.68rem', color:'var(--teal2)' }}>{annResult}</span>}
+                </div>
+              </div>
+
               {/* MONTHLY REPORT */}
               <div className="section-title">// rapport — {new Date().toLocaleDateString('fr-MA',{month:'long',year:'numeric'})}</div>
               <div className="report-grid">
@@ -897,12 +1034,36 @@ export default function Admin() {
                                   {u.is_moderator ? 'Retirer MOD' : '+ MOD'}
                                 </button>
                               )}
-                              {!u.is_admin && (
-                                <button className={`act-btn ${u.is_banned ? 'act-approve' : 'act-ban'}`} onClick={() => banUser(u.id, u.is_banned)}>
-                                  {u.is_banned ? 'Débannir' : 'Bannir'}
-                                </button>
+                              {!u.is_admin && u.is_banned && (
+                                <button className="act-btn act-approve" onClick={() => unbanUser(u.id)}>Débannir</button>
+                              )}
+                              {!u.is_admin && !u.is_banned && (
+                                <button className="act-btn act-ban" onClick={() => setBanningId(banningId === u.id ? null : u.id)}>Bannir</button>
                               )}
                             </div>
+                            {banningId === u.id && (
+                              <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(248,113,113,0.04)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:8 }}>
+                                <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--red)', marginBottom:8 }}>// durée du bannissement</div>
+                                <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:8 }}>
+                                  {[{k:'24h',l:'24 heures'},{k:'7d',l:'7 jours'},{k:'30d',l:'30 jours'},{k:'perm',l:'Permanent'}].map(opt => (
+                                    <button key={opt.k} onClick={() => setBanDuration(opt.k)}
+                                      style={{ padding:'4px 10px', borderRadius:5, fontSize:'0.72rem', cursor:'pointer', background: banDuration===opt.k ? 'rgba(248,113,113,0.2)' : 'rgba(255,255,255,0.03)', border:`1px solid ${banDuration===opt.k ? 'rgba(248,113,113,0.5)' : 'var(--border)'}`, color: banDuration===opt.k ? 'var(--red)' : 'var(--text3)', fontFamily:'DM Mono,monospace' }}>
+                                      {opt.l}
+                                    </button>
+                                  ))}
+                                </div>
+                                <input
+                                  style={{ width:'100%', background:'var(--s2)', border:'1px solid var(--border)', borderRadius:6, padding:'6px 10px', color:'var(--text)', fontSize:'0.78rem', fontFamily:'Outfit,sans-serif', outline:'none', marginBottom:8 }}
+                                  placeholder="Raison (optionnel)..."
+                                  value={banReason}
+                                  onChange={e => setBanReason(e.target.value)}
+                                />
+                                <button onClick={() => confirmBan(u)} disabled={banBusy}
+                                  style={{ background:'rgba(248,113,113,0.12)', border:'1px solid rgba(248,113,113,0.3)', color:'var(--red)', borderRadius:6, padding:'5px 14px', fontSize:'0.76rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif' }}>
+                                  {banBusy ? 'Bannissement...' : 'Confirmer le bannissement'}
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1004,6 +1165,74 @@ export default function Admin() {
                   </table>
                 </div>
               )}
+            </>
+          )}
+
+          {/* MESSAGES */}
+          {activeTab === 'messages' && (
+            <>
+              <div className="section-title">// messages des utilisateurs</div>
+              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel"/>) :
+               messages.length === 0 ? <div className="empty">// aucun message</div> : (
+                <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                  {messages.map(m => (
+                    <div key={m.id}
+                      onClick={() => !m.read && markMsgRead(m.id)}
+                      style={{ background: m.read ? 'var(--surface)' : 'rgba(79,142,247,0.05)', border:`1px solid ${m.read ? 'var(--border)' : 'rgba(79,142,247,0.25)'}`, borderRadius:10, padding:'0.85rem 1.1rem', cursor: m.read ? 'default' : 'pointer', transition:'all 0.15s' }}>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:6 }}>
+                        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                          {!m.read && <span style={{ width:7, height:7, borderRadius:'50%', background:'var(--accent)', display:'inline-block', flexShrink:0 }} />}
+                          <span style={{ fontSize:'0.82rem', fontWeight:600, color:'var(--text)' }}>{m.user_profiles?.name || 'Anonyme'}</span>
+                        </div>
+                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'var(--text3)' }}>{fmt(m.created_at)}</span>
+                      </div>
+                      <div style={{ fontSize:'0.85rem', color:'var(--text2)', lineHeight:1.6, whiteSpace:'pre-wrap' }}>{m.content}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ANALYTICS */}
+          {activeTab === 'analytics' && (
+            <>
+              <div className="section-title">// analytiques plateforme</div>
+              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel" style={{height:80}}/>) : analytics && (
+                <>
+                  {/* HEALTH */}
+                  <div className="section-title" style={{marginTop:0}}>// santé plateforme</div>
+                  <div className="stats-grid" style={{marginBottom:'2rem'}}>
+                    <div className="stat-card"><div className="stat-val blue">{analytics.totalDocs}</div><div className="stat-label">Documents total</div></div>
+                    <div className="stat-card"><div className="stat-val blue">{analytics.totalUsers}</div><div className="stat-label">Utilisateurs</div></div>
+                    <div className="stat-card"><div className={`stat-val ${analytics.flaggedDocs > 0 ? 'red' : 'green'}`}>{analytics.flaggedDocs}</div><div className="stat-label">Docs signalés</div></div>
+                  </div>
+
+                  {/* TOP MODULES */}
+                  <div className="section-title">// top 10 modules les plus téléchargés</div>
+                  <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1.1rem 1.25rem', marginBottom:'2rem' }}>
+                    {analytics.topModules.length === 0
+                      ? <div className="empty" style={{padding:'1rem 0'}}>// pas encore de données</div>
+                      : analytics.topModules.map((m, i) => (
+                        <div key={i} style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color: i===0?'#F59E0B':i===1?'#94A3B8':i===2?'#CD7F32':'var(--text3)', width:24, textAlign:'right', flexShrink:0 }}>
+                            {i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`}
+                          </span>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:3 }}>
+                              <span style={{ fontSize:'0.8rem', fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.name}</span>
+                              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.68rem', color:'var(--accent2)', flexShrink:0, marginLeft:8 }}>{m.total} DL</span>
+                            </div>
+                            <div style={{ height:5, background:'var(--border)', borderRadius:3, overflow:'hidden' }}>
+                              <div style={{ height:'100%', background:`linear-gradient(90deg,var(--accent),var(--teal))`, width:`${Math.round((m.total / (analytics.topModules[0]?.total || 1)) * 100)}%`, borderRadius:3, transition:'width 0.4s' }} />
+                            </div>
+                          </div>
+                        </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              {!analytics && !loading && <div className="empty">// données non disponibles</div>}
             </>
           )}
 
