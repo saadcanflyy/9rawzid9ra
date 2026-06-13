@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
+import { useAuth } from '../context/AuthContext'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
@@ -360,7 +361,7 @@ export default function ModulePage() {
   const [loading,      setLoading]      = useState(true)
   const [activeTab,    setActiveTab]    = useState('all')
   const [senpaiPosts,  setSenpaiPosts]  = useState([])
-  const [user,         setUser]         = useState(null)
+  const { user } = useAuth()
   const [userReactions,setUserReactions]= useState({})
   const [isBookmarked, setIsBookmarked] = useState(false)
   const docsRef = useRef([])
@@ -372,10 +373,6 @@ export default function ModulePage() {
     async function load() {
       setLoading(true)
       try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const u = session?.user || null
-      setUser(u)
-
       // Load module with full path
       const { data: m } = await supabase
         .from('modules')
@@ -396,16 +393,16 @@ export default function ModulePage() {
       docsRef.current = d || []
 
       // Bookmark status
-      if (u && m) {
+      if (user && m) {
         const { data: bm } = await supabase.from('module_bookmarks')
-          .select('id').eq('user_id', u.id).eq('module_id', parseInt(id)).maybeSingle()
+          .select('id').eq('user_id', user.id).eq('module_id', parseInt(id)).maybeSingle()
         setIsBookmarked(!!bm)
       }
 
       // User reactions for documents
-      if (u && (d || []).length > 0) {
+      if (user && (d || []).length > 0) {
         const { data: rxns } = await supabase.from('document_reactions')
-          .select('*').eq('user_id', u.id).in('document_id', d.map(doc => doc.id))
+          .select('*').eq('user_id', user.id).in('document_id', d.map(doc => doc.id))
         const rxnMap = {}
         rxns?.forEach(r => {
           if (!rxnMap[r.document_id]) rxnMap[r.document_id] = {}
@@ -423,7 +420,7 @@ export default function ModulePage() {
       const reqMap = {}; const userReqMap = {}
       reqs?.forEach(r => {
         reqMap[r.doc_type] = r
-        userReqMap[r.doc_type] = r.document_request_votes?.some(v => v.user_id === u?.id) || false
+        userReqMap[r.doc_type] = r.document_request_votes?.some(v => v.user_id === user?.id) || false
       })
       setRequests(reqMap)
       setUserRequested(userReqMap)
@@ -455,7 +452,7 @@ export default function ModulePage() {
       }
     }
     load()
-  }, [id])
+  }, [id, user?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // real-time: new docs uploaded to this module appear instantly
   useEffect(() => {
@@ -474,37 +471,6 @@ export default function ModulePage() {
       .subscribe()
     return () => supabase.removeChannel(channel)
   }, [id])
-
-  // reload user reactions when auth state changes (e.g. user logs back in mid-session)
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser(session.user)
-        // re-fetch full docs to get current helpful_count from DB
-        const { data: freshDocs } = await supabase.from('documents')
-          .select('*, user_profiles!uploader_id(name, is_fondateur)')
-          .eq('module_id', parseInt(id))
-          .order('created_at', { ascending: false })
-        if (freshDocs) { setDocs(freshDocs); docsRef.current = freshDocs }
-        const currentDocs = freshDocs || docsRef.current
-        if (currentDocs.length === 0) return
-        const { data: rxns } = await supabase.from('document_reactions')
-          .select('*').eq('user_id', session.user.id).in('document_id', currentDocs.map(d => d.id))
-        const rxnMap = {}
-        rxns?.forEach(r => {
-          if (!rxnMap[r.document_id]) rxnMap[r.document_id] = {}
-          if (r.reaction_type === 'helpful') rxnMap[r.document_id].helpful = true
-          if (r.reaction_type === 'rating')  rxnMap[r.document_id].rating  = r.rating
-          if (r.reaction_type === 'report')  rxnMap[r.document_id].reported = true
-        })
-        setUserReactions(rxnMap)
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setUserReactions({})
-      }
-    })
-    return () => subscription.unsubscribe()
-  }, [])
 
   const GROUP_ORDER = ['examen','cc','td','tp','cours','corrige_examen','corrige_td','corrige_tp','quiz','projet_final']
 
@@ -839,8 +805,8 @@ export default function ModulePage() {
                         onMouseLeave={e => e.currentTarget.style.borderColor='#1C2A45'}
                       >
                       <div
-                        style={{ background:'#070C18', padding:'14px 16px', display:'flex', alignItems:'center', gap:14, cursor: doc.files?.length > 1 ? 'default' : 'pointer' }}
-                        onClick={() => { if (!doc.files || doc.files.length <= 1) handleDownload(doc) }}
+                        style={{ background:'#070C18', padding:'14px 16px', display:'flex', alignItems:'center', gap:14, cursor: doc.files?.length === 1 ? 'pointer' : 'default' }}
+                        onClick={() => { if (doc.files?.length === 1) handleDownload(doc) }}
                       >
                         {/* Type icon */}
                         <div style={{ width:42, height:42, borderRadius:9, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.58rem', fontWeight:600, background:iconBg, color:iconColor, border:`1px solid ${iconBorder}` }}>
@@ -877,8 +843,8 @@ export default function ModulePage() {
                           </div>
                         </div>
 
-                        {/* Download: multi-file or single */}
-                        {doc.files && doc.files.length > 1 ? (
+                        {/* Download: multi-file, single-file, or legacy (no files field) */}
+                        {doc.files?.length > 1 ? (
                           <div style={{ display:'flex', flexDirection:'column', gap:6, flexShrink:0 }}>
                             {doc.files.map((fileUrl, i) => (
                               <button key={i}
@@ -901,10 +867,10 @@ export default function ModulePage() {
                               </button>
                             ))}
                           </div>
-                        ) : (
+                        ) : doc.files?.length === 1 ? (
                           <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                             <button
-                              onClick={e => { e.stopPropagation(); if (!user) { navigate('/login', { state:{ from:`/module/${doc.module_id}` } }); return } setPreviewDoc(doc) }}
+                              onClick={e => { e.stopPropagation(); if (!user) { navigate('/login', { state:{ from:`/module/${id}` } }); return } setPreviewDoc(doc) }}
                               style={{ background:'rgba(45,212,191,0.07)', border:'1px solid rgba(45,212,191,0.2)', color:'#2DD4BF', borderRadius:7, padding:'7px 12px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
                               onMouseEnter={e => { e.currentTarget.style.background='rgba(45,212,191,0.15)'; e.currentTarget.style.borderColor='#2DD4BF' }}
                               onMouseLeave={e => { e.currentTarget.style.background='rgba(45,212,191,0.07)'; e.currentTarget.style.borderColor='rgba(45,212,191,0.2)' }}
@@ -920,7 +886,7 @@ export default function ModulePage() {
                               Télécharger
                             </button>
                           </div>
-                        )}
+                        ) : null}
                       </div>
                       {/* Reactions row */}
                       <div style={{ display:'flex', alignItems:'center', gap:16, padding:'8px 16px', borderTop:'1px solid #1C2A45', background:'rgba(0,0,0,0.2)' }}>
@@ -1189,7 +1155,7 @@ export default function ModulePage() {
           </div>
           <iframe
             className="pdf-iframe"
-            src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDoc.files[0])}&embedded=true`}
+            src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDoc?.files?.[0] || '')}&embedded=true`}
             title="Aperçu PDF"
             allow="fullscreen"
           />
