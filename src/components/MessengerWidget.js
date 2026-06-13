@@ -24,14 +24,15 @@ const css = `
 `
 
 export default function MessengerWidget() {
-  const [user,    setUser]    = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [isOpen,  setIsOpen]  = useState(false)
-  const [thread,  setThread]  = useState([])
-  const [text,    setText]    = useState('')
-  const [sending, setSending] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [unread,  setUnread]  = useState(0)
+  const [user,          setUser]          = useState(null)
+  const [profile,       setProfile]       = useState(null)
+  const [profileLoaded, setProfileLoaded] = useState(false)
+  const [isOpen,        setIsOpen]        = useState(false)
+  const [thread,        setThread]        = useState([])
+  const [text,          setText]          = useState('')
+  const [sending,       setSending]       = useState(false)
+  const [loading,       setLoading]       = useState(false)
+  const [unread,        setUnread]        = useState(0)
 
   const threadEndRef = useRef(null)
   const inputRef     = useRef(null)
@@ -46,7 +47,7 @@ export default function MessengerWidget() {
     })
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       if (session?.user) init(session.user)
-      else { setUser(null); setProfile(null); setThread([]); setUnread(0); setIsOpen(false) }
+      else { setUser(null); setProfile(null); setProfileLoaded(false); setThread([]); setUnread(0); setIsOpen(false) }
     })
     return () => subscription.unsubscribe()
   }, []) // eslint-disable-line
@@ -55,6 +56,7 @@ export default function MessengerWidget() {
     setUser(u)
     const { data } = await supabase.from('user_profiles').select('name, is_admin').eq('id', u.id).single()
     setProfile(data)
+    setProfileLoaded(true)
     if (!data?.is_admin) checkUnread(u.id)
   }
 
@@ -144,9 +146,9 @@ export default function MessengerWidget() {
     setSending(false)
   }
 
-  // Don't render for admin users or unauthenticated
-  if (!user || profile === null) return null
-  if (profile?.is_admin) return null
+  // Don't render while auth/profile is loading, or for admins
+  if (!user || !profileLoaded) return null
+  if (profile?.is_admin === true) return null
 
   const fmtDate = d => new Date(d).toLocaleDateString('fr-MA', {
     day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',

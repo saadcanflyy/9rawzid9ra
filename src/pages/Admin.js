@@ -512,20 +512,14 @@ export default function Admin() {
   const loadMessages = async () => {
     setLoading(true)
     supabase.rpc('cleanup_old_messages').then()
-    // FK on sender_id points to auth.users, not user_profiles — fetch names separately
-    const { data: msgs } = await supabase.from('messages')
-      .select('id, sender_id, content, read, created_at')
-      .eq('is_from_admin', false)
-      .order('created_at', { ascending: false })
+    // Use SECURITY DEFINER RPC to bypass any RLS ambiguity
+    const { data: msgs } = await supabase.rpc('admin_get_inbox')
     if (!msgs?.length) { setMsgSenders([]); setUnreadMsgCount(0); setLoading(false); return }
-    const senderIds = [...new Set(msgs.map(m => m.sender_id).filter(Boolean))]
-    const { data: profiles } = await supabase.from('user_profiles').select('id, name').in('id', senderIds)
-    const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.name]))
     const senderMap = {}
     msgs.forEach(m => {
       const sid = m.sender_id
       if (!senderMap[sid]) {
-        senderMap[sid] = { id: sid, name: nameMap[sid] || 'Anonyme', unread: 0, lastMsg: m.content, lastDate: m.created_at }
+        senderMap[sid] = { id: sid, name: m.sender_name || 'Anonyme', unread: 0, lastMsg: m.content, lastDate: m.created_at }
       }
       if (!m.read) senderMap[sid].unread++
     })
@@ -538,13 +532,9 @@ export default function Admin() {
   const loadThread = async (sender) => {
     setSelectedMsgUser(sender)
     setMsgThread([])
-    // Admin has ALL access — fetch all rows linked to this user
-    const { data } = await supabase.from('messages')
-      .select('*')
-      .or(`sender_id.eq.${sender.id},target_user_id.eq.${sender.id}`)
-      .order('created_at', { ascending: true })
+    const { data } = await supabase.rpc('admin_get_thread', { p_user_id: sender.id })
     setMsgThread(data || [])
-    await supabase.from('messages').update({ read: true }).eq('sender_id', sender.id).eq('is_from_admin', false)
+    await supabase.rpc('admin_mark_messages_read', { p_sender_id: sender.id })
     setMsgSenders(prev => prev.map(s => s.id === sender.id ? { ...s, unread: 0 } : s))
     setUnreadMsgCount(prev => {
       const u = msgSenders.find(s => s.id === sender.id)
