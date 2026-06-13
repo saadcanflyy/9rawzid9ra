@@ -62,7 +62,15 @@ function App() {
     // Restore session from localStorage on cold mount and start token refresh cycle
     supabase.auth.getSession()
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {})
-    return () => subscription.unsubscribe()
+    // Re-check session whenever the user switches back to this tab
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') supabase.auth.getSession()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      subscription.unsubscribe()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [])
 
   return (

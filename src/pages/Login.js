@@ -82,7 +82,21 @@ export default function Login() {
         navigate(from, { replace: true })
       }
     })
-  }, [])
+
+    // bfcache restore: browser restores frozen React state (loading=true, button disabled)
+    // pageshow fires on bfcache hit; useEffect does NOT re-run — so we need this separately
+    const handlePageShow = (e) => {
+      if (e.persisted) {
+        setLoading(false)
+        isSubmittingRef.current = false
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (session?.user) navigate(location.state?.from || '/', { replace: true })
+        })
+      }
+    }
+    window.addEventListener('pageshow', handlePageShow)
+    return () => window.removeEventListener('pageshow', handlePageShow)
+  }, []) // eslint-disable-line
 
   const handleLogin = async (e) => {
     e.preventDefault()
