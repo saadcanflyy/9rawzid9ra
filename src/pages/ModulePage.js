@@ -292,6 +292,35 @@ const css = `
     .mod-tags { flex-wrap:wrap; }
     .mod-meta { flex-direction:column; gap:0.5rem; align-items:flex-start; }
   }
+
+  /* ─── PDF PREVIEW MODAL ─── */
+  .pdf-overlay {
+    position:fixed; inset:0; z-index:900;
+    display:flex; flex-direction:column; background:#02040A;
+  }
+  .pdf-modal-head {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 16px; background:var(--surface); border-bottom:1px solid var(--border);
+    flex-shrink:0; gap:12px;
+  }
+  .pdf-modal-title {
+    font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text2);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;
+  }
+  .pdf-modal-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .pdf-dl-btn {
+    background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.3);
+    color:var(--accent2); border-radius:7px; padding:6px 14px;
+    font-size:0.75rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s;
+  }
+  .pdf-dl-btn:hover { background:rgba(79,142,247,0.2); }
+  .pdf-close-btn {
+    background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.25);
+    color:var(--red); border-radius:7px; padding:6px 12px;
+    font-size:0.75rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s;
+  }
+  .pdf-close-btn:hover { background:rgba(248,113,113,0.15); }
+  .pdf-iframe { width:100%; height:100%; border:none; display:block; flex:1; }
 `
 
 const TYPE_CONFIG = {
@@ -337,6 +366,7 @@ export default function ModulePage() {
   const docsRef = useRef([])
   const [requests,     setRequests]     = useState({})
   const [userRequested,setUserRequested]= useState({})
+  const [previewDoc,   setPreviewDoc]   = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -873,14 +903,24 @@ export default function ModulePage() {
                             ))}
                           </div>
                         ) : (
-                          <button
-                            onClick={e => { e.stopPropagation(); handleDownload(doc) }}
-                            style={{ background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.2)', color:'#7BB3FF', borderRadius:7, padding:'7px 16px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', flexShrink:0, whiteSpace:'nowrap' }}
-                            onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.15)'; e.currentTarget.style.borderColor='#4F8EF7' }}
-                            onMouseLeave={e => { e.currentTarget.style.background='rgba(79,142,247,0.08)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.2)' }}
-                          >
-                            Télécharger
-                          </button>
+                          <div style={{ display:'flex', gap:6, flexShrink:0 }}>
+                            <button
+                              onClick={e => { e.stopPropagation(); if (!user) { navigate('/login', { state:{ from:`/module/${doc.module_id}` } }); return } setPreviewDoc(doc) }}
+                              style={{ background:'rgba(45,212,191,0.07)', border:'1px solid rgba(45,212,191,0.2)', color:'#2DD4BF', borderRadius:7, padding:'7px 12px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
+                              onMouseEnter={e => { e.currentTarget.style.background='rgba(45,212,191,0.15)'; e.currentTarget.style.borderColor='#2DD4BF' }}
+                              onMouseLeave={e => { e.currentTarget.style.background='rgba(45,212,191,0.07)'; e.currentTarget.style.borderColor='rgba(45,212,191,0.2)' }}
+                            >
+                              👁 Aperçu
+                            </button>
+                            <button
+                              onClick={e => { e.stopPropagation(); handleDownload(doc) }}
+                              style={{ background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.2)', color:'#7BB3FF', borderRadius:7, padding:'7px 16px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
+                              onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.15)'; e.currentTarget.style.borderColor='#4F8EF7' }}
+                              onMouseLeave={e => { e.currentTarget.style.background='rgba(79,142,247,0.08)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.2)' }}
+                            >
+                              Télécharger
+                            </button>
+                          </div>
                         )}
                       </div>
                       {/* Reactions row */}
@@ -1134,6 +1174,29 @@ export default function ModulePage() {
           </div>
         </aside>
       </div>
+
+      {previewDoc && (
+        <div className="pdf-overlay">
+          <div className="pdf-modal-head">
+            <span className="pdf-modal-title">
+              {previewDoc.doc_number || TYPE_CONFIG[previewDoc.doc_type]?.full || previewDoc.doc_type}
+              {previewDoc.academic_year ? ` — ${previewDoc.academic_year}` : ''}
+              {previewDoc.professor ? ` · Prof. ${previewDoc.professor}` : ''}
+            </span>
+            <div className="pdf-modal-actions">
+              <button className="pdf-dl-btn" onClick={() => handleDownload(previewDoc)}>↓ Télécharger</button>
+              <button className="pdf-close-btn" onClick={() => setPreviewDoc(null)}>✕ Fermer</button>
+            </div>
+          </div>
+          <iframe
+            className="pdf-iframe"
+            src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDoc.files[0])}&embedded=true`}
+            title="Aperçu PDF"
+            allow="fullscreen"
+          />
+        </div>
+      )}
+
     </div>
   )
 }
