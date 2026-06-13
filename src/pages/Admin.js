@@ -495,8 +495,14 @@ export default function Admin() {
   const toggleModerator = async (id, currentMod) => {
     const msg = currentMod ? 'Retirer le rôle Modérateur ?' : 'Donner le rôle Modérateur à cet utilisateur ?'
     if (!window.confirm(msg)) return
-    await supabase.from('user_profiles').update({ is_moderator: !currentMod }).eq('id', id)
+    const { error } = await supabase.from('user_profiles').update({ is_moderator: !currentMod }).eq('id', id)
+    if (error) { console.error('toggleModerator error:', error); alert('Erreur : ' + error.message); return }
     setUsers(u => u.map(x => x.id === id ? { ...x, is_moderator: !currentMod } : x))
+    const notifContent = !currentMod
+      ? 'Tu as été nommé modérateur de 9rawZid9ra 🛡️ Bienvenue dans l\'équipe !'
+      : 'Ton rôle de modérateur a été retiré.'
+    const notifType = !currentMod ? 'moderator_assigned' : 'moderator_removed'
+    supabase.from('notifications').insert({ user_id: id, type: notifType, content: notifContent, read: false }).then()
   }
 
   const loadMessages = async () => {
@@ -575,11 +581,12 @@ export default function Admin() {
     const durations = { '24h': 1, '7d': 7, '30d': 30, 'perm': null }
     const days = durations[banDuration]
     const bannedUntil = days ? new Date(Date.now() + days * 86400000).toISOString() : null
-    await supabase.from('user_profiles').update({
+    const { error } = await supabase.from('user_profiles').update({
       is_banned: true,
       banned_until: bannedUntil,
       ban_reason: banReason.trim() || null,
     }).eq('id', u.id)
+    if (error) { console.error('confirmBan error:', error); alert('Erreur : ' + error.message); setBanBusy(false); return }
     setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_banned: true, banned_until: bannedUntil, ban_reason: banReason.trim() || null } : x))
     setBanningId(null)
     setBanReason('')
@@ -587,7 +594,8 @@ export default function Admin() {
   }
 
   const unbanUser = async (id) => {
-    await supabase.from('user_profiles').update({ is_banned: false, banned_until: null, ban_reason: null }).eq('id', id)
+    const { error } = await supabase.from('user_profiles').update({ is_banned: false, banned_until: null, ban_reason: null }).eq('id', id)
+    if (error) { console.error('unbanUser error:', error); alert('Erreur : ' + error.message); return }
     setUsers(prev => prev.map(x => x.id === id ? { ...x, is_banned: false, banned_until: null, ban_reason: null } : x))
   }
 
