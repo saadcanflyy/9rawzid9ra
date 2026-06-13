@@ -156,6 +156,12 @@ export default function ModeratorPanel() {
   const [newModName,   setNewModName]   = useState('')
   const [newModFilId,  setNewModFilId]  = useState('')
   const [newModSem,    setNewModSem]    = useState('')
+
+  // Ban state
+  const [banningId,  setBanningId]  = useState(null)
+  const [banDuration,setBanDuration]= useState('7d')
+  const [banReason,  setBanReason]  = useState('')
+  const [banBusy,    setBanBusy]    = useState(false)
   const [filieresList, setFilieresList] = useState([])
 
   const fmt = (d) => new Date(d).toLocaleDateString('fr-MA', { day:'2-digit', month:'short', year:'2-digit' })
@@ -261,10 +267,33 @@ export default function ModeratorPanel() {
   const loadUsers = async () => {
     setLoading(true)
     const { data } = await supabase.from('user_profiles')
-      .select('id, name, university_id, uploads_count, points, universities(name)')
+      .select('id, name, uploads_count, points, is_banned, banned_until, ban_reason, universities(name)')
       .order('created_at', { ascending: false }).limit(100)
     setUsers(data || [])
     setLoading(false)
+  }
+
+  const confirmBan = async (u) => {
+    setBanBusy(true)
+    const days = { '24h': 1, '7d': 7, '30d': 30, 'perm': null }[banDuration]
+    const bannedUntil = days != null ? new Date(Date.now() + days * 86400000).toISOString() : null
+    const { data: ok } = await supabase.rpc('mod_ban_user', {
+      p_target_id: u.id,
+      p_is_banned: true,
+      p_banned_until: bannedUntil,
+      p_ban_reason: banReason.trim() || null,
+    })
+    if (!ok) { alert('Erreur lors du bannissement.'); setBanBusy(false); return }
+    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_banned: true, banned_until: bannedUntil, ban_reason: banReason.trim() || null } : x))
+    setBanningId(null)
+    setBanReason('')
+    setBanBusy(false)
+  }
+
+  const unbanUser = async (id) => {
+    const { data: ok } = await supabase.rpc('mod_ban_user', { p_target_id: id, p_is_banned: false, p_banned_until: null, p_ban_reason: null })
+    if (!ok) { alert('Erreur lors du débannissement.'); return }
+    setUsers(prev => prev.map(x => x.id === id ? { ...x, is_banned: false, banned_until: null, ban_reason: null } : x))
   }
 
   const getLevel = (pts) => pts >= 600 ? {l:'Légende',c:'rank-legende'} : pts >= 300 ? {l:'Senpai',c:'rank-senpai'} : pts >= 100 ? {l:'Contributeur',c:'rank-contrib'} : {l:'Étudiant',c:'rank-etudiant'}
@@ -671,29 +700,56 @@ export default function ModeratorPanel() {
           {activeTab === 'users' && (
             <>
               <div className="section-title">// utilisateurs</div>
-              <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--text3)',marginBottom:'1rem'}}>// lecture seule — gestion avancée réservée à l'admin</div>
               {loading ? Array(5).fill(0).map((_,i) => <div key={i} className="skel"/>) :
                users.length === 0 ? <div className="empty">// aucun utilisateur</div> : (
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr><th>Utilisateur</th><th>Université</th><th>Uploads</th><th>Points</th><th>Niveau</th></tr>
-                    </thead>
-                    <tbody>
-                      {users.map(u => {
-                        const lvl = getLevel(u.points || 0)
-                        return (
-                          <tr key={u.id}>
-                            <td><div className="table-name">{u.name || 'Sans nom'}</div></td>
-                            <td className="table-mono" style={{color:'var(--text2)'}}>{u.universities?.name || '—'}</td>
-                            <td className="table-mono">{u.uploads_count || 0}</td>
-                            <td className="table-mono" style={{color:'var(--accent2)'}}>{u.points || 0}</td>
-                            <td><span style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--text2)'}}>{lvl.l}</span></td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {users.map(u => {
+                    const lvl = getLevel(u.points || 0)
+                    const isBanning = banningId === u.id
+                    return (
+                      <div key={u.id} style={{background:'var(--surface)',border:`1px solid ${u.is_banned?'rgba(248,113,113,0.25)':'var(--border)'}`,borderRadius:10,padding:'12px 16px'}}>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+                          <div style={{display:'flex',alignItems:'center',gap:10}}>
+                            <span style={{fontWeight:600,fontSize:'0.85rem',color:'var(--text)'}}>{u.name || 'Sans nom'}</span>
+                            <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--text2)'}}>{u.universities?.name || ''}</span>
+                            <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--accent2)'}}>{u.uploads_count||0} docs · {u.points||0}pts</span>
+                            {u.is_banned && <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',background:'rgba(248,113,113,0.1)',color:'#F87171',border:'1px solid rgba(248,113,113,0.25)',borderRadius:4,padding:'1px 7px'}}>BANNI</span>}
+                          </div>
+                          <div className="actions">
+                            {u.is_banned
+                              ? <button className="act-btn act-approve" onClick={() => unbanUser(u.id)}>Débannir</button>
+                              : <button className="act-btn act-ban" onClick={() => { setBanningId(isBanning ? null : u.id); setBanReason('') }}>
+                                  {isBanning ? 'Annuler' : 'Bannir'}
+                                </button>
+                            }
+                          </div>
+                        </div>
+                        {u.is_banned && u.ban_reason && (
+                          <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'#F87171',marginTop:6}}>
+                            Raison : {u.ban_reason} {u.banned_until ? `· jusqu'au ${new Date(u.banned_until).toLocaleDateString('fr-MA',{day:'2-digit',month:'short'})}` : '· permanent'}
+                          </div>
+                        )}
+                        {isBanning && (
+                          <div style={{marginTop:10,padding:'12px 14px',background:'var(--s2)',borderRadius:8,border:'1px solid rgba(248,113,113,0.2)',display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+                            <select value={banDuration} onChange={e => setBanDuration(e.target.value)}
+                              style={{background:'var(--s2)',border:'1px solid var(--border)',borderRadius:6,padding:'5px 10px',color:'var(--text)',fontSize:'0.78rem',fontFamily:'Outfit,sans-serif',cursor:'pointer'}}>
+                              <option value="24h">24 heures</option>
+                              <option value="7d">7 jours</option>
+                              <option value="30d">30 jours</option>
+                              <option value="perm">Permanent</option>
+                            </select>
+                            <input value={banReason} onChange={e => setBanReason(e.target.value)}
+                              placeholder="Raison (optionnel)"
+                              style={{flex:1,minWidth:160,background:'var(--s2)',border:'1px solid var(--border)',borderRadius:6,padding:'5px 10px',color:'var(--text)',fontSize:'0.78rem',fontFamily:'Outfit,sans-serif',outline:'none'}}
+                            />
+                            <button className="act-btn act-ban" disabled={banBusy} onClick={() => confirmBan(u)}>
+                              {banBusy ? '...' : 'Confirmer le bannissement'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </>

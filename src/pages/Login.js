@@ -71,6 +71,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [banInfo, setBanInfo] = useState(null)
   const isSubmittingRef = useRef(false)
 
   // Redirect if already logged in
@@ -102,16 +103,31 @@ export default function Login() {
     e.preventDefault()
     if (isSubmittingRef.current) return
     setError('')
+    setBanInfo(null)
     if (!email.trim() || !password) return setError('Email et mot de passe requis.')
     isSubmittingRef.current = true
     setLoading(true)
     try {
-      const { error: err } = await supabase.auth.signInWithPassword({
+      const { data, error: err } = await supabase.auth.signInWithPassword({
         email: email.trim(), password,
       })
       if (err) {
         setError('Email ou mot de passe incorrect.')
         return
+      }
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('is_banned, banned_until, ban_reason')
+        .eq('id', data.user.id)
+        .single()
+      if (profile?.is_banned) {
+        const isPerm = !profile.banned_until
+        const isFuture = profile.banned_until && new Date(profile.banned_until) > new Date()
+        if (isPerm || isFuture) {
+          await supabase.auth.signOut()
+          setBanInfo({ reason: profile.ban_reason, until: profile.banned_until })
+          return
+        }
       }
       const from = location.state?.from || '/'
       navigate(from, { replace: true })
@@ -164,6 +180,25 @@ export default function Login() {
             </button>
           </p>
           {location.state?.message && <div className="alert info">{location.state.message}</div>}
+          {banInfo && (
+            <div style={{ background:'rgba(248,113,113,0.07)', border:'1px solid rgba(248,113,113,0.35)', borderRadius:10, padding:'1rem 1.25rem', marginBottom:'1rem' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8 }}>
+                <span style={{ fontSize:'1.1rem' }}>🚫</span>
+                <span style={{ fontWeight:700, color:'#F87171', fontSize:'0.92rem' }}>Compte suspendu</span>
+              </div>
+              <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.74rem', color:'#E2E8F0', marginBottom:4 }}>
+                Raison : <span style={{ color:'#F87171' }}>{banInfo.reason || 'Non spécifiée'}</span>
+              </div>
+              <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.74rem', color:'#E2E8F0', marginBottom:8 }}>
+                {banInfo.until
+                  ? `Jusqu'au : ${new Date(banInfo.until).toLocaleDateString('fr-MA', { day:'2-digit', month:'long', year:'numeric' })}`
+                  : 'Bannissement permanent'}
+              </div>
+              <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.68rem', color:'#4A5568' }}>
+                Contact : <a href="mailto:saadga2003@gmail.com" style={{ color:'#4F8EF7', textDecoration:'none' }}>saadga2003@gmail.com</a>
+              </div>
+            </div>
+          )}
           {error && <div className="alert err">{error}</div>}
           <form onSubmit={handleLogin}>
             <div className="field">
