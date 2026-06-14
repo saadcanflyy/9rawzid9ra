@@ -495,7 +495,7 @@ export default function Profile() {
 
   const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
   const isAdminProfile = targetId === ADMIN_ID
-  const canSendMessage = isAdminProfile && currentUser && !isOwnProfile
+  const canSendMessage = currentUser && !isOwnProfile
 
   const startEditDoc = (doc) => {
     setEditingDocId(doc.id)
@@ -714,7 +714,7 @@ export default function Profile() {
           )}
           {canSendMessage && (
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-messenger'))}
+              onClick={() => window.dispatchEvent(new CustomEvent('open-dm', { detail: { userId: targetId, name: profile?.name || 'Étudiant' } }))}
               style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', borderRadius:8, background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.25)', color:'var(--accent2)', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
             >
               ✉ Message

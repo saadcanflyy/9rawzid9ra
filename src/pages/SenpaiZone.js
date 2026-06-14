@@ -803,6 +803,16 @@ export default function SenpaiZone() {
                     {isF ? <><Ico n="check" size={10} sw={2.5} />Abonné</> : <>+ Suivre</>}
                   </button>
                 )}
+                {!isOwn && !anon && user && (
+                  <button
+                    onClick={e => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('open-dm', { detail: { userId: post.author_id, name } })) }}
+                    style={{ background:'none', border:'none', color:'#4A5568', cursor:'pointer', padding:'1px 4px', fontSize:'0.72rem', fontFamily:'Outfit,sans-serif', display:'inline-flex', alignItems:'center', gap:3, transition:'color 0.12s' }}
+                    onMouseEnter={e => e.currentTarget.style.color='#7BB3FF'}
+                    onMouseLeave={e => e.currentTarget.style.color='#4A5568'}
+                  >
+                    ✉
+                  </button>
+                )}
               </div>
               <div className="sz-type-badge" style={{ color: pt.color, background: pt.bg, borderColor: pt.border }}>
                 <Ico n={pt.icon} size={10} sw={2.2} color={pt.color} />{pt.label}

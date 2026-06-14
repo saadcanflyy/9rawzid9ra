@@ -462,7 +462,7 @@ export default function Navbar({ activePage = '' }) {
                             await supabase.from('notifications').update({ read: true }).in('id', n.groupIds)
                             setNotifs(prev => prev.map(x => n.groupIds.includes(x.id) ? { ...x, read: true } : x))
                           }
-                          window.dispatchEvent(new CustomEvent('open-messenger'))
+                          window.dispatchEvent(new CustomEvent('open-messenger', { detail: { userId: n.actor_id, name: n.groupSender } }))
                         } else {
                           if (!n.read) {
                             await supabase.from('notifications').update({ read: true }).eq('id', n.id)
