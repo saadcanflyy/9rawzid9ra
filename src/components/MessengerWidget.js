@@ -269,6 +269,17 @@ export default function MessengerWidget() {
   // ── Send message ─────────────────────────────────────────────────────────
   const sendMessage = async () => {
     if (!text.trim() || sending || !user || !activeContact) return
+    // Rate limit: max 20 messages per minute
+    const since = new Date(Date.now() - 60 * 1000).toISOString()
+    const { count: recentMsgs } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('sender_id', user.id)
+      .gte('created_at', since)
+    if (recentMsgs >= 20) {
+      alert('Limite de 20 messages par minute atteinte. Attends un peu.')
+      return
+    }
     setSending(true)
     const content = text.trim()
     setText('')

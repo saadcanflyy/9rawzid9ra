@@ -676,7 +676,7 @@ export default function SenpaiZone() {
   // ── EDIT POST ─────────────────────────────────────────────────────────────
   const handleEditSave = async (post) => {
     const text = editText.trim()
-    if (text.length < 20) return
+    if (text.length < 1) return
     const lines = text.split('\n')
     const title = lines[0].slice(0, 120) || text.slice(0, 80)
     const { error } = await supabase.from('senpai_posts').update({ title, content: text }).eq('id', post.id)
@@ -692,7 +692,18 @@ export default function SenpaiZone() {
   const handlePublish = async () => {
     if (!user) { navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
     const text = composeText.trim()
-    if (text.length < 20) return
+    if (text.length < 1) return
+    // Rate limit: max 10 posts per hour
+    const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+    const { count: recentPosts } = await supabase
+      .from('senpai_posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('author_id', user.id)
+      .gte('created_at', since)
+    if (recentPosts >= 10) {
+      alert('Limite de 10 posts par heure atteinte. Réessaie dans une heure.')
+      return
+    }
     const lines = text.split('\n')
     const title = lines[0].slice(0, 120) || text.slice(0, 80)
     const content = text
@@ -1011,7 +1022,7 @@ export default function SenpaiZone() {
   const isOwn = post => post.author_id === user?.id
 
   // ─── COMPOSE BOX ───────────────────────────────────────────────────────────
-  const canPublish = composeText.trim().length >= 20 && !submitting
+  const canPublish = composeText.trim().length >= 1 && !submitting
   const selectedPT = PT[composeType]
 
   const renderCompose = () => (

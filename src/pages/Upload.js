@@ -572,6 +572,18 @@ export default function Upload() {
   const handleSubmit = async () => {
     setLoading(true); setError(''); setProgress(5)
     try {
+      // Rate limit: max 7 uploads per hour
+      const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
+      const { count: recentUploads } = await supabase
+        .from('documents')
+        .select('id', { count: 'exact', head: true })
+        .eq('uploader_id', user.id)
+        .gte('created_at', since)
+      if (recentUploads >= 7) {
+        setError('Limite de 7 uploads par heure atteinte. Réessaie dans une heure.')
+        setLoading(false); setProgress(0); return
+      }
+
       // If custom module, insert it first
       let moduleId = selMod.id
       if (selMod.custom) {
