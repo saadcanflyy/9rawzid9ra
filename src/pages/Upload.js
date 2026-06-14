@@ -173,6 +173,7 @@ const ALLOWED_TYPES = new Set([
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   'text/plain',
+  'application/x-ipynb+json',
 ])
 const ALLOWED_EXTS = new Set(['pdf','ppt','pptx','doc','docx','xls','xlsx','ipynb','jpg','jpeg','png','gif','webp','bmp','heic'])
 const getExt = f => f.name.split('.').pop().toLowerCase()
