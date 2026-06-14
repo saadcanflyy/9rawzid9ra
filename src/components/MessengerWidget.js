@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 const ADMIN_ID   = '84c11086-6041-4118-8f4c-138a0664966f'
@@ -65,6 +66,7 @@ export default function MessengerWidget() {
   const [loading,       setLoading]       = useState(false)
   const [unread,        setUnread]        = useState(0)
 
+  const navigate          = useNavigate()
   const threadEndRef      = useRef(null)
   const inputRef          = useRef(null)
   const isOpenRef         = useRef(false)
@@ -374,7 +376,12 @@ export default function MessengerWidget() {
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                      <span style={{ fontSize:'0.85rem', fontWeight:600, color:'#E2E8F0' }}>{c.name}</span>
+                      <span
+                        style={{ fontSize:'0.85rem', fontWeight:600, color:'#E2E8F0', cursor: c.id !== ADMIN_ID ? 'pointer' : 'default', transition:'color 0.12s' }}
+                        onClick={c.id !== ADMIN_ID ? e => { e.stopPropagation(); setIsOpen(false); navigate(`/user/${c.id}`) } : undefined}
+                        onMouseEnter={c.id !== ADMIN_ID ? e => e.currentTarget.style.color='#7BB3FF' : undefined}
+                        onMouseLeave={c.id !== ADMIN_ID ? e => e.currentTarget.style.color='#E2E8F0' : undefined}
+                      >{c.name}</span>
                       {c.lastAt && <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'#4A5568' }}>{fmtAgo(c.lastAt)}</span>}
                     </div>
                     <div style={{ fontSize:'0.76rem', color: c.allExpired ? '#2D4A7A' : '#4A5568', marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontStyle: c.allExpired ? 'italic' : 'normal' }}>
