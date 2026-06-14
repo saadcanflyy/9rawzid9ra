@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../supabase'
 
-const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
+const ADMIN_ID   = '84c11086-6041-4118-8f4c-138a0664966f'
+const EXPIRY_MS  = 48 * 60 * 60 * 1000 // 48 hours
+const isExpired  = (ts) => Date.now() - new Date(ts).getTime() > EXPIRY_MS
 
 const css = `
   @keyframes mw-slide { from { opacity:0; transform:translateY(14px) scale(0.97); } to { opacity:1; transform:translateY(0) scale(1); } }
@@ -136,35 +138,55 @@ export default function MessengerWidget() {
   const loadInbox = useCallback(async (uid) => {
     setLoading(true)
     try {
-      const { data } = await supabase
+      // No embedded join — FK on messages may point to auth.users, not user_profiles
+      const { data, error } = await supabase
         .from('messages')
-        .select('id, sender_id, receiver_id, content, is_read, created_at, sender:user_profiles!sender_id(name), receiver:user_profiles!receiver_id(name)')
+        .select('id, sender_id, receiver_id, content, is_read, created_at')
         .or(`sender_id.eq.${uid},receiver_id.eq.${uid}`)
         .order('created_at', { ascending: false })
 
+      if (error) throw error
       const msgs = data || []
+
+      // Collect unique partner IDs
+      const partnerIds = [...new Set(msgs.map(m => m.sender_id === uid ? m.receiver_id : m.sender_id))]
+
+      // Fetch names separately
+      const nameMap = new Map()
+      if (partnerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('user_profiles').select('id, name').in('id', partnerIds)
+        for (const p of (profiles || [])) nameMap.set(p.id, p.name)
+      }
+
+      // Unread count per partner
       const unreadPerPartner = new Map()
       for (const m of msgs) {
         if (m.receiver_id === uid && !m.is_read) {
           unreadPerPartner.set(m.sender_id, (unreadPerPartner.get(m.sender_id) || 0) + 1)
         }
       }
+
+      // Build one entry per partner (first occurrence = most recent)
       const seen = new Map()
       for (const m of msgs) {
         const partnerId = m.sender_id === uid ? m.receiver_id : m.sender_id
-        const pName = m.sender_id === uid ? (m.receiver?.name || 'Utilisateur') : (m.sender?.name || 'Utilisateur')
         if (!seen.has(partnerId)) {
+          const expired = isExpired(m.created_at)
           seen.set(partnerId, {
             id: partnerId,
-            name: partnerId === ADMIN_ID ? 'Support 9rawZid9ra' : pName,
-            lastMsg: m.content,
+            name: partnerId === ADMIN_ID ? 'Support 9rawZid9ra' : (nameMap.get(partnerId) || 'Étudiant'),
+            lastMsg: expired ? null : m.content,
             lastAt: m.created_at,
             unread: unreadPerPartner.get(partnerId) || 0,
+            allExpired: expired,
           })
         }
       }
+
+      // Admin always pinned first
       if (!seen.has(ADMIN_ID)) {
-        seen.set(ADMIN_ID, { id: ADMIN_ID, name: 'Support 9rawZid9ra', lastMsg: null, lastAt: null, unread: 0 })
+        seen.set(ADMIN_ID, { id: ADMIN_ID, name: 'Support 9rawZid9ra', lastMsg: null, lastAt: null, unread: 0, allExpired: false })
       }
       const convos = [seen.get(ADMIN_ID)]
       for (const [id, c] of seen) { if (id !== ADMIN_ID) convos.push(c) }
@@ -355,8 +377,8 @@ export default function MessengerWidget() {
                       <span style={{ fontSize:'0.85rem', fontWeight:600, color:'#E2E8F0' }}>{c.name}</span>
                       {c.lastAt && <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'#4A5568' }}>{fmtAgo(c.lastAt)}</span>}
                     </div>
-                    <div style={{ fontSize:'0.76rem', color:'#4A5568', marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                      {c.lastMsg || 'Démarrer une conversation'}
+                    <div style={{ fontSize:'0.76rem', color: c.allExpired ? '#2D4A7A' : '#4A5568', marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontStyle: c.allExpired ? 'italic' : 'normal' }}>
+                      {c.allExpired ? '🔒 Messages supprimés' : (c.lastMsg || 'Démarrer une conversation')}
                     </div>
                   </div>
                   {c.unread > 0 && (
@@ -387,29 +409,47 @@ export default function MessengerWidget() {
                     chargement...
                   </div>
                 )}
-                {!loading && thread.length === 0 && (
-                  <div style={{ margin:'auto', textAlign:'center', padding:'1.5rem 1rem' }}>
-                    <div style={{ fontSize:'2rem', marginBottom:10 }}>👋</div>
-                    <div style={{ fontSize:'0.76rem', color:'#4A5568', marginTop:8, lineHeight:1.55 }}>
-                      Envoie ton premier message à {activeContact?.name}
-                    </div>
-                  </div>
-                )}
-                {thread.map(m => {
-                  const isMe = m.sender_id === user.id
-                  return (
-                    <div key={m.id} style={{ display:'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-                      <div style={{ maxWidth:'80%', padding:'8px 12px', borderRadius: isMe ? '12px 4px 12px 12px' : '4px 12px 12px 12px', background: isMe ? 'rgba(79,142,247,0.18)' : '#0C1222', border: `1px solid ${isMe ? 'rgba(79,142,247,0.35)' : '#1C2A45'}` }}>
-                        <div style={{ fontSize:'0.82rem', color:'#E2E8F0', lineHeight:1.52, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
-                          {m.content}
-                        </div>
-                        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.55rem', color:'#4A5568', marginTop:4, textAlign: isMe ? 'right' : 'left' }}>
-                          {fmtDate(m.created_at)}
+                {(() => {
+                  if (loading) return null
+                  const visible = thread.filter(m => !isExpired(m.created_at))
+                  const hasExpired = thread.length > 0 && visible.length === 0
+                  if (hasExpired) {
+                    return (
+                      <div style={{ margin:'auto', textAlign:'center', padding:'1.5rem 1rem' }}>
+                        <div style={{ fontSize:'1.6rem', marginBottom:8 }}>🔒</div>
+                        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4A5568' }}>// Messages supprimés</div>
+                        <div style={{ fontSize:'0.74rem', color:'#4A5568', marginTop:6, lineHeight:1.5 }}>
+                          Les messages sont supprimés après 48h.
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
+                    )
+                  }
+                  if (visible.length === 0) {
+                    return (
+                      <div style={{ margin:'auto', textAlign:'center', padding:'1.5rem 1rem' }}>
+                        <div style={{ fontSize:'2rem', marginBottom:10 }}>👋</div>
+                        <div style={{ fontSize:'0.76rem', color:'#4A5568', marginTop:8, lineHeight:1.55 }}>
+                          Envoie ton premier message à {activeContact?.name}
+                        </div>
+                      </div>
+                    )
+                  }
+                  return visible.map(m => {
+                    const isMe = m.sender_id === user.id
+                    return (
+                      <div key={m.id} style={{ display:'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
+                        <div style={{ maxWidth:'80%', padding:'8px 12px', borderRadius: isMe ? '12px 4px 12px 12px' : '4px 12px 12px 12px', background: isMe ? 'rgba(79,142,247,0.18)' : '#0C1222', border: `1px solid ${isMe ? 'rgba(79,142,247,0.35)' : '#1C2A45'}` }}>
+                          <div style={{ fontSize:'0.82rem', color:'#E2E8F0', lineHeight:1.52, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
+                            {m.content}
+                          </div>
+                          <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.55rem', color:'#4A5568', marginTop:4, textAlign: isMe ? 'right' : 'left' }}>
+                            {fmtDate(m.created_at)}
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })
+                })()}
                 <div ref={threadEndRef} />
               </div>
 
