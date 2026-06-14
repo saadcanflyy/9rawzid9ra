@@ -74,8 +74,9 @@ const css = `
   .social-n { font-family:'DM Mono',monospace; font-size:1rem; font-weight:700; color:var(--white); }
   .social-l { font-size:0.73rem; color:var(--text2); }
   .social-sep { width:1px; height:22px; background:var(--border); }
+  .social-actions { margin-left:auto; display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .follow-btn {
-    margin-left:auto; display:flex; align-items:center; gap:6px;
+    display:flex; align-items:center; gap:6px;
     padding:7px 18px; border-radius:8px; font-size:0.82rem; font-weight:600; cursor:pointer;
     font-family:'Outfit',sans-serif; transition:all 0.15s;
   }
@@ -250,7 +251,9 @@ const css = `
     .profile-right { align-items:flex-start; flex-direction:row; width:100%; }
     .stats-row { grid-template-columns:repeat(2,1fr); }
     .stat:nth-child(3)::before { display:none; }
-    .social-row { gap:1rem; }
+    .social-row { gap:0.75rem; flex-wrap:wrap; }
+    .social-actions { margin-left:0; width:100%; padding-top:4px; border-top:1px solid var(--border); }
+    .follow-btn { flex:1; justify-content:center; }
     .tabs { width:100%; overflow-x:auto; flex-wrap:nowrap; }
     .tab-btn { flex-shrink:0; padding:7px 12px; font-size:0.78rem; }
   }
@@ -704,21 +707,23 @@ export default function Profile() {
             <span className="social-l">Tips Senpai</span>
           </div>
           {!isOwnProfile && currentUser && (
-            <button
-              className={`follow-btn ${isFollowing ? 'on' : 'off'}`}
-              onClick={handleFollow}
-              disabled={followBusy}
-            >
-              {isFollowing ? 'Abonné ✓' : '+ Suivre'}
-            </button>
-          )}
-          {canSendMessage && (
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('open-dm', { detail: { userId: targetId, name: profile?.name || 'Étudiant' } }))}
-              style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', borderRadius:8, background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.25)', color:'var(--accent2)', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
-            >
-              ✉ Message
-            </button>
+            <div className="social-actions">
+              <button
+                className={`follow-btn ${isFollowing ? 'on' : 'off'}`}
+                onClick={handleFollow}
+                disabled={followBusy}
+              >
+                {isFollowing ? 'Abonné ✓' : '+ Suivre'}
+              </button>
+              {canSendMessage && (
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-dm', { detail: { userId: targetId, name: profile?.name || 'Étudiant' } }))}
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', borderRadius:8, background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.25)', color:'var(--accent2)', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
+                >
+                  ✉ Message
+                </button>
+              )}
+            </div>
           )}
         </div>
 

@@ -366,6 +366,15 @@ export default function MessengerWidget() {
                   )}
                 </div>
               ))}
+              {!loading && contacts.length <= 1 && (
+                <div style={{ padding:'16px', margin:'8px 12px', background:'rgba(79,142,247,0.04)', border:'1px dashed rgba(79,142,247,0.2)', borderRadius:10, textAlign:'center' }}>
+                  <div style={{ fontSize:'0.75rem', color:'#4A5568', lineHeight:1.6 }}>
+                    Pour envoyer un message à un étudiant,<br/>
+                    visite son <span style={{ color:'#7BB3FF' }}>profil</span> ou un post <span style={{ color:'#7BB3FF' }}>Senpai</span><br/>
+                    et clique sur <b style={{ color:'#94A3B8' }}>✉ Message</b>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
