@@ -34,6 +34,7 @@ const css = `
   .grad { background:linear-gradient(90deg,var(--accent2) 0%,var(--teal2) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; display:block; }
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 
+  .hero-sub-slogan { font-size:1rem; font-weight:600; color:var(--accent); letter-spacing:0.04em; margin:0 auto 0.6rem; animation:fadeUp 0.5s 0.12s ease both; }
   .hero-desc { max-width:520px; font-size:1.05rem; font-weight:400; color:var(--text2); line-height:1.75; margin:0 auto 2.5rem; animation:fadeUp 0.5s 0.16s ease both; }
 
   /* SEARCH */
@@ -258,13 +259,14 @@ export default function Home() {
           <div className="status-chip">
             <div className="status-dot" />
             <span className="status-text">
-              Plateforme marocaine d'annales &nbsp;—&nbsp; <span>100% gratuit</span>
+              Plateforme marocaine de ressources &nbsp;—&nbsp; <span>100% gratuit</span>
             </span>
           </div>
           <h1 className="hero-title">
-            Trouve tes annales
+            Trouve tes ressources
             <span className="grad">en 30 secondes.</span>
           </h1>
+          <p className="hero-sub-slogan">Sharing is caring. 🤝</p>
           <p className="hero-desc">
             Examens, CCs, TDs et TPs organisés par école, filière et semestre.
             Uploadés par des étudiants comme toi. Gratuit, rapide, structuré.
