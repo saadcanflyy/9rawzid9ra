@@ -117,7 +117,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/browse" element={<Browse />} />
-        <Route path="/module/:id" element={<ModulePage />} />
+        <Route path="/module/:slug" element={<ModulePage />} />
         <Route path="/upload" element={<Upload />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />

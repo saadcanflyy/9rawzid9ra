@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -161,6 +161,7 @@ export default function ModeratorPanel() {
   const [users,       setUsers]       = useState([])
 
   const [modSearch,    setModSearch]    = useState('')
+  const modSearchDebounceRef = useRef(null)
   const [renamingId,   setRenamingId]   = useState(null)
   const [renameVal,    setRenameVal]    = useState('')
   const [newModName,   setNewModName]   = useState('')
@@ -714,7 +715,7 @@ export default function ModeratorPanel() {
                   style={{background:'var(--s2)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 14px',color:'var(--text)',fontSize:'0.82rem',fontFamily:'Outfit,sans-serif',outline:'none',width:'100%',maxWidth:320}}
                   placeholder="Rechercher un module..."
                   value={modSearch}
-                  onChange={e => { setModSearch(e.target.value); searchMods(e.target.value) }}
+                  onChange={e => { const v = e.target.value; setModSearch(v); clearTimeout(modSearchDebounceRef.current); modSearchDebounceRef.current = setTimeout(() => searchMods(v), 500) }}
                 />
               </div>
 

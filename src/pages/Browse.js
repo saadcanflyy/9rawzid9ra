@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
@@ -135,26 +135,51 @@ const DOC_TYPES = [
 
 export default function Browse() {
   const navigate = useNavigate()
-  const [sp] = useSearchParams()
+  const [sp, setSearchParams] = useSearchParams()
+  const debounceRef  = useRef(null)
+  const restoringRef = useRef({ fac: sp.get('fac') || '', fil: sp.get('fil') || '' })
 
-  const [query,   setQuery]   = useState(sp.get('q') || '')
+  const [query,          setQuery]          = useState(sp.get('q')    || '')
+  const [debouncedQuery, setDebouncedQuery] = useState(sp.get('q')    || '')
   const [unis,    setUnis]    = useState([])
   const [facs,    setFacs]    = useState([])
   const [fils,    setFils]    = useState([])
   const [mods,    setMods]    = useState([])
   const [loading, setLoading] = useState(true)
 
-  const [selUni,  setSelUni]  = useState(sp.get('uni') || '')
-  const [selFac,  setSelFac]  = useState('')
-  const [selFil,  setSelFil]  = useState('')
-  const [selSem,  setSelSem]  = useState('')
-  const [selType, setSelType] = useState('')
+  const [selUni,  setSelUni]  = useState(sp.get('uni')  || '')
+  const [selFac,  setSelFac]  = useState(sp.get('fac')  || '')
+  const [selFil,  setSelFil]  = useState(sp.get('fil')  || '')
+  const [selSem,  setSelSem]  = useState(sp.get('sem')  || '')
+  const [selType, setSelType] = useState(sp.get('type') || '')
   const [fetchErr, setFetchErr] = useState('')
 
-  // Sync query state with URL param (when navigating to /browse?q= from search bar)
+  // Sync from URL when navigated here externally (e.g. Navbar search → /browse?q=)
   useEffect(() => {
     setQuery(sp.get('q') || '')
+    setSelUni(sp.get('uni') || '')
+    setSelSem(sp.get('sem') || '')
+    setSelType(sp.get('type') || '')
   }, [sp])
+
+  // Debounce: query → debouncedQuery after 500ms idle
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => setDebouncedQuery(query), 500)
+    return () => clearTimeout(debounceRef.current)
+  }, [query])
+
+  // Persist all active filters to URL (replace so Back button still works)
+  useEffect(() => {
+    const p = {}
+    if (query)   p.q    = query
+    if (selUni)  p.uni  = selUni
+    if (selFac)  p.fac  = selFac
+    if (selFil)  p.fil  = selFil
+    if (selSem)  p.sem  = selSem
+    if (selType) p.type = selType
+    setSearchParams(p, { replace: true })
+  }, [query, selUni, selFac, selFil, selSem, selType, setSearchParams])
 
   // Load universities once
   useEffect(() => {
@@ -163,20 +188,28 @@ export default function Browse() {
       .then(({ data }) => setUnis(data || []))
   }, [])
 
-  // Load faculties when uni changes
+  // Load faculties when uni changes (preserves URL-restored fac value on first load)
   useEffect(() => {
-    if (!selUni) { setFacs([]); setSelFac(''); return }
+    if (!selUni) { setFacs([]); setSelFac(''); setSelFil(''); return }
+    const restoreFac = restoringRef.current.fac
     supabase.from('faculties').select('*').eq('university_id', selUni).order('name')
-      .then(({ data }) => setFacs(data || []))
-    setSelFac(''); setSelFil('')
+      .then(({ data }) => {
+        setFacs(data || [])
+        if (restoreFac) { restoringRef.current.fac = ''; setSelFac(restoreFac) }
+      })
+    if (!restoreFac) { setSelFac(''); setSelFil('') }
   }, [selUni])
 
-  // Load filieres when fac changes
+  // Load filieres when fac changes (preserves URL-restored fil value on first load)
   useEffect(() => {
     if (!selFac) { setFils([]); setSelFil(''); return }
+    const restoreFil = restoringRef.current.fil
     supabase.from('filieres').select('*').eq('faculty_id', selFac).order('name')
-      .then(({ data }) => setFils(data || []))
-    setSelFil('')
+      .then(({ data }) => {
+        setFils(data || [])
+        if (restoreFil) { restoringRef.current.fil = ''; setSelFil(restoreFil) }
+      })
+    if (!restoreFil) setSelFil('')
   }, [selFac])
 
   // Load modules — runs on mount AND when filters change
@@ -204,7 +237,7 @@ export default function Browse() {
       }
 
       if (selSem) q = q.eq('semester', selSem)
-      if (query.trim()) q = q.ilike('name', `%${query.trim()}%`)
+      if (debouncedQuery.trim()) q = q.ilike('name', `%${debouncedQuery.trim()}%`)
 
       // Filter by doc type: only show modules that have at least one doc of that type
       if (selType) {
@@ -222,12 +255,15 @@ export default function Browse() {
       setFetchErr('Erreur de connexion. Vérifie ta connexion internet.')
     }
     setLoading(false)
-  }, [selUni, selFac, selFil, selSem, query, selType])
+  }, [selUni, selFac, selFil, selSem, debouncedQuery, selType])
 
   useEffect(() => { loadModules() }, [loadModules])
 
+  const flushSearch = () => { clearTimeout(debounceRef.current); setDebouncedQuery(query) }
+
   const reset = () => {
-    setSelUni(''); setSelFac(''); setSelFil(''); setSelSem(''); setSelType(''); setQuery('')
+    setSearchParams({})
+    setQuery(''); setDebouncedQuery(''); setSelUni(''); setSelFac(''); setSelFil(''); setSelSem(''); setSelType('')
   }
 
   const displayed = mods
@@ -316,9 +352,9 @@ export default function Browse() {
                 placeholder="Recherche un module... ex: Analyse 1, POO, Marketing Stratégique"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && loadModules()} />
+                onKeyDown={e => e.key === 'Enter' && flushSearch()} />
             </div>
-            <button className="search-btn" onClick={loadModules}>Rechercher</button>
+            <button className="search-btn" onClick={flushSearch}>Rechercher</button>
           </div>
 
           {/* Breadcrumb */}
@@ -360,7 +396,7 @@ export default function Browse() {
                   <div className="empty-sub">Modifie ta recherche ou réinitialise les filtres</div>
                 </div>
               ) : displayed.map(m => (
-                <div key={m.id} className="mod-card" onClick={() => navigate(`/module/${m.id}`)}>
+                <div key={m.id} className="mod-card" onClick={() => navigate(`/module/${m.slug || m.id}`)}>
                   <div className="mod-top">
                     <span className="mod-sem">{m.semester}</span>
                     <span className={`mod-type-tag ${m.type==='projet'?'tag-projet':'tag-cours'}`}>

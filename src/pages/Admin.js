@@ -229,6 +229,7 @@ export default function Admin() {
   // Move document state
   const [movingDocId,   setMovingDocId]   = useState(null)
   const [moveSearch,    setMoveSearch]    = useState('')
+  const moveDebounceRef = useRef(null)
   const [moveResults,   setMoveResults]   = useState([])
   const [moveSelId,     setMoveSelId]     = useState(null)
   const [moveBusy,      setMoveBusy]      = useState(false)
@@ -926,7 +927,7 @@ export default function Admin() {
                                   style={{ width:'100%', background:'var(--s2)', border:'1px solid var(--border)', borderRadius:6, padding:'6px 10px', color:'var(--text)', fontSize:'0.78rem', fontFamily:'Outfit,sans-serif', outline:'none', marginBottom:6 }}
                                   placeholder="Recherche module (min 2 chars)..."
                                   value={moveSearch}
-                                  onChange={e => { setMoveSearch(e.target.value); searchModules(e.target.value); setMoveSelId(null) }}
+                                  onChange={e => { const v = e.target.value; setMoveSearch(v); setMoveSelId(null); clearTimeout(moveDebounceRef.current); moveDebounceRef.current = setTimeout(() => searchModules(v), 500) }}
                                 />
                                 {moveResults.length > 0 && (
                                   <div style={{ display:'flex', flexDirection:'column', gap:3, marginBottom:6 }}>

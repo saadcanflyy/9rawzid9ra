@@ -353,7 +353,8 @@ const TABS = [
 
 export default function ModulePage() {
   const navigate = useNavigate()
-  const { id } = useParams()
+  const { slug } = useParams()
+  const id = slug.split('-').pop()
 
   const [mod,          setMod]          = useState(null)
   const [docs,         setDocs]         = useState([])
@@ -499,7 +500,7 @@ export default function ModulePage() {
   const maxCount = Math.max(...Object.values(typeCounts), 1)
 
   const handleDownload = (doc) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
     // Open immediately (must be synchronous — async breaks browser popup policy)
     if (doc.files && doc.files.length > 0) window.open(doc.files[0], '_blank')
     // Log in background (fire-and-forget)
@@ -509,7 +510,7 @@ export default function ModulePage() {
 
   // ── HELPFUL ──────────────────────────────────────────────────────────────
   const handleHelpful = async (doc) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
     const isH = userReactions[doc.id]?.helpful
     console.log('[handleHelpful] START — doc.id:', doc.id, '| isH (removing?):', isH, '| user.id:', user.id)
 
@@ -535,7 +536,7 @@ export default function ModulePage() {
 
   // ── RATING ────────────────────────────────────────────────────────────────
   const handleRating = async (doc, star) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
     const prev = userReactions[doc.id]?.rating || 0
     await supabase.from('document_reactions')
       .upsert({ user_id: user.id, document_id: doc.id, reaction_type: 'rating', rating: star },
@@ -549,7 +550,7 @@ export default function ModulePage() {
 
   // ── REPORT ────────────────────────────────────────────────────────────────
   const handleReport = async (doc) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
     if (userReactions[doc.id]?.reported) return
     await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'report' })
     await supabase.from('documents').update({ report_count: (doc.report_count || 0) + 1 }).eq('id', doc.id)
@@ -558,7 +559,7 @@ export default function ModulePage() {
 
   // ── BOOKMARK ──────────────────────────────────────────────────────────────
   const handleBookmark = async () => {
-    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
     if (isBookmarked) {
       await supabase.from('module_bookmarks').delete().eq('user_id', user.id).eq('module_id', parseInt(id))
       setIsBookmarked(false)
@@ -570,7 +571,7 @@ export default function ModulePage() {
 
   // ── DOCUMENT REQUEST ──────────────────────────────────────────────────────
   const handleRequest = async (docType) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
     const existing = requests[docType]
     if (existing) {
       if (userRequested[docType]) return
@@ -850,7 +851,7 @@ export default function ModulePage() {
                               <button key={i}
                                 onClick={e => {
                                   e.stopPropagation()
-                                  if (!user) { navigate('/login', { state: { from: `/module/${id}`, message: 'Connecte-toi pour continuer' } }); return }
+                                  if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
                                   window.open(fileUrl, '_blank')
                                   if (i === 0) {
                                     supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id }).then()
@@ -870,7 +871,7 @@ export default function ModulePage() {
                         ) : doc.files?.length === 1 ? (
                           <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                             <button
-                              onClick={e => { e.stopPropagation(); if (!user) { navigate('/login', { state:{ from:`/module/${id}` } }); return } setPreviewDoc(doc) }}
+                              onClick={e => { e.stopPropagation(); if (!user) { navigate('/login', { state:{ from:`/module/${slug}` } }); return } setPreviewDoc(doc) }}
                               style={{ background:'rgba(45,212,191,0.07)', border:'1px solid rgba(45,212,191,0.2)', color:'#2DD4BF', borderRadius:7, padding:'7px 12px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
                               onMouseEnter={e => { e.currentTarget.style.background='rgba(45,212,191,0.15)'; e.currentTarget.style.borderColor='#2DD4BF' }}
                               onMouseLeave={e => { e.currentTarget.style.background='rgba(45,212,191,0.07)'; e.currentTarget.style.borderColor='rgba(45,212,191,0.2)' }}

@@ -458,11 +458,15 @@ export default function SenpaiZone() {
     }
   }, [])
 
-  // module search for compose
+  // module search for compose — debounced 500ms
+  const modSearchDebounceRef = useRef(null)
   useEffect(() => {
+    clearTimeout(modSearchDebounceRef.current)
     if (modSearch.trim().length < 2) { setModResults([]); return }
-    supabase.from('modules').select('id,name,semester,filieres(name)').ilike('name', `%${modSearch.trim()}%`).limit(5)
-      .then(({ data }) => setModResults(data || []))
+    modSearchDebounceRef.current = setTimeout(() => {
+      supabase.from('modules').select('id,name,semester,filieres(name)').ilike('name', `%${modSearch.trim()}%`).limit(5)
+        .then(({ data }) => setModResults(data || []))
+    }, 500)
   }, [modSearch])
 
   // click-outside to close post menu
