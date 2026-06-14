@@ -89,6 +89,38 @@ const css = `
   .nb-notifs-empty { padding: 2.5rem 1rem; text-align: center; font-size: 0.8rem; color: #4A5568; }
   @media(max-width: 768px) { .nb-notifs-dd { right: -20px; width: 290px; } }
 
+  /* ── SEARCH ── */
+  .nb-search-wrap { position: relative; margin-left: 16px; }
+  .nb-search-box {
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,0.04); border: 1px solid #1C2A45;
+    border-radius: 8px; padding: 0 10px; height: 34px; width: 210px;
+    transition: border-color 0.15s, background 0.15s, width 0.2s;
+  }
+  .nb-search-box:focus-within { border-color: rgba(79,142,247,0.4); background: rgba(255,255,255,0.06); width: 270px; }
+  .nb-search-input {
+    flex: 1; background: none; border: none; outline: none;
+    font-family: 'Outfit', sans-serif; font-size: 0.82rem; color: #E2E8F0; min-width: 0;
+  }
+  .nb-search-input::placeholder { color: #4A5568; }
+  .nb-search-clear { background: none; border: none; color: #4A5568; cursor: pointer; font-size: 1rem; padding: 0; line-height: 1; transition: color 0.1s; flex-shrink: 0; }
+  .nb-search-clear:hover { color: #94A3B8; }
+  .nb-search-dd {
+    position: absolute; top: calc(100% + 8px); left: 0; min-width: 300px;
+    background: #0C1222; border: 1px solid #1C2A45; border-radius: 10px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6); z-index: 600; overflow: hidden;
+  }
+  .nb-search-item { padding: 10px 14px; cursor: pointer; transition: background 0.12s; border-bottom: 1px solid rgba(28,42,69,0.5); }
+  .nb-search-item:hover { background: rgba(79,142,247,0.08); }
+  .nb-search-name { font-size: 0.84rem; color: #E2E8F0; font-weight: 500; }
+  .nb-search-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+  .nb-search-sem { font-family: 'DM Mono', monospace; font-size: 0.64rem; background: rgba(79,142,247,0.15); color: #7BB3FF; border-radius: 4px; padding: 1px 5px; }
+  .nb-search-fil { font-size: 0.72rem; color: #4A5568; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+  .nb-search-footer { padding: 9px 14px; font-size: 0.77rem; color: #4A5568; cursor: pointer; border-top: 1px solid #1C2A45; background: rgba(2,4,10,0.4); transition: color 0.12s; }
+  .nb-search-footer:hover { color: #7BB3FF; }
+  .nb-search-footer b { color: #94A3B8; }
+  @media(max-width: 768px) { .nb-search-wrap { display: none; } }
+
   /* ── HAMBURGER ── */
   .nb-burger {
     display: none; background: none; border: none; cursor: pointer;
@@ -164,6 +196,12 @@ export default function Navbar({ activePage = '' }) {
   const [showNotifs, setShowNotifs] = useState(false)
   const notifRef = useRef(null)
 
+  const [searchQ,    setSearchQ]    = useState('')
+  const [searchRes,  setSearchRes]  = useState([])
+  const [searchOpen, setSearchOpen] = useState(false)
+  const searchRef    = useRef(null)
+  const searchTimer  = useRef(null)
+
   // Load notifs when user becomes available
   useEffect(() => {
     if (user) loadNotifs(user.id)
@@ -226,6 +264,34 @@ export default function Navbar({ activePage = '' }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [showNotifs])
 
+  // Debounced search
+  useEffect(() => {
+    const q = searchQ.trim()
+    if (!q) { setSearchRes([]); setSearchOpen(false); return }
+    clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(async () => {
+      const { data } = await supabase
+        .from('modules')
+        .select('id, name, semester, filieres(name)')
+        .ilike('name', `%${q}%`)
+        .order('name')
+        .limit(6)
+      setSearchRes(data || [])
+      setSearchOpen(true)
+    }, 280)
+    return () => clearTimeout(searchTimer.current)
+  }, [searchQ])
+
+  // Click-outside for search dropdown
+  useEffect(() => {
+    if (!searchOpen) return
+    const handler = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) setSearchOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [searchOpen])
+
   // Real-time: new notifications
   useEffect(() => {
     if (!user) return
@@ -254,6 +320,14 @@ export default function Navbar({ activePage = '' }) {
   ]
 
   const navigate_ = (path) => { navigate(path); setMenuOpen(false) }
+
+  const doSearch = (q) => {
+    if (!q.trim()) return
+    setSearchOpen(false)
+    setSearchQ('')
+    setSearchRes([])
+    navigate(`/browse?q=${encodeURIComponent(q.trim())}`)
+  }
 
   const displayNotifs = (() => {
     const result = []
@@ -288,7 +362,7 @@ export default function Navbar({ activePage = '' }) {
         >Me notifier</button>
       </div>
       <nav className="navbar">
-        {/* col 1 — logo */}
+        {/* col 1 — logo + search */}
         <div className="nb-left">
           <div className="nb-logo" onClick={() => navigate('/')}>
             <div className="nb-logo-box">
@@ -297,6 +371,46 @@ export default function Navbar({ activePage = '' }) {
               </svg>
             </div>
             <span className="nb-logo-text">9raw<b>Zid</b>9ra</span>
+          </div>
+
+          {/* Search — desktop only */}
+          <div className="nb-search-wrap" ref={searchRef}>
+            <div className="nb-search-box">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4A5568" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}>
+                <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+              </svg>
+              <input
+                className="nb-search-input"
+                type="text"
+                placeholder="Rechercher un module..."
+                value={searchQ}
+                onChange={e => setSearchQ(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') doSearch(searchQ)
+                  if (e.key === 'Escape') { setSearchOpen(false); setSearchQ('') }
+                }}
+                onFocus={() => searchRes.length > 0 && setSearchOpen(true)}
+              />
+              {searchQ && (
+                <button className="nb-search-clear" onClick={() => { setSearchQ(''); setSearchRes([]); setSearchOpen(false) }}>×</button>
+              )}
+            </div>
+            {searchOpen && searchRes.length > 0 && (
+              <div className="nb-search-dd">
+                {searchRes.map(m => (
+                  <div key={m.id} className="nb-search-item" onClick={() => { setSearchOpen(false); setSearchQ(''); navigate(`/module/${m.id}`) }}>
+                    <div className="nb-search-name">{m.name}</div>
+                    <div className="nb-search-meta">
+                      <span className="nb-search-sem">S{m.semester}</span>
+                      {m.filieres?.name && <span className="nb-search-fil">{m.filieres.name}</span>}
+                    </div>
+                  </div>
+                ))}
+                <div className="nb-search-footer" onClick={() => doSearch(searchQ)}>
+                  Voir tous les résultats pour "<b>{searchQ}</b>"
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -449,6 +563,38 @@ export default function Navbar({ activePage = '' }) {
 
       {/* Mobile drawer */}
       <div className={`nb-drawer ${menuOpen ? 'open' : ''}`}>
+        {/* Mobile search */}
+        <div style={{ marginBottom: 8 }}>
+          <input
+            type="text"
+            placeholder="Rechercher un module..."
+            value={searchQ}
+            onChange={e => setSearchQ(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && searchQ.trim()) { setMenuOpen(false); doSearch(searchQ) }
+            }}
+            style={{ width:'100%', boxSizing:'border-box', background:'rgba(255,255,255,0.04)', border:'1px solid #1C2A45', borderRadius:8, padding:'9px 12px', color:'#E2E8F0', fontSize:'0.88rem', fontFamily:'Outfit,sans-serif', outline:'none' }}
+          />
+          {searchQ.trim() && searchRes.length > 0 && (
+            <div style={{ marginTop:6, background:'#0C1222', border:'1px solid #1C2A45', borderRadius:8, overflow:'hidden' }}>
+              {searchRes.map(m => (
+                <div key={m.id} style={{ padding:'10px 12px', cursor:'pointer', borderBottom:'1px solid rgba(28,42,69,0.5)' }}
+                  onClick={() => { setMenuOpen(false); setSearchQ(''); navigate(`/module/${m.id}`) }}>
+                  <div style={{ fontSize:'0.84rem', color:'#E2E8F0', fontWeight:500 }}>{m.name}</div>
+                  <div style={{ display:'flex', gap:6, marginTop:3 }}>
+                    <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.64rem', background:'rgba(79,142,247,0.15)', color:'#7BB3FF', borderRadius:4, padding:'1px 5px' }}>S{m.semester}</span>
+                    {m.filieres?.name && <span style={{ fontSize:'0.72rem', color:'#4A5568' }}>{m.filieres.name}</span>}
+                  </div>
+                </div>
+              ))}
+              <div style={{ padding:'9px 12px', fontSize:'0.77rem', color:'#4A5568', cursor:'pointer', borderTop:'1px solid #1C2A45', background:'rgba(2,4,10,0.4)' }}
+                onClick={() => { setMenuOpen(false); doSearch(searchQ) }}>
+                Voir tous les résultats →
+              </div>
+            </div>
+          )}
+        </div>
+
         {NAV_LINKS.map(l => (
           <button key={l.k} className={`nb-drawer-link ${page === (l.k || 'home') ? 'active' : ''}`} onClick={() => navigate_(l.path)}>
             {l.label}

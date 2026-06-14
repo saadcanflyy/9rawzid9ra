@@ -151,6 +151,11 @@ export default function Browse() {
   const [selType, setSelType] = useState('')
   const [fetchErr, setFetchErr] = useState('')
 
+  // Sync query state with URL param (when navigating to /browse?q= from search bar)
+  useEffect(() => {
+    setQuery(sp.get('q') || '')
+  }, [sp])
+
   // Load universities once
   useEffect(() => {
     document.title = 'Explorer les modules — 9rawZid9ra'
