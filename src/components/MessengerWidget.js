@@ -279,10 +279,11 @@ export default function MessengerWidget() {
     }).select().single()
     if (newMsg) setThread(prev => [...prev, newMsg])
     await supabase.from('notifications').insert({
-      user_id: activeContact.id,
-      type:    'new_message',
-      content: `${profile?.name || 'Utilisateur'} : ${content.slice(0, 80)}`,
-      read:    false,
+      user_id:  activeContact.id,
+      actor_id: user.id,
+      type:     'new_message',
+      content:  `${profile?.name || 'Utilisateur'} : ${content.slice(0, 80)}`,
+      read:     false,
     })
     setSending(false)
   }
