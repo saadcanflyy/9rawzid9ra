@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
+import { useAuth } from '../context/AuthContext'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
@@ -191,9 +192,9 @@ const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
 
 export default function Home() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [docCount, setDocCount] = useState(0)
-  const [user, setUser] = useState(null)
   const [followingCount, setFollowingCount] = useState(null)
   const [suggestFollowing, setSuggestFollowing] = useState(false)
   const [suggestDismissed, setSuggestDismissed] = useState(() =>
@@ -206,15 +207,11 @@ export default function Home() {
       .eq('is_verified', true)
       .then(({ count }) => { if (count) setDocCount(count) })
       .catch(() => {})
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) { setUser(session.user); loadFollowingState(session.user.id) }
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) { setUser(session.user); loadFollowingState(session.user.id) }
-      else if (event === 'SIGNED_OUT') setUser(null)
-    })
-    return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (user) loadFollowingState(user.id)
+  }, [user?.id]) // eslint-disable-line
 
   const loadFollowingState = async (uid) => {
     const { count } = await supabase.from('user_follows').select('*', { count:'exact', head:true }).eq('follower_id', uid)

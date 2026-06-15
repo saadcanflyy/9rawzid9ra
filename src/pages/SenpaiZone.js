@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
+import { useAuth } from '../context/AuthContext'
 
 // ─── SVG ICONS ────────────────────────────────────────────────────────────────
 const ICONS = {
@@ -366,7 +367,7 @@ export default function SenpaiZone() {
   const typeDdRef   = useRef(null)
 
   // ── auth / data state ──
-  const [user,    setUser]    = useState(null)
+  const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [posts,   setPosts]   = useState([])
   const [unis,    setUnis]    = useState([])
@@ -414,18 +415,6 @@ export default function SenpaiZone() {
   // ── LOAD ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     document.title = 'Senpai Zone — 9rawZid9ra'
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const u = session?.user || null
-      setUser(u)
-      if (u) {
-        const [{ data: prof }, { data: fols }] = await Promise.all([
-          supabase.from('user_profiles').select('name,university_id,is_admin').eq('id', u.id).single(),
-          supabase.from('user_follows').select('following_id').eq('follower_id', u.id),
-        ])
-        setProfile(prof)
-        setFollowing(new Set((fols || []).map(f => f.following_id)))
-      }
-    })
     supabase.from('universities').select('id,name').order('name').then(({ data }) => setUnis(data || []))
     loadPosts()
     if (sp.get('module')) {
@@ -521,27 +510,17 @@ export default function SenpaiZone() {
     return () => document.removeEventListener('mousedown', handler)
   }, [composeFocused, composeText])
 
-  // re-fetch posts and user data when auth state changes (login/logout mid-session)
+  // Load profile + following whenever auth user changes (AuthContext is the source of truth)
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser(session.user)
-        const [{ data: prof }, { data: fols }] = await Promise.all([
-          supabase.from('user_profiles').select('name,university_id,is_admin').eq('id', session.user.id).single(),
-          supabase.from('user_follows').select('following_id').eq('follower_id', session.user.id),
-        ])
-        setProfile(prof)
-        setFollowing(new Set((fols || []).map(f => f.following_id)))
-        loadPosts()
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setProfile(null)
-        setFollowing(new Set())
-        loadPosts()
-      }
+    if (!user) { setProfile(null); setFollowing(new Set()); return }
+    Promise.all([
+      supabase.from('user_profiles').select('name,university_id,is_admin').eq('id', user.id).single(),
+      supabase.from('user_follows').select('following_id').eq('follower_id', user.id),
+    ]).then(([{ data: prof }, { data: fols }]) => {
+      setProfile(prof)
+      setFollowing(new Set((fols || []).map(f => f.following_id)))
     })
-    return () => subscription.unsubscribe()
-  }, [loadPosts])
+  }, [user?.id]) // eslint-disable-line
 
   // ── FILTERED POSTS ────────────────────────────────────────────────────────
   const filtered = useMemo(() => {

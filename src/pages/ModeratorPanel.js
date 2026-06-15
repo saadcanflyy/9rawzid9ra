@@ -190,7 +190,8 @@ export default function ModeratorPanel() {
   useEffect(() => {
     document.title = 'Panneau Modérateur — 9rawZid9ra'
     async function check() {
-      const { data: { user: u } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const u = session?.user
       if (!u) { setAuthLoading(false); return }
       setUser(u)
       const { data: prof } = await supabase.from('user_profiles')

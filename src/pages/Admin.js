@@ -265,7 +265,8 @@ export default function Admin() {
   // Auth check
   useEffect(() => {
     async function check() {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) { setAuthLoading(false); return }
       setUser(user)
       const { data: profile } = await supabase.from('user_profiles').select('is_admin').eq('id', user.id).single()

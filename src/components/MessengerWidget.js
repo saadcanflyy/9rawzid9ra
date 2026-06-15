@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { useAuth } from '../context/AuthContext'
 
 const ADMIN_ID   = '84c11086-6041-4118-8f4c-138a0664966f'
 const EXPIRY_MS  = 48 * 60 * 60 * 1000 // 48 hours
@@ -53,7 +54,7 @@ const fmtAgo = d => {
 }
 
 export default function MessengerWidget() {
-  const [user,          setUser]          = useState(null)
+  const { user }                          = useAuth()
   const [profile,       setProfile]       = useState(null)
   const [profileLoaded, setProfileLoaded] = useState(false)
   const [isOpen,        setIsOpen]        = useState(false)
@@ -77,27 +78,19 @@ export default function MessengerWidget() {
   useEffect(() => { activeContactRef.current = activeContact }, [activeContact])
   useEffect(() => { userRef.current = user }, [user])
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // ── Auth — driven by AuthContext, no local listeners ─────────────────────
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) init(session.user)
-      else setProfileLoaded(true)
-    })
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) init(session.user)
-      else if (event === 'SIGNED_OUT') {
-        setUser(null); setProfile(null); setProfileLoaded(false)
-        setThread([]); setContacts([]); setUnread(0); setIsOpen(false)
-        setActiveContact(null); setView('inbox')
-        setTimeout(() => setProfileLoaded(true), 50)
-      }
-    })
-    return () => subscription.unsubscribe()
-  }, []) // eslint-disable-line
+    if (!user) {
+      setProfile(null); setProfileLoaded(false)
+      setThread([]); setContacts([]); setUnread(0); setIsOpen(false)
+      setActiveContact(null); setView('inbox')
+      setTimeout(() => setProfileLoaded(true), 50)
+      return
+    }
+    init(user)
+  }, [user?.id]) // eslint-disable-line
 
   const init = async (u) => {
-    setUser(u)
-    userRef.current = u
     const { data } = await supabase
       .from('user_profiles')
       .select('name, is_admin, is_moderator')

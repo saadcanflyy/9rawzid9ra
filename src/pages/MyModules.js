@@ -91,7 +91,8 @@ export default function MyModules() {
 
   useEffect(() => {
     document.title = 'Mes modules — 9rawZid9ra'
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user
       if (!user) { navigate('/login', { state: { from: '/my-modules' } }); return }
       loadBookmarks(user.id)
     })
@@ -130,7 +131,8 @@ export default function MyModules() {
 
   const handleRemove = async (e, bookmarkId) => {
     e.stopPropagation()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
     if (!user) return
     await supabase.from('module_bookmarks').delete().eq('id', bookmarkId).eq('user_id', user.id)
     setBookmarks(prev => prev.filter(b => b.id !== bookmarkId))
