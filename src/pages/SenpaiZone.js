@@ -777,7 +777,9 @@ export default function SenpaiZone() {
     return (
       <div key={post.id} className="sz-post" onClick={() => openThread(post)}>
         <div className="sz-post-row">
-          <div className="sz-av" style={{ width: 38, height: 38, background: anon ? '#1C2A45' : aGrad(post.author_id), fontSize: '0.62rem', flexShrink: 0 }}>
+          <div className="sz-av"
+            style={{ width: 38, height: 38, background: anon ? '#1C2A45' : aGrad(post.author_id), fontSize: '0.62rem', flexShrink: 0, cursor: anon ? 'default' : 'pointer' }}
+            onClick={!anon ? e => { e.stopPropagation(); navigate(`/user/${post.author_id}`) } : undefined}>
             {anon ? <Ico n="user" size={14} color="#4A5568" /> : inits(name)}
           </div>
           <div className="sz-post-body-wrap">
@@ -907,7 +909,9 @@ export default function SenpaiZone() {
           <div className="sz-thread-body">
             <div className="sz-thread-post">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <div className="sz-av" style={{ background: anon ? '#1C2A45' : aGrad(viewPost.author_id), fontSize: '0.62rem', flexShrink: 0 }}>
+                <div className="sz-av"
+                  style={{ background: anon ? '#1C2A45' : aGrad(viewPost.author_id), fontSize: '0.62rem', flexShrink: 0, cursor: anon ? 'default' : 'pointer' }}
+                  onClick={!anon ? () => { navigate(`/user/${viewPost.author_id}`); setViewPost(null) } : undefined}>
                   {anon ? <Ico n="user" size={14} color="#4A5568" /> : inits(name)}
                 </div>
                 <div style={{ flex: 1 }}>
@@ -963,12 +967,20 @@ export default function SenpaiZone() {
               const rn = r.is_anonymous ? 'Anonyme' : (r.user_profiles?.name || 'Anonyme')
               return (
                 <div key={r.id} className="sz-reply-item">
-                  <div className="sz-av" style={{ width: 30, height: 30, fontSize: '0.55rem', background: r.is_anonymous ? '#1C2A45' : aGrad(r.author_id), flexShrink: 0 }}>
+                  <div className="sz-av"
+                    style={{ width: 30, height: 30, fontSize: '0.55rem', background: r.is_anonymous ? '#1C2A45' : aGrad(r.author_id), flexShrink: 0, cursor: r.is_anonymous ? 'default' : 'pointer' }}
+                    onClick={!r.is_anonymous ? () => { navigate(`/user/${r.author_id}`); setViewPost(null) } : undefined}>
                     {r.is_anonymous ? <Ico n="user" size={12} color="#4A5568" /> : inits(rn)}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 3 }}>
-                      <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fff' }}>{rn}</span>
+                      <span
+                        style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fff', cursor: r.is_anonymous ? 'default' : 'pointer' }}
+                        onClick={!r.is_anonymous ? () => { navigate(`/user/${r.author_id}`); setViewPost(null) } : undefined}
+                        onMouseEnter={!r.is_anonymous ? e => e.currentTarget.style.textDecoration='underline' : undefined}
+                        onMouseLeave={!r.is_anonymous ? e => e.currentTarget.style.textDecoration='none' : undefined}>
+                        {rn}
+                      </span>
                       <span style={{ fontSize: '0.62rem', color: 'var(--text3)', fontFamily: 'DM Mono,monospace', marginLeft: 'auto' }}>{fmtAgo(r.created_at)}</span>
                     </div>
                     <div className="sz-reply-content">{r.content}</div>
