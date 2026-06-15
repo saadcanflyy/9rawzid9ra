@@ -220,6 +220,8 @@ export default function Upload() {
 
   const [modSearch,    setModSearch]    = useState('')
   const [modResults,   setModResults]   = useState([])
+  const [uniSearch,    setUniSearch]    = useState('')
+  const [showUniDd,    setShowUniDd]    = useState(false)
 
   // School request form
   const [showSchoolForm,    setShowSchoolForm]    = useState(false)
@@ -596,7 +598,7 @@ export default function Upload() {
         const { data: newMod, error: modErr } = await supabase.from('modules').insert({
           filiere_id: parseInt(selFil),
           semester:   selSem,
-          name:       selMod.name,
+          name:       stripHtml(selMod.name).slice(0, 120),
           type:       'cours',
           verified:   true,
         }).select().single()
@@ -777,10 +779,32 @@ export default function Upload() {
                 <div className="field-grid">
                   <div>
                     <label className="label">Université / École</label>
-                    <select className="select" value={selUni} onChange={e => setSelUni(e.target.value)}>
-                      <option value="">Sélectionner...</option>
-                      {unis.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
+                    <div className="module-search-wrap">
+                      <input
+                        className="input"
+                        placeholder="Cherche une université…"
+                        value={selUni ? (unis.find(u => String(u.id) === selUni)?.name ?? uniSearch) : uniSearch}
+                        onChange={e => { setUniSearch(e.target.value); setSelUni(''); setShowUniDd(true); }}
+                        onFocus={() => setShowUniDd(true)}
+                        onBlur={() => setTimeout(() => setShowUniDd(false), 150)}
+                      />
+                      {showUniDd && (
+                        <div className="module-results">
+                          {unis
+                            .filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase()))
+                            .map(u => (
+                              <div key={u.id} className="module-result"
+                                onMouseDown={() => { setSelUni(String(u.id)); setUniSearch(u.name); setShowUniDd(false); }}>
+                                <span className="module-result-name">{u.name}</span>
+                              </div>
+                            ))
+                          }
+                          {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).length === 0 && (
+                            <div style={{padding:'10px 12px',fontSize:'0.8rem',color:'var(--text3)'}}>Aucun résultat</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                     {!selUni && (
                       <p style={{color:'var(--text3)',fontSize:'11px',marginTop:'4px',fontFamily:'DM Mono, monospace'}}>
                         // Cherche ton école directement (ex: ENSA, ENCG, SUPMTI) ou sélectionne l'université parente si ton école en fait partie

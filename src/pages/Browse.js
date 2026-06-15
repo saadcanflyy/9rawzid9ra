@@ -145,7 +145,7 @@ export default function Browse() {
   const [facs,    setFacs]    = useState([])
   const [fils,    setFils]    = useState([])
   const [mods,    setMods]    = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   const [selUni,  setSelUni]  = useState(sp.get('uni')  || '')
   const [selFac,  setSelFac]  = useState(sp.get('fac')  || '')
@@ -214,6 +214,9 @@ export default function Browse() {
 
   // Load modules — runs on mount AND when filters change
   const loadModules = useCallback(async () => {
+    if (!selUni && !selSem && !selType && !debouncedQuery.trim()) {
+      setMods([]); setLoading(false); return
+    }
     setLoading(true)
     try {
       let q = supabase
@@ -271,7 +274,8 @@ export default function Browse() {
   const facName  = facs.find(f => f.id === parseInt(selFac))?.name
   const filName  = fils.find(f => f.id === parseInt(selFil))?.name
   const typeName = DOC_TYPES.find(t => t.k === selType)?.l
-  const hasFilters = selUni || selFac || selFil || selSem || selType || query
+  const hasFilters     = selUni || selFac || selFil || selSem || selType || query
+  const hasActiveFilter = !!(selUni || selSem || selType || debouncedQuery.trim())
 
   return (
     <div className="browse">
@@ -375,19 +379,26 @@ export default function Browse() {
               {fetchErr}
             </div>
           )}
-          <div className="results-bar">
-            <span className="results-info">
-              <b>{displayed.length}</b> module{displayed.length!==1?'s':''} trouvé{displayed.length!==1?'s':''}
-              {!hasFilters && <span style={{color:'var(--text3)'}}> — tous les modules</span>}
-            </span>
-            {hasFilters && (
-              <button className="clear-btn" onClick={reset}>effacer les filtres</button>
-            )}
-          </div>
+          {hasActiveFilter && (
+            <div className="results-bar">
+              <span className="results-info">
+                <b>{displayed.length}</b> module{displayed.length!==1?'s':''} trouvé{displayed.length!==1?'s':''}
+              </span>
+              {hasFilters && (
+                <button className="clear-btn" onClick={reset}>effacer les filtres</button>
+              )}
+            </div>
+          )}
 
           <div className="grid-wrap">
             <div className="modules-grid">
-              {loading ? (
+              {!hasActiveFilter ? (
+                <div className="empty">
+                  <div className="empty-code">// no filter selected</div>
+                  <div className="empty-title">Sélectionne ton université pour commencer</div>
+                  <div className="empty-sub">Utilise les filtres à gauche pour trouver tes modules</div>
+                </div>
+              ) : loading ? (
                 Array(12).fill(0).map((_,i) => <div key={i} className="skel" />)
               ) : displayed.length === 0 ? (
                 <div className="empty">
