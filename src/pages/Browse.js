@@ -46,6 +46,20 @@ const css = `
   .type-row.on .type-name { color:var(--accent2); font-weight:500; }
   .sidebar-divider { height:1px; background:var(--border); margin:1.25rem 0; }
 
+  /* SEARCHABLE UNI DROPDOWN */
+  .uni-wrap { position:relative; }
+  .uni-input { width:100%; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; color:var(--text); font-size:0.82rem; font-family:'Outfit',sans-serif; outline:none; transition:border-color 0.15s; }
+  .uni-input:focus { border-color:var(--accent); }
+  .uni-input::placeholder { color:var(--text3); }
+  .uni-dd { position:absolute; top:100%; left:0; right:0; z-index:100; background:var(--s2); border:1px solid var(--borderhi); border-radius:8px; margin-top:4px; overflow:hidden; max-height:220px; overflow-y:auto; box-shadow:0 8px 24px rgba(0,0,0,0.4); }
+  .uni-dd::-webkit-scrollbar { width:3px; }
+  .uni-dd::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .uni-dd-item { padding:8px 10px; cursor:pointer; font-size:0.82rem; color:var(--text); border-bottom:1px solid var(--border); transition:background 0.12s; font-family:'Outfit',sans-serif; }
+  .uni-dd-item:last-child { border-bottom:none; }
+  .uni-dd-item:hover { background:var(--s3); }
+  .uni-dd-item.reset { color:var(--text3); font-style:italic; }
+  .uni-dd-empty { padding:8px 10px; font-size:0.78rem; color:var(--text3); font-family:'DM Mono',monospace; }
+
   /* MAIN */
   .main { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
   .main::-webkit-scrollbar { width:4px; }
@@ -153,6 +167,8 @@ export default function Browse() {
   const [selSem,  setSelSem]  = useState(sp.get('sem')  || '')
   const [selType, setSelType] = useState(sp.get('type') || '')
   const [fetchErr, setFetchErr] = useState('')
+  const [uniSearch,  setUniSearch]  = useState('')
+  const [showUniDd,  setShowUniDd]  = useState(false)
 
   // Sync from URL when navigated here externally (e.g. Navbar search → /browse?q=)
   useEffect(() => {
@@ -267,6 +283,7 @@ export default function Browse() {
   const reset = () => {
     setSearchParams({})
     setQuery(''); setDebouncedQuery(''); setSelUni(''); setSelFac(''); setSelFil(''); setSelSem(''); setSelType('')
+    setUniSearch(''); setShowUniDd(false)
   }
 
   const displayed = mods
@@ -292,10 +309,36 @@ export default function Browse() {
 
           <div className="filter-block">
             <span className="filter-label">Université</span>
-            <select className="filter-select" value={selUni} onChange={e => setSelUni(e.target.value)}>
-              <option value="">Toutes les universités</option>
-              {unis.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-            </select>
+            <div className="uni-wrap">
+              <input
+                className="uni-input"
+                placeholder="Toutes les universités"
+                value={selUni ? (unis.find(u => String(u.id) === selUni)?.name ?? uniSearch) : uniSearch}
+                onChange={e => { setUniSearch(e.target.value); setSelUni(''); setShowUniDd(true); }}
+                onFocus={() => setShowUniDd(true)}
+                onBlur={() => setTimeout(() => setShowUniDd(false), 150)}
+              />
+              {showUniDd && (
+                <div className="uni-dd">
+                  <div className="uni-dd-item reset"
+                    onMouseDown={() => { setSelUni(''); setUniSearch(''); setShowUniDd(false); }}>
+                    Toutes les universités
+                  </div>
+                  {unis
+                    .filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase()))
+                    .map(u => (
+                      <div key={u.id} className="uni-dd-item"
+                        onMouseDown={() => { setSelUni(String(u.id)); setUniSearch(u.name); setShowUniDd(false); }}>
+                        {u.name}
+                      </div>
+                    ))
+                  }
+                  {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).length === 0 && (
+                    <div className="uni-dd-empty">Aucun résultat</div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           {facs.length > 0 && (
