@@ -197,6 +197,14 @@ export default function Browse() {
     setSearchParams(p, { replace: true })
   }, [query, selUni, selFac, selFil, selSem, selType, setSearchParams])
 
+  // Save full browse URL to sessionStorage on unmount so Navbar can restore it
+  useEffect(() => {
+    return () => {
+      const url = window.location.pathname + window.location.search
+      if (url.startsWith('/browse')) sessionStorage.setItem('lastBrowseUrl', url)
+    }
+  }, [])
+
   // Load universities once
   useEffect(() => {
     document.title = 'Explorer les modules — 9rawZid9ra'

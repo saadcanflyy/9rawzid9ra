@@ -254,7 +254,17 @@ export default function Navbar({ activePage = '' }) {
     { k:'upload', label:'Uploader', path:'/upload' },
   ]
 
-  const navigate_ = (path) => { navigate(path); setMenuOpen(false) }
+  const handleNav = (path) => {
+    if (path === '/browse') {
+      if (location.pathname === '/browse') return  // already here — keep filters intact
+      if (location.pathname.startsWith('/module/')) {
+        const saved = sessionStorage.getItem('lastBrowseUrl')
+        if (saved) { navigate(saved); return }
+      }
+    }
+    navigate(path)
+  }
+  const navigate_ = (path) => { handleNav(path); setMenuOpen(false) }
 
   const displayNotifs = (() => {
     const result = []
@@ -304,7 +314,7 @@ export default function Navbar({ activePage = '' }) {
         {/* col 2 — centered nav links */}
         <div className="nb-links">
           {NAV_LINKS.map(l => (
-            <button key={l.k} className={`nb-link ${page === (l.k || 'home') ? 'active' : ''}`} onClick={() => navigate(l.path)}>
+            <button key={l.k} className={`nb-link ${page === (l.k || 'home') ? 'active' : ''}`} onClick={() => handleNav(l.path)}>
               {l.label}
             </button>
           ))}
