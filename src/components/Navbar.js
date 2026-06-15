@@ -257,10 +257,8 @@ export default function Navbar({ activePage = '' }) {
   const handleNav = (path) => {
     if (path === '/browse') {
       if (location.pathname === '/browse') return  // already here — keep filters intact
-      if (location.pathname.startsWith('/module/')) {
-        const saved = sessionStorage.getItem('lastBrowseUrl')
-        if (saved) { navigate(saved); return }
-      }
+      const saved = sessionStorage.getItem('lastBrowseUrl')
+      if (saved) { navigate(saved); return }
     }
     navigate(path)
   }
