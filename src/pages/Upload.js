@@ -163,6 +163,7 @@ const DOC_TYPES = [
 const YEARS = ['2027/2028','2026/2027','2025/2026','2024/2025','2023/2024','2022/2023','2021/2022','2020/2021','2019/2020','2018/2019']
 const SEMESTERS = ['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10']
 const fmt = (b) => b < 1024*1024 ? (b/1024).toFixed(1)+' KB' : (b/(1024*1024)).toFixed(1)+' MB'
+const stripHtml = (str) => str.replace(/<[^>]*>/g, '').trim()
 
 const ALLOWED_TYPES = new Set([
   'application/pdf',
@@ -421,11 +422,13 @@ export default function Upload() {
     try {
       if (schoolCase === 'independent') {
         if (!schAName.trim()) return
+        const safeNameA = stripHtml(schAName).slice(0, 120)
+        const safeCityA = stripHtml(schACity).slice(0, 80)
         await supabase.from('school_requests').insert({
-          requested_by: user.id, school_name: schAName.trim(), city: schACity.trim() || null,
+          requested_by: user.id, school_name: safeNameA, city: safeCityA || null,
           school_type: schAType, request_type: 'independent', status: 'approved',
         })
-        const payload = { name: schAName.trim(), city: schACity.trim() || null, type: schAType }
+        const payload = { name: safeNameA, city: safeCityA || null, type: schAType }
         const { data: newUni, error: uniErr } = await supabase.from('universities').insert(payload).select().single()
         if (uniErr) { console.error('[Case A] error:', uniErr); setError('Erreur ajout université : ' + uniErr.message); return }
         const { data: allUnis } = await supabase.from('universities').select('*').order('name')
@@ -445,11 +448,12 @@ export default function Upload() {
         isSubmittingFacRef.current = true
         try {
           for (const fac of validFacs) {
+            const safeFacName = stripHtml(fac.name).slice(0, 120)
             await supabase.from('school_requests').insert({
-              requested_by: user.id, school_name: fac.name.trim(), school_type: fac.type,
+              requested_by: user.id, school_name: safeFacName, school_type: fac.type,
               request_type: 'faculty', parent_university_id: parentUniId, status: 'approved',
             })
-            const payload = { university_id: parentUniId, name: fac.name.trim(), type: fac.type }
+            const payload = { university_id: parentUniId, name: safeFacName, type: fac.type }
             const { data: inserted, error: facErr } = await supabase.from('faculties').insert(payload).select().single()
             if (facErr) { console.error('[Case B] error:', facErr); setError(`Erreur ajout "${fac.name}" : ${facErr.message}`); return }
           }
@@ -471,12 +475,14 @@ export default function Upload() {
       } else if (schoolCase === 'university_with_faculties') {
         if (!schCUniName.trim()) return
         const validFacs = schCFaculties.filter(f => f.name.trim())
+        const safeNameC = stripHtml(schCUniName).slice(0, 120)
+        const safeCityC = stripHtml(schCCity).slice(0, 80)
         await supabase.from('school_requests').insert({
-          requested_by: user.id, school_name: schCUniName.trim(), city: schCCity.trim() || null,
+          requested_by: user.id, school_name: safeNameC, city: safeCityC || null,
           school_type: schCType, request_type: 'university_with_faculties',
           details: validFacs.length > 0 ? validFacs : null, status: 'approved',
         })
-        const uniPayload = { name: schCUniName.trim(), city: schCCity.trim() || null, type: schCType }
+        const uniPayload = { name: safeNameC, city: safeCityC || null, type: schCType }
         const { data: newUni, error: uniErr } = await supabase.from('universities').insert(uniPayload).select().single()
         if (uniErr) { console.error('[Case C] university error:', uniErr); setError('Erreur ajout université : ' + uniErr.message); return }
         if (isSubmittingFacRef.current) return

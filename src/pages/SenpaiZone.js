@@ -70,6 +70,7 @@ const GRADS = [
   'linear-gradient(135deg,#FBD34D,#F87171)',
   'linear-gradient(135deg,#F87171,#C4B5FD)',
 ]
+const stripHtml = (str) => str.replace(/<[^>]*>/g, '').trim()
 const aGrad = id => GRADS[(id || '').charCodeAt(0) % GRADS.length]
 const inits = n => (n || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 const fmtAgo = d => {
@@ -638,11 +639,12 @@ export default function SenpaiZone() {
   // ── SEND REPLY ────────────────────────────────────────────────────────────
   const sendReply = async () => {
     if (!user) { navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
-    if (replyText.trim().length < 5) return
+    const cleanReply = stripHtml(replyText).slice(0, 500)
+    if (cleanReply.length < 1) return
     setSendingR(true)
     const { data, error } = await supabase.from('senpai_replies').insert({
       post_id: viewPost.id, author_id: user.id,
-      content: replyText.trim(), is_anonymous: replyAnon,
+      content: cleanReply, is_anonymous: replyAnon,
     }).select('*, user_profiles(name)').single()
     setSendingR(false)
     if (error) return
@@ -691,7 +693,7 @@ export default function SenpaiZone() {
   // ── PUBLISH POST ──────────────────────────────────────────────────────────
   const handlePublish = async () => {
     if (!user) { navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
-    const text = composeText.trim()
+    const text = stripHtml(composeText).slice(0, 1000)
     if (text.length < 1) return
     // Rate limit: max 10 posts per hour
     const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
@@ -1003,14 +1005,19 @@ export default function SenpaiZone() {
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
               <textarea className="sz-reply-ta"
                 placeholder={user ? 'Ajouter une réponse... (Ctrl+Enter)' : 'Connecte-toi pour répondre'}
-                value={replyText} onChange={e => setReplyText(e.target.value)} disabled={!user}
+                value={replyText} onChange={e => setReplyText(e.target.value.slice(0, 500))} disabled={!user}
                 onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) sendReply() }} rows={2} />
+              {replyText.length > 0 && (
+                <div style={{ fontSize: '0.65rem', color: replyText.length > 450 ? '#F87171' : 'var(--text3)', fontFamily: 'DM Mono,monospace', textAlign: 'right', marginTop: -2 }}>
+                  {replyText.length} / 500
+                </div>
+              )}
               <div className="sz-anon-row">
                 <button className={`sz-toggle ${replyAnon ? 'on' : ''}`} onClick={() => setReplyAnon(v => !v)} />
                 <span className="sz-toggle-label">{replyAnon ? 'Anonyme' : 'Avec mon nom'}</span>
               </div>
             </div>
-            <button className="sz-reply-send" onClick={sendReply} disabled={!user || sendingR || replyText.trim().length < 5}>
+            <button className="sz-reply-send" onClick={sendReply} disabled={!user || sendingR || replyText.trim().length < 1}>
               <Ico n="send" size={15} sw={1.8} />
             </button>
           </div>
@@ -1022,7 +1029,7 @@ export default function SenpaiZone() {
   const isOwn = post => post.author_id === user?.id
 
   // ─── COMPOSE BOX ───────────────────────────────────────────────────────────
-  const canPublish = composeText.trim().length >= 1 && !submitting
+  const canPublish = composeText.trim().length >= 1 && composeText.length <= 1000 && !submitting
   const selectedPT = PT[composeType]
 
   const renderCompose = () => (
@@ -1045,7 +1052,7 @@ export default function SenpaiZone() {
             <>
               <textarea className="sz-compose-ta" autoFocus
                 placeholder="Partage ton expérience — ex: « Les 3 erreurs fatales en Algo S4 »&#10;&#10;Écris autant que tu veux..."
-                value={composeText} onChange={e => setComposeText(e.target.value)} rows={4} />
+                value={composeText} onChange={e => setComposeText(e.target.value.slice(0, 1000))} rows={4} />
               <div className="sz-compose-divider" />
               <div className="sz-compose-toolbar">
                 <div className="sz-compose-chips">
@@ -1117,9 +1124,9 @@ export default function SenpaiZone() {
                   {submitting ? 'Publication...' : 'Publier'}
                 </button>
               </div>
-              {composeText.length > 0 && composeText.length < 20 && (
-                <div style={{ fontSize: '0.7rem', color: 'var(--text3)', marginTop: 6, fontFamily: 'DM Mono,monospace' }}>
-                  {20 - composeText.length} caractères manquants
+              {composeText.length > 0 && (
+                <div style={{ fontSize: '0.7rem', color: composeText.length > 900 ? '#F87171' : 'var(--text3)', marginTop: 6, fontFamily: 'DM Mono,monospace', textAlign: 'right' }}>
+                  {composeText.length} / 1000
                 </div>
               )}
             </>

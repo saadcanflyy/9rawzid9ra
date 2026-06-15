@@ -554,11 +554,14 @@ export default function Profile() {
       setSaveMsg('Le nom ne peut pas être vide.'); setSaveMsgType('err'); return
     }
     setSaving(true); setSaveMsg('')
+    const stripHtml = (s) => s.replace(/<[^>]*>/g, '').trim()
+    const cleanBio  = stripHtml(editBio).slice(0, 300)
+    const cleanName = stripHtml(editName).slice(0, 60)
     const { error } = await supabase.from('user_profiles').upsert({
       id:            currentUser.id,
       email:         currentUser.email,
-      name:          editName.trim(),
-      bio:           editBio.trim(),
+      name:          cleanName,
+      bio:           cleanBio,
       university_id: editUni ? parseInt(editUni) : null,
     }, { onConflict: 'id' })
     if (!error) await supabase.auth.updateUser({ data:{ name: editName.trim() } })
@@ -567,7 +570,7 @@ export default function Profile() {
       setSaveMsg('Erreur lors de la sauvegarde.'); setSaveMsgType('err')
     } else {
       setSaveMsg('Profil mis à jour avec succès !'); setSaveMsgType('ok')
-      setProfile(p => ({ ...p, name:editName.trim(), bio:editBio.trim(), university_id:editUni||null }))
+      setProfile(p => ({ ...p, name:cleanName, bio:cleanBio, university_id:editUni||null }))
     }
   }
 
@@ -1002,9 +1005,9 @@ export default function Profile() {
                 </div>
                 <div className="field">
                   <label className="label">Bio</label>
-                  <textarea className="textarea-bio" value={editBio} onChange={e => setEditBio(e.target.value)}
-                    placeholder="Décris-toi en quelques mots — filière, objectifs, what you're about..." maxLength={200}/>
-                  <div className="char-count">{editBio.length} / 200</div>
+                  <textarea className="textarea-bio" value={editBio} onChange={e => setEditBio(e.target.value.slice(0, 300))}
+                    placeholder="Décris-toi en quelques mots — filière, objectifs, what you're about..."/>
+                  <div className="char-count" style={{color: editBio.length > 270 ? '#F87171' : undefined}}>{editBio.length} / 300</div>
                 </div>
                 <div className="field">
                   <label className="label">Université</label>
