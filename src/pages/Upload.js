@@ -148,6 +148,19 @@ const css = `
   }
 `
 
+const DOC_TYPE_TIPS = {
+  examen:         'Examen de fin de semestre',
+  cc:             'Contrôle continu en cours de semestre',
+  td:             'Travail dirigé — exercices en classe',
+  tp:             'Travail pratique — labo ou projet',
+  cours:          'Cours magistral',
+  corrige_examen: 'Corrigé officiel d\'un examen',
+  corrige_td:     'Corrigé d\'un TD',
+  corrige_tp:     'Corrigé d\'un TP',
+  quiz:           'Quiz ou interrogation de cours',
+  projet_final:   'Rapport ou livrable de projet final',
+}
+
 const DOC_TYPES = [
   { k: 'examen',         l: 'Examen Final',     short: 'EXAM'  },
   { k: 'cc',             l: 'Contrôle Continu',  short: 'CC'    },
@@ -246,6 +259,8 @@ export default function Upload() {
   const [filiereName,     setFiliereName]     = useState('')
   const [filiereNbSem,    setFiliereNbSem]    = useState('')
   const [filiereSent,     setFiliereSent]     = useState(false)
+
+  const [typeTooltip, setTypeTooltip] = useState(null)
 
   // Points state for success screen
   const [earnedPoints, setEarnedPoints] = useState(null)
@@ -1132,14 +1147,45 @@ export default function Upload() {
             {step === 2 && (
               <div className="card">
                 <div className="card-title">// étape 02 — informations du document</div>
-                <div className="field-grid">
-                  <div>
-                    <label className="label">Type de document</label>
-                    <select className="select" value={docType} onChange={e => setDocType(e.target.value)}>
-                      <option value="">Sélectionner...</option>
-                      {DOC_TYPES.map(t => <option key={t.k} value={t.k}>{t.l}</option>)}
-                    </select>
+                <div className="field">
+                  <label className="label">Type de document</label>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
+                    {DOC_TYPES.map(t => (
+                      <div key={t.k}
+                        onClick={() => setDocType(t.k)}
+                        style={{
+                          display:'flex',alignItems:'center',justifyContent:'space-between',gap:4,
+                          padding:'7px 10px',borderRadius:8,cursor:'pointer',transition:'all 0.12s',
+                          background: docType===t.k ? 'rgba(79,142,247,0.1)' : 'var(--s3)',
+                          border: `1px solid ${docType===t.k ? 'rgba(79,142,247,0.35)' : 'var(--border)'}`,
+                        }}>
+                        <span style={{fontSize:'0.8rem',color:docType===t.k?'var(--accent2)':'var(--text2)',fontFamily:'Outfit,sans-serif',userSelect:'none',lineHeight:1.3}}>
+                          {t.l}
+                        </span>
+                        {DOC_TYPE_TIPS[t.k] && (
+                          <span style={{position:'relative',flexShrink:0}}
+                            onClick={e => e.stopPropagation()}
+                            onMouseEnter={() => setTypeTooltip(t.k)}
+                            onMouseLeave={() => setTypeTooltip(null)}>
+                            <span style={{fontSize:'0.68rem',color:'var(--text3)',display:'block',lineHeight:1,cursor:'help'}}>ⓘ</span>
+                            {typeTooltip === t.k && (
+                              <div style={{
+                                position:'absolute',right:0,bottom:'calc(100% + 5px)',zIndex:200,
+                                background:'#111827',border:'1px solid #2D4A7A',
+                                borderRadius:7,padding:'6px 10px',fontSize:'0.72rem',color:'#94A3B8',
+                                whiteSpace:'nowrap',boxShadow:'0 4px 16px rgba(0,0,0,0.5)',
+                                fontFamily:'Outfit,sans-serif',lineHeight:1.4,pointerEvents:'none',
+                              }}>
+                                {DOC_TYPE_TIPS[t.k]}
+                              </div>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
+                </div>
+                <div className="field-grid">
                   <div>
                     <label className="label">Année académique</label>
                     <select className="select" value={year} onChange={e => setYear(e.target.value)}>
@@ -1150,34 +1196,34 @@ export default function Upload() {
                       * Obligatoire pour examens, CCs et corrigés
                     </div>
                   </div>
-                </div>
-                <div className="field">
-                  <label className="label">Professeur (optionnel)</label>
-                  <div className="prof-wrap">
-                    <input className="input" placeholder="Ex: Dr. Alaoui, Pr. Benali..."
-                      value={professor}
-                      onChange={e => setProfessor(e.target.value)}
-                      onFocus={() => setShowProfDD(true)}
-                      onBlur={() => setTimeout(() => setShowProfDD(false), 150)}
-                    />
-                    {showProfDD && profSuggestions.length > 0 && (() => {
-                      const q = professor.trim().toLowerCase()
-                      const filtered = q
-                        ? profSuggestions.filter(n => n.toLowerCase().includes(q))
-                        : profSuggestions
-                      return filtered.length > 0 ? (
-                        <div className="prof-dd">
-                          <div className="prof-chips">
-                            {filtered.map(name => (
-                              <button key={name} type="button" className="prof-chip"
-                                onMouseDown={e => { e.preventDefault(); setProfessor(name); setShowProfDD(false) }}>
-                                {name}
-                              </button>
-                            ))}
+                  <div>
+                    <label className="label">Professeur (optionnel)</label>
+                    <div className="prof-wrap">
+                      <input className="input" placeholder="Ex: Dr. Alaoui, Pr. Benali..."
+                        value={professor}
+                        onChange={e => setProfessor(e.target.value)}
+                        onFocus={() => setShowProfDD(true)}
+                        onBlur={() => setTimeout(() => setShowProfDD(false), 150)}
+                      />
+                      {showProfDD && profSuggestions.length > 0 && (() => {
+                        const q = professor.trim().toLowerCase()
+                        const filtered = q
+                          ? profSuggestions.filter(n => n.toLowerCase().includes(q))
+                          : profSuggestions
+                        return filtered.length > 0 ? (
+                          <div className="prof-dd">
+                            <div className="prof-chips">
+                              {filtered.map(name => (
+                                <button key={name} type="button" className="prof-chip"
+                                  onMouseDown={e => { e.preventDefault(); setProfessor(name); setShowProfDD(false) }}>
+                                  {name}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ) : null
-                    })()}
+                        ) : null
+                      })()}
+                    </div>
                   </div>
                 </div>
 

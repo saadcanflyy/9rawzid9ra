@@ -93,6 +93,7 @@ export default function Register() {
   const [otpCode,      setOtpCode]      = useState('')
   const [otpLoading,   setOtpLoading]   = useState(false)
   const [otpError,     setOtpError]     = useState('')
+  const [resentMsg,    setResentMsg]    = useState('')
   const [pwdError,     setPwdError]     = useState('')
   const [universities, setUniversities] = useState([])
   const [form, setForm] = useState({ name:'', email:'', password:'', confirm:'', university_id:'' })
@@ -169,6 +170,8 @@ export default function Register() {
     await supabase.auth.resend({ type: 'signup', email: form.email.trim() })
     setOtpError('')
     setOtpCode('')
+    setResentMsg('Code renvoyé !')
+    setTimeout(() => setResentMsg(''), 4000)
   }
 
   return (
@@ -229,13 +232,15 @@ export default function Register() {
                   onChange={e => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   autoFocus
                 />
-                <div className="otp-hint">Valable 10 minutes · Vérifie tes spams</div>
+                <div className="otp-hint">Tu n'as pas reçu le code ? Vérifie tes spams ou attends 1 minute.</div>
                 <button type="submit" className="submit" disabled={otpLoading || otpCode.length !== 6}>
                   {otpLoading ? 'Vérification...' : 'Confirmer le code'}
                 </button>
               </form>
               <div style={{ textAlign:'center', marginTop:'1.25rem' }}>
-                <button className="otp-resend" onClick={handleResend}>Renvoyer le code</button>
+                <button className="otp-resend" onClick={handleResend} style={{ color: resentMsg ? 'var(--teal2)' : undefined }}>
+                  {resentMsg || 'Renvoyer le code'}
+                </button>
                 <button className="otp-back" onClick={() => { setStep('form'); setOtpCode(''); setOtpError('') }}>
                   ← Modifier l'email
                 </button>

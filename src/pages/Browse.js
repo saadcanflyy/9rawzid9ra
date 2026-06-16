@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
+import { useAuth } from '../context/AuthContext'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
@@ -59,6 +60,21 @@ const css = `
   .uni-dd-item:hover { background:var(--s3); }
   .uni-dd-item.reset { color:var(--text3); font-style:italic; }
   .uni-dd-empty { padding:8px 10px; font-size:0.78rem; color:var(--text3); font-family:'DM Mono',monospace; }
+  .uni-dd-ask { padding:8px 10px; cursor:pointer; font-size:0.75rem; color:var(--accent2); font-family:'DM Mono',monospace; border-top:1px solid var(--border); border-bottom:none; transition:background 0.12s; }
+  .uni-dd-ask:hover { background:var(--s3); }
+
+  /* REQUEST FORMS */
+  .req-form { margin-top:8px; background:rgba(79,142,247,0.04); border:1px solid rgba(79,142,247,0.18); border-radius:8px; padding:10px 12px; }
+  .req-form-title { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--accent2); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+  .req-input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:7px 10px; color:var(--text); font-size:0.8rem; font-family:'Outfit',sans-serif; outline:none; margin-bottom:6px; transition:border-color 0.15s; }
+  .req-input:focus { border-color:var(--accent); }
+  .req-input::placeholder { color:var(--text3); }
+  .req-send { background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.3); color:var(--accent2); border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.12s; }
+  .req-send:disabled { opacity:0.4; cursor:not-allowed; }
+  .req-cancel { background:none; border:none; color:var(--text3); font-size:0.72rem; cursor:pointer; font-family:'DM Mono',monospace; margin-left:6px; }
+  .req-link { display:block; margin-top:6px; background:none; border:none; color:var(--text3); font-size:0.7rem; cursor:pointer; font-family:'DM Mono',monospace; padding:0; text-align:left; transition:color 0.15s; }
+  .req-link:hover { color:var(--accent2); }
+  .req-ok { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--teal2); margin-top:6px; }
 
   /* MAIN */
   .main { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
@@ -169,6 +185,20 @@ export default function Browse() {
   const [fetchErr, setFetchErr] = useState('')
   const [uniSearch,  setUniSearch]  = useState('')
   const [showUniDd,  setShowUniDd]  = useState(false)
+  const { user } = useAuth()
+
+  // Uni request form
+  const [showUniReq,     setShowUniReq]     = useState(false)
+  const [uniReqName,     setUniReqName]     = useState('')
+  const [uniReqCity,     setUniReqCity]     = useState('')
+  const [uniReqSent,     setUniReqSent]     = useState(false)
+  const [uniReqBusy,     setUniReqBusy]     = useState(false)
+
+  // Filière request form
+  const [showFilReq,     setShowFilReq]     = useState(false)
+  const [filReqName,     setFilReqName]     = useState('')
+  const [filReqSent,     setFilReqSent]     = useState(false)
+  const [filReqBusy,     setFilReqBusy]     = useState(false)
 
   // Sync from URL when navigated here externally (e.g. Navbar search → /browse?q=)
   useEffect(() => {
@@ -282,10 +312,38 @@ export default function Browse() {
 
   const flushSearch = () => { clearTimeout(debounceRef.current); setDebouncedQuery(query) }
 
+  const handleUniRequest = async () => {
+    if (!uniReqName.trim()) return
+    setUniReqBusy(true)
+    await supabase.from('school_requests').insert({
+      requested_by: user?.id || null,
+      school_name:  uniReqName.trim().slice(0, 120),
+      city:         uniReqCity.trim().slice(0, 80) || null,
+      school_type: 'public', request_type: 'independent', status: 'pending',
+    })
+    setUniReqBusy(false)
+    setUniReqSent(true)
+  }
+
+  const handleFilRequest = async () => {
+    if (!filReqName.trim()) return
+    setFilReqBusy(true)
+    await supabase.from('filiere_suggestions').insert({
+      suggested_by: user?.id || null,
+      faculty_id:   selFac ? parseInt(selFac) : null,
+      name:         filReqName.trim().slice(0, 120),
+      status:      'pending',
+    })
+    setFilReqBusy(false)
+    setFilReqSent(true)
+  }
+
   const reset = () => {
     setSearchParams({})
     setQuery(''); setDebouncedQuery(''); setSelUni(''); setSelFac(''); setSelFil(''); setSelSem(''); setSelType('')
     setUniSearch(''); setShowUniDd(false)
+    setShowUniReq(false); setUniReqName(''); setUniReqCity(''); setUniReqSent(false)
+    setShowFilReq(false); setFilReqName(''); setFilReqSent(false)
   }
 
   const displayed = mods
@@ -338,6 +396,33 @@ export default function Browse() {
                   {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).length === 0 && (
                     <div className="uni-dd-empty">Aucun résultat</div>
                   )}
+                  <div className="uni-dd-ask"
+                    onMouseDown={() => { setShowUniDd(false); setShowUniReq(true); setUniReqSent(false); }}>
+                    + Tu ne trouves pas ton université ?
+                  </div>
+                </div>
+              )}
+              {showUniReq && (
+                <div className="req-form">
+                  {uniReqSent ? (
+                    <div className="req-ok">✓ Demande envoyée, merci !</div>
+                  ) : !user ? (
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
+                      <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
+                    </div>
+                  ) : (
+                    <>
+                      <div className="req-form-title">// université manquante</div>
+                      <input className="req-input" placeholder="Nom de l'université *" value={uniReqName} onChange={e => setUniReqName(e.target.value)} />
+                      <input className="req-input" placeholder="Ville (optionnel)" value={uniReqCity} onChange={e => setUniReqCity(e.target.value)} />
+                      <div>
+                        <button className="req-send" onClick={handleUniRequest} disabled={!uniReqName.trim() || uniReqBusy}>
+                          {uniReqBusy ? '...' : 'Envoyer'}
+                        </button>
+                        <button className="req-cancel" onClick={() => { setShowUniReq(false); setUniReqName(''); setUniReqCity(''); }}>Annuler</button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -360,6 +445,30 @@ export default function Browse() {
                 <option value="">Toutes les filières</option>
                 {fils.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
               </select>
+              {!showFilReq && !filReqSent && (
+                <button className="req-link" onClick={() => setShowFilReq(true)}>Filière introuvable ?</button>
+              )}
+              {filReqSent && <div className="req-ok">✓ Demande envoyée, merci !</div>}
+              {showFilReq && !filReqSent && (
+                <div className="req-form">
+                  {!user ? (
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
+                      <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
+                    </div>
+                  ) : (
+                    <>
+                      <div className="req-form-title">// filière manquante</div>
+                      <input className="req-input" placeholder="Nom de la filière *" value={filReqName} onChange={e => setFilReqName(e.target.value)} />
+                      <div>
+                        <button className="req-send" onClick={handleFilRequest} disabled={!filReqName.trim() || filReqBusy}>
+                          {filReqBusy ? '...' : 'Envoyer'}
+                        </button>
+                        <button className="req-cancel" onClick={() => { setShowFilReq(false); setFilReqName(''); }}>Annuler</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

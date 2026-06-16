@@ -322,6 +322,18 @@ const css = `
   }
   .pdf-close-btn:hover { background:rgba(248,113,113,0.15); }
   .pdf-iframe { width:100%; height:100%; border:none; display:block; flex:1; }
+
+  /* ─── AUTH GATE MODAL ─── */
+  .auth-gate-ov {
+    position:fixed; inset:0; z-index:800;
+    background:rgba(2,4,10,0.88); backdrop-filter:blur(10px);
+    display:flex; align-items:center; justify-content:center; padding:1.5rem;
+  }
+  .auth-gate-box {
+    background:#0C1222; border:1px solid #2D4A7A;
+    border-radius:16px; padding:2rem 1.75rem; max-width:340px; width:100%;
+    text-align:center; box-shadow:0 24px 64px rgba(0,0,0,0.7);
+  }
 `
 
 const TYPE_CONFIG = {
@@ -369,6 +381,7 @@ export default function ModulePage() {
   const [requests,     setRequests]     = useState({})
   const [userRequested,setUserRequested]= useState({})
   const [previewDoc,   setPreviewDoc]   = useState(null)
+  const [showAuthGate, setShowAuthGate] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -500,7 +513,7 @@ export default function ModulePage() {
   const maxCount = Math.max(...Object.values(typeCounts), 1)
 
   const handleDownload = (doc) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { setShowAuthGate(true); return }
     // Open immediately (must be synchronous — async breaks browser popup policy)
     if (doc.files && doc.files.length > 0) window.open(doc.files[0], '_blank')
     // Log in background (fire-and-forget)
@@ -510,7 +523,7 @@ export default function ModulePage() {
 
   // ── HELPFUL ──────────────────────────────────────────────────────────────
   const handleHelpful = async (doc) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { setShowAuthGate(true); return }
     const isH = userReactions[doc.id]?.helpful
     console.log('[handleHelpful] START — doc.id:', doc.id, '| isH (removing?):', isH, '| user.id:', user.id)
 
@@ -536,7 +549,7 @@ export default function ModulePage() {
 
   // ── RATING ────────────────────────────────────────────────────────────────
   const handleRating = async (doc, star) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { setShowAuthGate(true); return }
     const prev = userReactions[doc.id]?.rating || 0
     await supabase.from('document_reactions')
       .upsert({ user_id: user.id, document_id: doc.id, reaction_type: 'rating', rating: star },
@@ -550,7 +563,7 @@ export default function ModulePage() {
 
   // ── REPORT ────────────────────────────────────────────────────────────────
   const handleReport = async (doc) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { setShowAuthGate(true); return }
     if (userReactions[doc.id]?.reported) return
     await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'report' })
     await supabase.from('documents').update({ report_count: (doc.report_count || 0) + 1 }).eq('id', doc.id)
@@ -559,7 +572,7 @@ export default function ModulePage() {
 
   // ── BOOKMARK ──────────────────────────────────────────────────────────────
   const handleBookmark = async () => {
-    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { setShowAuthGate(true); return }
     if (isBookmarked) {
       await supabase.from('module_bookmarks').delete().eq('user_id', user.id).eq('module_id', parseInt(id))
       setIsBookmarked(false)
@@ -571,7 +584,7 @@ export default function ModulePage() {
 
   // ── DOCUMENT REQUEST ──────────────────────────────────────────────────────
   const handleRequest = async (docType) => {
-    if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { setShowAuthGate(true); return }
     const existing = requests[docType]
     if (existing) {
       if (userRequested[docType]) return
@@ -851,7 +864,7 @@ export default function ModulePage() {
                               <button key={i}
                                 onClick={e => {
                                   e.stopPropagation()
-                                  if (!user) { navigate('/login', { state: { from: `/module/${slug}`, message: 'Connecte-toi pour continuer' } }); return }
+                                  if (!user) { setShowAuthGate(true); return }
                                   window.open(fileUrl, '_blank')
                                   if (i === 0) {
                                     supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id }).then()
@@ -871,7 +884,7 @@ export default function ModulePage() {
                         ) : doc.files?.length === 1 ? (
                           <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                             <button
-                              onClick={e => { e.stopPropagation(); if (!user) { navigate('/login', { state:{ from:`/module/${slug}` } }); return } setPreviewDoc(doc) }}
+                              onClick={e => { e.stopPropagation(); if (!user) { setShowAuthGate(true); return } setPreviewDoc(doc) }}
                               style={{ background:'rgba(45,212,191,0.07)', border:'1px solid rgba(45,212,191,0.2)', color:'#2DD4BF', borderRadius:7, padding:'7px 12px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
                               onMouseEnter={e => { e.currentTarget.style.background='rgba(45,212,191,0.15)'; e.currentTarget.style.borderColor='#2DD4BF' }}
                               onMouseLeave={e => { e.currentTarget.style.background='rgba(45,212,191,0.07)'; e.currentTarget.style.borderColor='rgba(45,212,191,0.2)' }}
@@ -1140,6 +1153,40 @@ export default function ModulePage() {
           </div>
         </aside>
       </div>
+
+      {showAuthGate && (
+        <div className="auth-gate-ov" onClick={() => setShowAuthGate(false)}>
+          <div className="auth-gate-box" onClick={e => e.stopPropagation()}>
+            <div style={{fontSize:'2rem',marginBottom:'0.75rem'}}>🔒</div>
+            <div style={{fontSize:'1.05rem',fontWeight:700,color:'#fff',marginBottom:'0.5rem',lineHeight:1.35}}>
+              Connecte-toi pour accéder aux documents
+            </div>
+            <div style={{fontSize:'0.8rem',color:'#94A3B8',lineHeight:1.6,marginBottom:'1.5rem'}}>
+              Crée un compte gratuit pour télécharger et prévisualiser les examens, CCs et TDs.
+            </div>
+            <div style={{display:'flex',gap:10,justifyContent:'center'}}>
+              <button
+                onClick={() => navigate('/login', { state: { from: `/module/${slug}` } })}
+                style={{background:'#4F8EF7',color:'#fff',border:'none',borderRadius:9,padding:'10px 22px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'background 0.15s'}}
+                onMouseEnter={e => e.currentTarget.style.background='#3A7BEF'}
+                onMouseLeave={e => e.currentTarget.style.background='#4F8EF7'}>
+                Se connecter
+              </button>
+              <button
+                onClick={() => navigate('/register', { state: { from: `/module/${slug}` } })}
+                style={{background:'none',border:'1px solid #1C2A45',color:'#94A3B8',borderRadius:9,padding:'10px 22px',fontSize:'0.875rem',fontWeight:500,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'all 0.15s'}}
+                onMouseEnter={e => { e.currentTarget.style.borderColor='#2D4A7A'; e.currentTarget.style.color='#E2E8F0' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor='#1C2A45'; e.currentTarget.style.color='#94A3B8' }}>
+                Créer un compte
+              </button>
+            </div>
+            <button onClick={() => setShowAuthGate(false)}
+              style={{background:'none',border:'none',color:'#4A5568',fontSize:'0.72rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:'1rem',display:'block',width:'100%'}}>
+              Continuer sans compte
+            </button>
+          </div>
+        </div>
+      )}
 
       {previewDoc && (
         <div className="pdf-overlay">
