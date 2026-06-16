@@ -194,6 +194,12 @@ export default function Browse() {
   const [uniReqSent,     setUniReqSent]     = useState(false)
   const [uniReqBusy,     setUniReqBusy]     = useState(false)
 
+  // Faculté request form
+  const [showFacReq,     setShowFacReq]     = useState(false)
+  const [facReqName,     setFacReqName]     = useState('')
+  const [facReqSent,     setFacReqSent]     = useState(false)
+  const [facReqBusy,     setFacReqBusy]     = useState(false)
+
   // Filière request form
   const [showFilReq,     setShowFilReq]     = useState(false)
   const [filReqName,     setFilReqName]     = useState('')
@@ -325,6 +331,18 @@ export default function Browse() {
     setUniReqSent(true)
   }
 
+  const handleFacRequest = async () => {
+    if (!facReqName.trim()) return
+    setFacReqBusy(true)
+    await supabase.from('school_requests').insert({
+      requested_by: user?.id || null,
+      school_name:  facReqName.trim().slice(0, 120),
+      school_type: 'public', request_type: 'faculty', status: 'pending',
+    })
+    setFacReqBusy(false)
+    setFacReqSent(true)
+  }
+
   const handleFilRequest = async () => {
     if (!filReqName.trim()) return
     setFilReqBusy(true)
@@ -343,6 +361,7 @@ export default function Browse() {
     setQuery(''); setDebouncedQuery(''); setSelUni(''); setSelFac(''); setSelFil(''); setSelSem(''); setSelType('')
     setUniSearch(''); setShowUniDd(false)
     setShowUniReq(false); setUniReqName(''); setUniReqCity(''); setUniReqSent(false)
+    setShowFacReq(false); setFacReqName(''); setFacReqSent(false)
     setShowFilReq(false); setFilReqName(''); setFilReqSent(false)
   }
 
@@ -428,13 +447,39 @@ export default function Browse() {
             </div>
           </div>
 
-          {facs.length > 0 && (
+          {selUni && (
             <div className="filter-block">
               <span className="filter-label">Faculté / École</span>
-              <select className="filter-select" value={selFac} onChange={e => setSelFac(e.target.value)}>
-                <option value="">Toutes les facultés</option>
-                {facs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
+              {facs.length > 0 && (
+                <select className="filter-select" value={selFac} onChange={e => setSelFac(e.target.value)}>
+                  <option value="">Toutes les facultés</option>
+                  {facs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+              )}
+              {!showFacReq && !facReqSent && (
+                <button className="req-link" onClick={() => setShowFacReq(true)}>Faculté introuvable ?</button>
+              )}
+              {facReqSent && <div className="req-ok">✓ Demande envoyée, merci !</div>}
+              {showFacReq && !facReqSent && (
+                <div className="req-form">
+                  <div className="req-form-title">// faculté manquante</div>
+                  {!user ? (
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
+                      <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
+                    </div>
+                  ) : (
+                    <>
+                      <input className="req-input" placeholder="Nom de la faculté / école *" value={facReqName} onChange={e => setFacReqName(e.target.value)} />
+                      <div>
+                        <button className="req-send" onClick={handleFacRequest} disabled={!facReqName.trim() || facReqBusy}>
+                          {facReqBusy ? '...' : 'Envoyer'}
+                        </button>
+                        <button className="req-cancel" onClick={() => { setShowFacReq(false); setFacReqName(''); }}>Annuler</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
