@@ -225,8 +225,12 @@ export default function Upload() {
   const [facs,       setFacs]       = useState([])
   const [fils,       setFils]       = useState([])
   const [facsFetched, setFacsFetched] = useState(false)
-  const [uniMode,     setUniMode]     = useState('') // '' | 'independent' | 'multi_faculty'
-  const [rootFacBusy, setRootFacBusy] = useState(false)
+  const [uniMode,       setUniMode]       = useState('') // '' | 'independent' | 'multi_faculty'
+  const [rootFacBusy,   setRootFacBusy]   = useState(false)
+  const [showAddFacForm, setShowAddFacForm] = useState(false)
+  const [addFacName,     setAddFacName]     = useState('')
+  const [addFacType,     setAddFacType]     = useState('Faculté')
+  const [addFacBusy,     setAddFacBusy]     = useState(false)
   const [selUni, setSelUni] = useState('')
   const [selFac, setSelFac] = useState('')
   const [selFil, setSelFil] = useState('')
@@ -313,14 +317,14 @@ export default function Upload() {
   }, [])
 
   useEffect(() => {
-    if (!selUni) { setFacs([]); setSelFac(''); setFacsFetched(false); setUniMode(''); return }
+    if (!selUni) { setFacs([]); setSelFac(''); setFacsFetched(false); setUniMode(''); setShowAddFacForm(false); setAddFacName(''); setAddFacType('Faculté'); return }
     // If facs were pre-loaded for this exact university (Case C), skip the fetch
     if (prefetchedForUniRef.current === selUni) {
       prefetchedForUniRef.current = null
-      setSelFac(''); setSelFil(''); setSelSem(''); setSelMod(null); setUniMode('')
+      setSelFac(''); setSelFil(''); setSelSem(''); setSelMod(null); setUniMode(''); setShowAddFacForm(false); setAddFacName(''); setAddFacType('Faculté')
       return
     }
-    setFacsFetched(false); setUniMode('')
+    setFacsFetched(false); setUniMode(''); setShowAddFacForm(false); setAddFacName(''); setAddFacType('Faculté')
     // Exclude root faculties (used internally for independent schools)
     supabase.from('faculties').select('*').eq('university_id', selUni).neq('type', 'root').order('name')
       .then(({ data }) => {
@@ -448,6 +452,25 @@ export default function Upload() {
       if (newFac) setSelFac(String(newFac.id))
     }
     setRootFacBusy(false)
+  }
+
+  // Option B: inline add faculty under the selected university
+  const handleAddFacultyInline = async () => {
+    if (!addFacName.trim() || !selUni) return
+    setAddFacBusy(true)
+    const { data: newFac, error } = await supabase
+      .from('faculties')
+      .insert({ university_id: parseInt(selUni), name: addFacName.trim().slice(0, 120), type: addFacType })
+      .select().single()
+    if (error) { setError('Erreur : ' + error.message); setAddFacBusy(false); return }
+    const { data: updatedFacs } = await supabase
+      .from('faculties').select('*').eq('university_id', parseInt(selUni)).neq('type', 'root').order('name')
+    if (updatedFacs) setFacs(updatedFacs)
+    if (newFac) setSelFac(String(newFac.id))
+    setAddFacBusy(false)
+    setAddFacName('')
+    setAddFacType('Faculté')
+    setShowAddFacForm(false)
   }
 
   // School request submit (3 cases)
@@ -811,7 +834,7 @@ export default function Upload() {
             {step === 1 && (
               <div className="card">
                 <div className="card-title">// étape 01 — localisation du document</div>
-                <div className="field-grid">
+                <div className="field-grid" style={selUni && facsFetched && facs.length === 0 ? {gridTemplateColumns:'1fr'} : {}}>
                   <div>
                     <label className="label">Université / École</label>
                     <div className="module-search-wrap">
@@ -846,60 +869,99 @@ export default function Upload() {
                       </p>
                     )}
                   </div>
-                  <div>
-                    <label className="label">Faculté / École</label>
-                    {uniMode === 'independent' ? (
-                      <div style={{background:'rgba(45,212,191,0.06)',border:'1px solid rgba(45,212,191,0.2)',borderRadius:9,padding:'10px 12px'}}>
-                        {rootFacBusy ? (
-                          <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>// Configuration en cours...</div>
-                        ) : (
-                          <>
-                            <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--teal2)',lineHeight:1.65}}>✓ Filières directes<br/><span style={{color:'var(--text3)'}}>pas de composante intermédiaire</span></div>
-                            <button style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.68rem',fontFamily:'DM Mono,monospace',cursor:'pointer',marginTop:5,padding:0,textDecoration:'underline'}} onClick={() => { setUniMode(''); setSelFac(''); setFils([]); setSelFil(''); }}>Changer</button>
-                          </>
-                        )}
-                      </div>
-                    ) : selUni && facsFetched && facs.length === 0 && uniMode === 'multi_faculty' ? (
-                      <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:9,padding:'10px 12px'}}>
-                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)',lineHeight:1.65}}>// Ajoute une composante<br/>dans le formulaire ci-dessous</div>
-                        <button style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.68rem',fontFamily:'DM Mono,monospace',cursor:'pointer',marginTop:5,padding:0,textDecoration:'underline'}} onClick={() => { setUniMode(''); setShowSchoolForm(false); }}>Changer</button>
-                      </div>
-                    ) : selUni && facsFetched && facs.length === 0 && !uniMode ? (
-                      <div style={{background:'rgba(79,142,247,0.03)',border:'1px dashed rgba(79,142,247,0.18)',borderRadius:9,padding:'9px 12px'}}>
-                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.7rem',color:'var(--text3)'}}>// Choisis le type d'établissement ci-dessous ↓</div>
-                      </div>
-                    ) : (
-                      <select className="select" value={selFac} onChange={e => setSelFac(e.target.value)} disabled={!selUni}>
-                        <option value="">Sélectionner...</option>
+                  {(!selUni || !facsFetched || facs.length > 0) && (
+                    <div>
+                      <label className="label">Faculté / École</label>
+                      <select className="select" value={selFac} onChange={e => setSelFac(e.target.value)} disabled={!selUni || !facsFetched}>
+                        <option value="">{!facsFetched ? 'Chargement...' : 'Sélectionner...'}</option>
                         {facs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                       </select>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Option A / B cards — shown only when selected uni has no recorded faculties */}
-                {selUni && facsFetched && facs.length === 0 && !uniMode && (
+                {/* Option A / B — always visible when selected uni has no faculties */}
+                {selUni && facsFetched && facs.length === 0 && (
                   <div style={{marginBottom:'1.25rem'}}>
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--text3)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:8}}>// Aucune composante enregistrée — comment veux-tu uploader ?</div>
-                    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--text3)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:10}}>// Comment est organisé ton établissement ?</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
                       <button
-                        style={{display:'flex',flexDirection:'column',gap:3,textAlign:'left',background:'rgba(45,212,191,0.05)',border:'1px solid rgba(45,212,191,0.2)',borderRadius:10,padding:'13px 15px',cursor:'pointer',width:'100%',transition:'all 0.15s'}}
-                        onMouseOver={e=>{e.currentTarget.style.background='rgba(45,212,191,0.1)';e.currentTarget.style.borderColor='rgba(45,212,191,0.4)'}}
-                        onMouseOut={e=>{e.currentTarget.style.background='rgba(45,212,191,0.05)';e.currentTarget.style.borderColor='rgba(45,212,191,0.2)'}}
+                        style={{
+                          display:'flex',flexDirection:'column',gap:5,textAlign:'left',
+                          background: uniMode === 'independent' ? 'rgba(45,212,191,0.1)' : 'rgba(45,212,191,0.03)',
+                          border: uniMode === 'independent' ? '2px solid rgba(45,212,191,0.55)' : '1px solid rgba(45,212,191,0.18)',
+                          borderRadius:12,padding:'14px 15px',cursor:'pointer',width:'100%',transition:'all 0.2s',
+                        }}
                         onClick={handleSelectIndependent}>
-                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',color:'var(--teal2)',letterSpacing:'1px'}}>// OPTION A</div>
-                        <div style={{fontSize:'0.875rem',fontWeight:600,color:'var(--white)',marginTop:2}}>École indépendante — filières directes</div>
-                        <div style={{fontSize:'0.75rem',color:'var(--text3)',marginTop:1}}>ISPITS, IAV, EMSI, SUPMTI... pas de faculté intermédiaire</div>
+                        <div style={{fontSize:'1.1rem',lineHeight:1}}>🏫</div>
+                        <div style={{fontSize:'0.875rem',fontWeight:700,color:'var(--white)',lineHeight:1.3,marginTop:2}}>École / Institut indépendant</div>
+                        <div style={{fontSize:'0.72rem',color:'var(--text2)',lineHeight:1.5,marginTop:2}}>Ton école n'a pas de facultés — les filières sont directes</div>
+                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',color:'var(--text3)',marginTop:4,lineHeight:1.8}}>EMSI · ISPITS · IAV · ISGA · HEM · EIDIA · SUPMTI · ESITH · IHEC · ENCG · ENSA · ENSAM</div>
                       </button>
                       <button
-                        style={{display:'flex',flexDirection:'column',gap:3,textAlign:'left',background:'rgba(79,142,247,0.05)',border:'1px solid rgba(79,142,247,0.18)',borderRadius:10,padding:'13px 15px',cursor:'pointer',width:'100%',transition:'all 0.15s'}}
-                        onMouseOver={e=>{e.currentTarget.style.background='rgba(79,142,247,0.1)';e.currentTarget.style.borderColor='rgba(79,142,247,0.38)'}}
-                        onMouseOut={e=>{e.currentTarget.style.background='rgba(79,142,247,0.05)';e.currentTarget.style.borderColor='rgba(79,142,247,0.18)'}}
-                        onClick={() => { setUniMode('multi_faculty'); setShowSchoolForm(true); setSchoolCase('faculty'); setSchBParentUni(selUni) }}>
-                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',color:'var(--accent2)',letterSpacing:'1px'}}>// OPTION B</div>
-                        <div style={{fontSize:'0.875rem',fontWeight:600,color:'var(--white)',marginTop:2}}>Université avec facultés / composantes</div>
-                        <div style={{fontSize:'0.75rem',color:'var(--text3)',marginTop:1}}>FST, FEG, ENSAM... Ajouter une composante d'abord, puis ta filière</div>
+                        style={{
+                          display:'flex',flexDirection:'column',gap:5,textAlign:'left',
+                          background: uniMode === 'multi_faculty' ? 'rgba(79,142,247,0.1)' : 'rgba(79,142,247,0.03)',
+                          border: uniMode === 'multi_faculty' ? '2px solid rgba(79,142,247,0.55)' : '1px solid rgba(79,142,247,0.18)',
+                          borderRadius:12,padding:'14px 15px',cursor:'pointer',width:'100%',transition:'all 0.2s',
+                        }}
+                        onClick={() => { setUniMode('multi_faculty'); setSelFac(''); setFils([]); setSelFil(''); setShowAddFacForm(false) }}>
+                        <div style={{fontSize:'1.1rem',lineHeight:1}}>🎓</div>
+                        <div style={{fontSize:'0.875rem',fontWeight:700,color:'var(--white)',lineHeight:1.3,marginTop:2}}>Université avec facultés / composantes</div>
+                        <div style={{fontSize:'0.72rem',color:'var(--text2)',lineHeight:1.5,marginTop:2}}>Ton université contient plusieurs facultés — choisis la tienne d'abord</div>
+                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',color:'var(--text3)',marginTop:4,lineHeight:1.8}}>UM5 → FSR · FEG · FSJES · ENCG Rabat<br/>UIR → ESIN · ESG · ESGT<br/>UH2C → FST · FPN · FLSH<br/>UMP Fès → FST · FES · FSJES</div>
                       </button>
+                    </div>
+                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--text3)',textAlign:'center'}}>Pas sûr ? Choisis l'option qui ressemble le plus à ton établissement.</div>
+                  </div>
+                )}
+
+                {/* Option B: inline faculty add */}
+                {selUni && facsFetched && facs.length === 0 && uniMode === 'multi_faculty' && (
+                  <div style={{marginBottom:'1.25rem'}}>
+                    <label className="label">Faculté / École</label>
+                    <select className="select" value={selFac} onChange={e => setSelFac(e.target.value)}>
+                      <option value="">Aucune composante enregistrée — en ajouter une ci-dessous</option>
+                    </select>
+                    <div style={{marginTop:8}}>
+                      {!showAddFacForm ? (
+                        <button style={{background:'none',border:'none',color:'var(--accent2)',fontSize:'0.78rem',fontFamily:'DM Mono,monospace',cursor:'pointer',textDecoration:'underline',padding:0,opacity:0.8}} onClick={() => setShowAddFacForm(true)}>
+                          Faculté introuvable ? → L'ajouter
+                        </button>
+                      ) : (
+                        <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:10,padding:'1rem 1.25rem',marginTop:4}}>
+                          <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'0.875rem'}}>// ajouter une composante</div>
+                          <div className="field-grid">
+                            <div>
+                              <label className="label">Nom *</label>
+                              <input className="input" placeholder="Ex: FST, FEG, École d'ingénieurs..."
+                                value={addFacName} onChange={e => setAddFacName(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleAddFacultyInline()} />
+                            </div>
+                            <div>
+                              <label className="label">Type</label>
+                              <select className="select" value={addFacType} onChange={e => setAddFacType(e.target.value)}>
+                                <option value="Faculté">Faculté</option>
+                                <option value="École">École</option>
+                                <option value="Institut">Institut</option>
+                                <option value="Centre">Centre</option>
+                                <option value="Département">Département</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div style={{display:'flex',gap:8,alignItems:'center',marginTop:4}}>
+                            <button
+                              disabled={addFacBusy || !addFacName.trim()}
+                              style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:addFacBusy?'not-allowed':'pointer',fontFamily:'Outfit,sans-serif',opacity:addFacBusy||!addFacName.trim()?0.6:1}}
+                              onClick={handleAddFacultyInline}>
+                              {addFacBusy ? 'Ajout...' : 'Ajouter'}
+                            </button>
+                            <button style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.75rem',cursor:'pointer',fontFamily:'DM Mono,monospace'}} onClick={() => setShowAddFacForm(false)}>
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -928,7 +990,7 @@ export default function Upload() {
                       <button
                         style={{background:'none',border:'none',color:'var(--accent2)',fontSize:'0.78rem',fontFamily:'DM Mono,monospace',cursor:'pointer',textDecoration:'underline',padding:0,transition:'color 0.15s',opacity:0.7}}
                         onClick={() => setShowFiliereForm(true)}>
-                        Ma filière n'est pas dans la liste → La signaler
+                        Filière introuvable ? → L'ajouter
                       </button>
                     ) : filiereSent ? (
                       <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.75rem',color:'var(--teal2)'}}>
