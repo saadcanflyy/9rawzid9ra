@@ -200,11 +200,12 @@ export default function Browse() {
   const [facReqSent,     setFacReqSent]     = useState(false)
   const [facReqBusy,     setFacReqBusy]     = useState(false)
 
-  // Filière request form
-  const [showFilReq,     setShowFilReq]     = useState(false)
-  const [filReqName,     setFilReqName]     = useState('')
-  const [filReqSent,     setFilReqSent]     = useState(false)
-  const [filReqBusy,     setFilReqBusy]     = useState(false)
+  // Filière request form (sidebar + inline empty-state)
+  const [showFilReq,       setShowFilReq]       = useState(false)
+  const [showEmptyFilForm, setShowEmptyFilForm] = useState(false)
+  const [filReqName,       setFilReqName]       = useState('')
+  const [filReqSent,       setFilReqSent]       = useState(false)
+  const [filReqBusy,       setFilReqBusy]       = useState(false)
 
   // Sync from URL when navigated here externally (e.g. Navbar search → /browse?q=)
   useEffect(() => {
@@ -362,7 +363,7 @@ export default function Browse() {
     setUniSearch(''); setShowUniDd(false)
     setShowUniReq(false); setUniReqName(''); setUniReqCity(''); setUniReqSent(false)
     setShowFacReq(false); setFacReqName(''); setFacReqSent(false)
-    setShowFilReq(false); setFilReqName(''); setFilReqSent(false)
+    setShowFilReq(false); setShowEmptyFilForm(false); setFilReqName(''); setFilReqSent(false)
   }
 
   const displayed = mods
@@ -370,8 +371,10 @@ export default function Browse() {
   const facName  = facs.find(f => f.id === parseInt(selFac))?.name
   const filName  = fils.find(f => f.id === parseInt(selFil))?.name
   const typeName = DOC_TYPES.find(t => t.k === selType)?.l
-  const hasFilters     = selUni || selFac || selFil || selSem || selType || query
+  const hasFilters      = selUni || selFac || selFil || selSem || selType || query
   const hasActiveFilter = !!(selUni || selSem || selType || debouncedQuery.trim())
+  // University selected, no other filters, no results → the uni has no content yet
+  const isUniEmpty = !loading && selUni && !selSem && !selType && !debouncedQuery.trim() && displayed.length === 0
 
   return (
     <div className="browse">
@@ -600,11 +603,52 @@ export default function Browse() {
               ) : loading ? (
                 Array(12).fill(0).map((_,i) => <div key={i} className="skel" />)
               ) : displayed.length === 0 ? (
-                <div className="empty">
-                  <div className="empty-code">// 0 results</div>
-                  <div className="empty-title">Aucun module trouvé</div>
-                  <div className="empty-sub">Modifie ta recherche ou réinitialise les filtres</div>
-                </div>
+                isUniEmpty ? (
+                  <div className="empty">
+                    <div className="empty-code">// aucun contenu</div>
+                    <div className="empty-title">Cette université n'a pas encore de contenu sur la plateforme</div>
+                    <div className="empty-sub">Sois le premier à contribuer !</div>
+                    <div style={{marginTop:'1.25rem',display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
+                      <button
+                        onClick={() => setShowEmptyFilForm(v => !v)}
+                        style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'9px 18px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'all 0.15s'}}>
+                        Suggérer une filière
+                      </button>
+                      <button
+                        onClick={() => navigate('/upload')}
+                        style={{background:'linear-gradient(135deg,#4F8EF7,#3A6ED4)',border:'none',color:'#fff',borderRadius:8,padding:'9px 18px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'opacity 0.15s'}}>
+                        Uploader un document
+                      </button>
+                    </div>
+                    {showEmptyFilForm && !filReqSent && (
+                      <div style={{marginTop:'1rem',background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.18)',borderRadius:8,padding:'12px 14px',width:'100%',maxWidth:300,textAlign:'left'}}>
+                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:8}}>// filière manquante</div>
+                        {!user ? (
+                          <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
+                            <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une suggestion
+                          </div>
+                        ) : (
+                          <>
+                            <input className="req-input" placeholder="Nom de la filière *" value={filReqName} onChange={e => setFilReqName(e.target.value)} />
+                            <div>
+                              <button className="req-send" onClick={handleFilRequest} disabled={!filReqName.trim() || filReqBusy}>
+                                {filReqBusy ? '...' : 'Envoyer'}
+                              </button>
+                              <button className="req-cancel" onClick={() => { setShowEmptyFilForm(false); setFilReqName(''); }}>Annuler</button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {filReqSent && <div className="req-ok" style={{marginTop:'0.75rem'}}>✓ Demande envoyée, merci !</div>}
+                  </div>
+                ) : (
+                  <div className="empty">
+                    <div className="empty-code">// 0 results</div>
+                    <div className="empty-title">Aucun module trouvé</div>
+                    <div className="empty-sub">Modifie ta recherche ou réinitialise les filtres</div>
+                  </div>
+                )
               ) : displayed.map(m => (
                 <div key={m.id} className="mod-card" onClick={() => navigate(`/module/${m.slug || m.id}`)}>
                   <div className="mod-top">
