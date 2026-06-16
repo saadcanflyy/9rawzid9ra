@@ -762,7 +762,7 @@ export default function SenpaiZone() {
                   Annuler
                 </button>
                 <button className="sz-publish-btn" style={{ padding:'6px 16px', fontSize:'0.8rem' }}
-                  disabled={editText.trim().length < 20}
+                  disabled={!editText.trim()}
                   onClick={e => { e.stopPropagation(); handleEditSave(post) }}>
                   Sauvegarder
                 </button>
