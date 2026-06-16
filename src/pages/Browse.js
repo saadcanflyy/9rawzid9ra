@@ -324,39 +324,48 @@ export default function Browse() {
   const flushSearch = () => { clearTimeout(debounceRef.current); setDebouncedQuery(query) }
 
   const handleUniRequest = async () => {
-    if (!uniReqName.trim()) return
+    if (!uniReqName.trim() || !user) return
     setUniReqBusy(true)
-    await supabase.from('school_requests').insert({
-      requested_by: user?.id || null,
-      school_name:  uniReqName.trim().slice(0, 120),
-      city:         uniReqCity.trim().slice(0, 80) || null,
-      school_type: 'public', request_type: 'independent', status: 'pending',
-    })
+    const { data: newUni, error } = await supabase
+      .from('universities')
+      .insert({ name: uniReqName.trim().slice(0, 120), city: uniReqCity.trim().slice(0, 80) || null })
+      .select().single()
+    if (error) { setUniReqBusy(false); return }
+    const { data: allUnis } = await supabase.from('universities').select('*').order('name')
+    if (allUnis) setUnis(allUnis)
+    if (newUni) { setSelUni(String(newUni.id)); setUniSearch(newUni.name) }
     setUniReqBusy(false)
     setUniReqSent(true)
   }
 
   const handleFacRequest = async () => {
-    if (!facReqName.trim()) return
+    if (!facReqName.trim() || !user) return
     setFacReqBusy(true)
-    await supabase.from('school_requests').insert({
-      requested_by: user?.id || null,
-      school_name:  facReqName.trim().slice(0, 120),
-      school_type: 'public', request_type: 'faculty', status: 'pending',
-    })
+    const { data: newFac, error } = await supabase
+      .from('faculties')
+      .insert({ name: facReqName.trim().slice(0, 120), university_id: selUni ? parseInt(selUni) : null })
+      .select().single()
+    if (error) { setFacReqBusy(false); return }
+    if (selUni) {
+      const { data: updatedFacs } = await supabase.from('faculties').select('*').eq('university_id', parseInt(selUni)).order('name')
+      if (updatedFacs) { setFacs(updatedFacs); setFacsReady(true) }
+    }
+    if (newFac) setSelFac(String(newFac.id))
     setFacReqBusy(false)
     setFacReqSent(true)
   }
 
   const handleFilRequest = async () => {
-    if (!filReqName.trim()) return
+    if (!filReqName.trim() || !user || !selFac) return
     setFilReqBusy(true)
-    await supabase.from('filiere_suggestions').insert({
-      suggested_by: user?.id || null,
-      faculty_id:   selFac ? parseInt(selFac) : null,
-      name:         filReqName.trim().slice(0, 120),
-      status:      'pending',
-    })
+    const { data: newFil, error } = await supabase
+      .from('filieres')
+      .insert({ name: filReqName.trim().slice(0, 120), faculty_id: parseInt(selFac), total_semesters: 6 })
+      .select().single()
+    if (error) { setFilReqBusy(false); return }
+    const { data: updatedFils } = await supabase.from('filieres').select('*').eq('faculty_id', parseInt(selFac)).order('name')
+    if (updatedFils) setFils(updatedFils)
+    if (newFil) setSelFil(String(newFil.id))
     setFilReqBusy(false)
     setFilReqSent(true)
   }
@@ -432,7 +441,7 @@ export default function Browse() {
               {showUniReq && (
                 <div className="req-form">
                   {uniReqSent ? (
-                    <div className="req-ok">✓ Demande envoyée, merci !</div>
+                    <div className="req-ok">✓ Université ajoutée !</div>
                   ) : !user ? (
                     <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
                       <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
@@ -466,7 +475,7 @@ export default function Browse() {
               {!showFacReq && !facReqSent && (
                 <button className="req-link" onClick={() => setShowFacReq(true)}>Faculté introuvable ?</button>
               )}
-              {facReqSent && <div className="req-ok">✓ Demande envoyée, merci !</div>}
+              {facReqSent && <div className="req-ok">✓ Faculté ajoutée !</div>}
               {showFacReq && !facReqSent && (
                 <div className="req-form">
                   <div className="req-form-title">// faculté manquante</div>
@@ -514,7 +523,7 @@ export default function Browse() {
                   )}
                 </div>
               )}
-              {filReqSent && <div className="req-ok">✓ Demande envoyée, merci !</div>}
+              {filReqSent && <div className="req-ok">✓ Filière ajoutée !</div>}
               {!showFacReq && !facReqSent && (
                 <button className="req-link" onClick={() => { setShowFacReq(true); setShowFilReq(false) }}>+ Ajouter une faculté / école</button>
               )}
@@ -536,7 +545,7 @@ export default function Browse() {
                   )}
                 </div>
               )}
-              {facReqSent && <div className="req-ok">✓ Demande envoyée, merci !</div>}
+              {facReqSent && <div className="req-ok">✓ Faculté ajoutée !</div>}
             </div>
           )}
 
@@ -550,7 +559,7 @@ export default function Browse() {
               {!showFilReq && !filReqSent && (
                 <button className="req-link" onClick={() => setShowFilReq(true)}>Filière introuvable ?</button>
               )}
-              {filReqSent && <div className="req-ok">✓ Demande envoyée, merci !</div>}
+              {filReqSent && <div className="req-ok">✓ Filière ajoutée !</div>}
               {showFilReq && !filReqSent && (
                 <div className="req-form">
                   {!user ? (
@@ -694,7 +703,7 @@ export default function Browse() {
                         )}
                       </div>
                     )}
-                    {filReqSent && <div className="req-ok" style={{marginTop:'0.75rem'}}>✓ Demande envoyée, merci !</div>}
+                    {filReqSent && <div className="req-ok" style={{marginTop:'0.75rem'}}>✓ Filière ajoutée !</div>}
                   </div>
                 ) : (
                   <div className="empty">

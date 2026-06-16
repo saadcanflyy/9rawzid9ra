@@ -219,6 +219,15 @@ export default function Admin() {
   const [pendingMods,  setPendingMods]  = useState([])
   const [schoolReqs,   setSchoolReqs]   = useState([])
   const [filiereReqs,  setFiliereReqs]  = useState([])
+  const [uniList,      setUniList]      = useState([])
+  const [facList,      setFacList]      = useState([])
+  const [filiereList,  setFiliereList]  = useState([])
+  const [renamingUni,  setRenamingUni]  = useState(null)
+  const [renameUniV,   setRenameUniV]   = useState('')
+  const [renamingFac,  setRenamingFac]  = useState(null)
+  const [renameFacV,   setRenameFacV]   = useState('')
+  const [renamingFil,  setRenamingFil]  = useState(null)
+  const [renameFilV,   setRenameFilV]   = useState('')
   const [users,        setUsers]        = useState([])
   const [topUsers,     setTopUsers]     = useState([])
   const [activityFeed, setActivityFeed] = useState([])
@@ -369,20 +378,22 @@ export default function Admin() {
 
   const loadSchools = async () => {
     setLoading(true)
-    const { data } = await supabase.from('school_requests')
-      .select('*, user_profiles(name, email), universities!school_requests_parent_university_id_fkey(name)')
-      .order('created_at', { ascending: false })
-    setSchoolReqs(data || [])
+    const [{ data: unis }, { data: facs }] = await Promise.all([
+      supabase.from('universities').select('*').order('created_at', { ascending: false }),
+      supabase.from('faculties').select('*, universities(name)').order('created_at', { ascending: false }),
+    ])
+    setUniList(unis || [])
+    setFacList(facs || [])
     setLoading(false)
   }
 
   const loadFilieres = async () => {
     setLoading(true)
     const { data } = await supabase
-      .from('filiere_suggestions')
-      .select('*, user_profiles(name, email), faculties(name, universities(name))')
+      .from('filieres')
+      .select('*, faculties(name, universities(name))')
       .order('created_at', { ascending: false })
-    setFiliereReqs(data || [])
+    setFiliereList(data || [])
     setLoading(false)
   }
 
@@ -542,6 +553,75 @@ export default function Admin() {
   const rejectFiliere = async (id) => {
     await supabase.from('filiere_suggestions').update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: user.id }).eq('id', id)
     setFiliereReqs(f => f.map(x => x.id === id ? { ...x, status: 'rejected' } : x))
+  }
+
+  const isNew = ts => Date.now() - new Date(ts).getTime() < 86400000
+
+  const renameUni = async (id) => {
+    if (!renameUniV.trim()) return
+    const { error } = await supabase.from('universities').update({ name: renameUniV.trim() }).eq('id', id)
+    if (error) { showAlert('Erreur : ' + error.message); return }
+    setUniList(u => u.map(x => x.id === id ? { ...x, name: renameUniV.trim() } : x))
+    setRenamingUni(null); setRenameUniV('')
+  }
+
+  const deleteUni = (uni) => {
+    setModal({
+      title: `Supprimer "${uni.name}" ?`,
+      message: 'Toutes les facultés et filières liées seront supprimées.',
+      confirmText: 'Supprimer', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        const { error } = await supabase.from('universities').delete().eq('id', uni.id)
+        if (error) { showAlert('Erreur : ' + error.message); return }
+        setUniList(u => u.filter(x => x.id !== uni.id))
+        setFacList(f => f.filter(x => x.university_id !== uni.id))
+      },
+    })
+  }
+
+  const renameFac = async (id) => {
+    if (!renameFacV.trim()) return
+    const { error } = await supabase.from('faculties').update({ name: renameFacV.trim() }).eq('id', id)
+    if (error) { showAlert('Erreur : ' + error.message); return }
+    setFacList(f => f.map(x => x.id === id ? { ...x, name: renameFacV.trim() } : x))
+    setRenamingFac(null); setRenameFacV('')
+  }
+
+  const deleteFac = (fac) => {
+    setModal({
+      title: `Supprimer "${fac.name}" ?`,
+      message: 'Toutes les filières liées seront supprimées.',
+      confirmText: 'Supprimer', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        const { error } = await supabase.from('faculties').delete().eq('id', fac.id)
+        if (error) { showAlert('Erreur : ' + error.message); return }
+        setFacList(f => f.filter(x => x.id !== fac.id))
+      },
+    })
+  }
+
+  const renameFil = async (id) => {
+    if (!renameFilV.trim()) return
+    const { error } = await supabase.from('filieres').update({ name: renameFilV.trim() }).eq('id', id)
+    if (error) { showAlert('Erreur : ' + error.message); return }
+    setFiliereList(f => f.map(x => x.id === id ? { ...x, name: renameFilV.trim() } : x))
+    setRenamingFil(null); setRenameFilV('')
+  }
+
+  const deleteFil = (fil) => {
+    setModal({
+      title: `Supprimer "${fil.name}" ?`,
+      message: 'Tous les modules de cette filière seront affectés.',
+      confirmText: 'Supprimer', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        const { error } = await supabase.from('filieres').delete().eq('id', fil.id)
+        if (error) { showAlert('Erreur : ' + error.message); return }
+        setFiliereList(f => f.filter(x => x.id !== fil.id))
+      },
+    })
   }
 
   const banUser = (id, currentBan) => {
@@ -1057,63 +1137,95 @@ export default function Admin() {
           {/* SCHOOLS */}
           {activeTab === 'schools' && (
             <>
-              <div className="section-title">// demandes d'ajout d'écoles</div>
+              <div className="section-title">// universités</div>
               {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               schoolReqs.length === 0 ? <div className="empty">// aucune demande d'école</div> : (
+               uniList.length === 0 ? <div className="empty">// aucune université enregistrée</div> : (
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
-                      <tr><th>Établissement</th><th>Type de demande</th><th>Demandé par</th><th>Statut</th><th>Actions</th></tr>
+                      <tr><th>Nom</th><th>Ville</th><th>Ajouté le</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
-                      {schoolReqs.map(s => {
-                        const rt = s.request_type || 'independent'
-                        const RT_LABEL = { independent:'École indép.', faculty:'Faculté', university_with_faculties:'Université' }
-                        const RT_COLOR = { independent:'rgba(79,142,247,0.1)', faculty:'rgba(45,212,191,0.08)', university_with_faculties:'rgba(245,158,11,0.08)' }
-                        const RT_BORDER = { independent:'rgba(79,142,247,0.2)', faculty:'rgba(45,212,191,0.18)', university_with_faculties:'rgba(245,158,11,0.22)' }
-                        const RT_TEXT = { independent:'var(--accent2)', faculty:'var(--teal2)', university_with_faculties:'#F59E0B' }
-                        return (
-                          <tr key={s.id}>
-                            <td>
-                              <div className="table-name">{s.school_name}</div>
-                              {rt === 'faculty' && s.universities?.name && (
-                                <div className="table-mono" style={{color:'var(--text3)'}}>Sous : {s.universities.name}</div>
+                      {uniList.map(u => (
+                        <tr key={u.id}>
+                          <td>
+                            <div style={{display:'flex',alignItems:'center',gap:8}}>
+                              {isNew(u.created_at) && <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.55rem',background:'rgba(74,222,128,0.12)',color:'#4ADE80',border:'1px solid rgba(74,222,128,0.25)',borderRadius:3,padding:'1px 5px',whiteSpace:'nowrap'}}>NEW</span>}
+                              {renamingUni === u.id ? (
+                                <input value={renameUniV} onChange={e => setRenameUniV(e.target.value)}
+                                  style={{background:'var(--s2)',border:'1px solid var(--accent)',borderRadius:6,padding:'4px 8px',color:'var(--text)',fontSize:'0.8rem',fontFamily:'Outfit,sans-serif',minWidth:160}}
+                                  onKeyDown={e => e.key === 'Enter' && renameUni(u.id)} autoFocus />
+                              ) : (
+                                <div className="table-name">{u.name}</div>
                               )}
-                              {s.city && <div className="table-mono" style={{color:'var(--text3)'}}>{s.city}</div>}
-                              {rt === 'university_with_faculties' && s.details?.length > 0 && (
-                                <div style={{marginTop:4,display:'flex',flexWrap:'wrap',gap:3}}>
-                                  {s.details.map((f,i) => (
-                                    <span key={i} style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:3,padding:'1px 6px',color:'var(--text3)'}}>
-                                      {f.name}
-                                    </span>
-                                  ))}
-                                </div>
+                            </div>
+                          </td>
+                          <td className="table-mono">{u.city || '—'}</td>
+                          <td className="table-mono">{fmt(u.created_at)}</td>
+                          <td>
+                            <div className="actions">
+                              {renamingUni === u.id ? (
+                                <>
+                                  <button className="act-btn act-approve" onClick={() => renameUni(u.id)}>Sauvegarder</button>
+                                  <button className="act-btn" onClick={() => setRenamingUni(null)}>Annuler</button>
+                                </>
+                              ) : (
+                                <>
+                                  <button className="act-btn" onClick={() => { setRenamingUni(u.id); setRenameUniV(u.name) }}>Renommer</button>
+                                  <button className="act-btn act-reject" onClick={() => deleteUni(u)}>Supprimer</button>
+                                </>
                               )}
-                            </td>
-                            <td>
-                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',background:RT_COLOR[rt],border:`1px solid ${RT_BORDER[rt]}`,color:RT_TEXT[rt],padding:'2px 8px',borderRadius:4}}>
-                                {RT_LABEL[rt]}
-                              </span>
-                              {s.school_type && (
-                                <div className="table-mono" style={{color:'var(--text3)',marginTop:3}}>{s.school_type}</div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="section-title" style={{marginTop:'1.5rem'}}>// facultés / écoles</div>
+              {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel"/>) :
+               facList.length === 0 ? <div className="empty">// aucune faculté enregistrée</div> : (
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr><th>Nom</th><th>Université</th><th>Ajouté le</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                      {facList.map(f => (
+                        <tr key={f.id}>
+                          <td>
+                            <div style={{display:'flex',alignItems:'center',gap:8}}>
+                              {isNew(f.created_at) && <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.55rem',background:'rgba(74,222,128,0.12)',color:'#4ADE80',border:'1px solid rgba(74,222,128,0.25)',borderRadius:3,padding:'1px 5px',whiteSpace:'nowrap'}}>NEW</span>}
+                              {renamingFac === f.id ? (
+                                <input value={renameFacV} onChange={e => setRenameFacV(e.target.value)}
+                                  style={{background:'var(--s2)',border:'1px solid var(--accent)',borderRadius:6,padding:'4px 8px',color:'var(--text)',fontSize:'0.8rem',fontFamily:'Outfit,sans-serif',minWidth:160}}
+                                  onKeyDown={e => e.key === 'Enter' && renameFac(f.id)} autoFocus />
+                              ) : (
+                                <div className="table-name">{f.name}</div>
                               )}
-                            </td>
-                            <td>
-                              <div className="table-name">{s.user_profiles?.name || '—'}</div>
-                              <div className="table-mono" style={{color:'var(--text3)'}}>{fmt(s.created_at)}</div>
-                            </td>
-                            <td><span className={`badge badge-${s.status}`}>{s.status}</span></td>
-                            <td>
-                              {s.status === 'pending' && (
-                                <div className="actions">
-                                  <button className="act-btn act-approve" onClick={() => approveSchool(s.id)}>Approuver</button>
-                                  <button className="act-btn act-reject" onClick={() => rejectSchool(s.id)}>Rejeter</button>
-                                </div>
+                            </div>
+                          </td>
+                          <td className="table-mono">{f.universities?.name || '—'}</td>
+                          <td className="table-mono">{fmt(f.created_at)}</td>
+                          <td>
+                            <div className="actions">
+                              {renamingFac === f.id ? (
+                                <>
+                                  <button className="act-btn act-approve" onClick={() => renameFac(f.id)}>Sauvegarder</button>
+                                  <button className="act-btn" onClick={() => setRenamingFac(null)}>Annuler</button>
+                                </>
+                              ) : (
+                                <>
+                                  <button className="act-btn" onClick={() => { setRenamingFac(f.id); setRenameFacV(f.name) }}>Renommer</button>
+                                  <button className="act-btn act-reject" onClick={() => deleteFac(f)}>Supprimer</button>
+                                </>
                               )}
-                            </td>
-                          </tr>
-                        )
-                      })}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -1257,35 +1369,49 @@ export default function Admin() {
           {/* FILIÈRES */}
           {activeTab === 'filieres' && (
             <>
-              <div className="section-title">// demandes d'ajout de filières</div>
+              <div className="section-title">// filières</div>
               {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               filiereReqs.length === 0 ? <div className="empty">// aucune demande de filière</div> : (
+               filiereList.length === 0 ? <div className="empty">// aucune filière enregistrée</div> : (
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
-                      <tr><th>Filière</th><th>Faculté / Université</th><th>Semestres</th><th>Demandé par</th><th>Statut</th><th>Actions</th></tr>
+                      <tr><th>Filière</th><th>Faculté / Université</th><th>Semestres</th><th>Ajouté le</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
-                      {filiereReqs.map(f => (
+                      {filiereList.map(f => (
                         <tr key={f.id}>
-                          <td><div className="table-name">{f.name}</div></td>
+                          <td>
+                            <div style={{display:'flex',alignItems:'center',gap:8}}>
+                              {isNew(f.created_at) && <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.55rem',background:'rgba(74,222,128,0.12)',color:'#4ADE80',border:'1px solid rgba(74,222,128,0.25)',borderRadius:3,padding:'1px 5px',whiteSpace:'nowrap'}}>NEW</span>}
+                              {renamingFil === f.id ? (
+                                <input value={renameFilV} onChange={e => setRenameFilV(e.target.value)}
+                                  style={{background:'var(--s2)',border:'1px solid var(--accent)',borderRadius:6,padding:'4px 8px',color:'var(--text)',fontSize:'0.8rem',fontFamily:'Outfit,sans-serif',minWidth:160}}
+                                  onKeyDown={e => e.key === 'Enter' && renameFil(f.id)} autoFocus />
+                              ) : (
+                                <div className="table-name">{f.name}</div>
+                              )}
+                            </div>
+                          </td>
                           <td>
                             <div>{f.faculties?.name || '—'}</div>
                             <div className="table-mono" style={{color:'var(--text3)'}}>{f.faculties?.universities?.name || '—'}</div>
                           </td>
                           <td className="table-mono">{f.total_semesters ?? '—'}</td>
+                          <td className="table-mono">{fmt(f.created_at)}</td>
                           <td>
-                            <div className="table-name">{f.user_profiles?.name || '—'}</div>
-                            <div className="table-mono" style={{color:'var(--text3)'}}>{fmt(f.created_at)}</div>
-                          </td>
-                          <td><span className={`badge badge-${f.status}`}>{f.status}</span></td>
-                          <td>
-                            {f.status === 'pending' && (
-                              <div className="actions">
-                                <button className="act-btn act-approve" onClick={() => approveFiliere(f.id)}>Approuver</button>
-                                <button className="act-btn act-reject" onClick={() => rejectFiliere(f.id)}>Rejeter</button>
-                              </div>
-                            )}
+                            <div className="actions">
+                              {renamingFil === f.id ? (
+                                <>
+                                  <button className="act-btn act-approve" onClick={() => renameFil(f.id)}>Sauvegarder</button>
+                                  <button className="act-btn" onClick={() => setRenamingFil(null)}>Annuler</button>
+                                </>
+                              ) : (
+                                <>
+                                  <button className="act-btn" onClick={() => { setRenamingFil(f.id); setRenameFilV(f.name) }}>Renommer</button>
+                                  <button className="act-btn act-reject" onClick={() => deleteFil(f)}>Supprimer</button>
+                                </>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
