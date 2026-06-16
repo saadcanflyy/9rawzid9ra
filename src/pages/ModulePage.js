@@ -929,12 +929,19 @@ export default function ModulePage() {
                             </span>
                           )}
                         </div>
-                        <button onClick={e => { e.stopPropagation(); handleReport(doc) }}
-                          style={{ marginLeft:'auto', background:'none', border:'none',
-                            color: userReactions[doc.id]?.reported ? '#F87171' : '#4A5568',
-                            fontSize:'0.72rem', cursor:'pointer', fontFamily:'DM Mono,monospace', transition:'color 0.15s' }}>
-                          {userReactions[doc.id]?.reported ? '🚩 Signalé' : '🚩 Signaler'}
-                        </button>
+                        <div style={{marginLeft:'auto',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
+                          <button onClick={e => { e.stopPropagation(); handleReport(doc) }}
+                            style={{ background:'none', border:'none',
+                              color: userReactions[doc.id]?.reported ? '#F87171' : '#4A5568',
+                              fontSize:'0.72rem', fontFamily:'DM Mono,monospace', transition:'color 0.15s',
+                              cursor: userReactions[doc.id]?.reported ? 'default' : 'pointer',
+                              pointerEvents: userReactions[doc.id]?.reported ? 'none' : 'auto' }}>
+                            {userReactions[doc.id]?.reported ? '🚩 Signalé' : '🚩 Signaler'}
+                          </button>
+                          {userReactions[doc.id]?.reported && (
+                            <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'#4A5568'}}>notre équipe va vérifier</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     ))}

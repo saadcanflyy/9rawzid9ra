@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
+import ConfirmModal from '../components/ConfirmModal'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
@@ -217,6 +218,7 @@ export default function Upload() {
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
   const [progress, setProgress] = useState(0)
+  const [modal,    setModal]    = useState(null)
   const [success,  setSuccess]  = useState(false)
   const [uploadedModuleId, setUploadedModuleId] = useState(null)
 
@@ -635,7 +637,7 @@ export default function Upload() {
   }
 
   // Final submit
-  const handleSubmit = async () => {
+  const handleSubmit = async (skipDupCheck = false) => {
     setLoading(true); setError(''); setProgress(5)
     try {
       // Rate limit: max 7 uploads per hour
@@ -664,18 +666,46 @@ export default function Upload() {
         moduleId = newMod.id
       }
 
+      // Duplicate check: same module + doc_type + academic_year already uploaded?
+      if (!skipDupCheck && !selMod?.custom && moduleId) {
+        let dupQ = supabase.from('documents').select('id').eq('module_id', moduleId).eq('doc_type', docType)
+        if (year) dupQ = dupQ.eq('academic_year', year)
+        const { data: dupDocs } = await dupQ.limit(1)
+        if (dupDocs?.length > 0) {
+          setLoading(false); setProgress(0)
+          setModal({
+            title: 'Document similaire détecté',
+            message: 'Un document similaire existe déjà pour ce module et cette année. Veux-tu quand même uploader ?',
+            confirmText: 'Uploader quand même',
+            confirmColor: '#4F8EF7',
+            onConfirm: () => { setModal(null); handleSubmit(true) },
+            onCancel: () => setModal(null),
+          })
+          return
+        }
+      }
+
       const uploadedFiles = []
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
         const compressed = await compressFile(file)
         const ext = file.name.split('.').pop()
         const path = `documents/${user.id}/${Date.now()}_${i}.${ext}`
+        const fileBase  = Math.round(10 + (i / files.length) * 80)
+        const fileChunk = Math.round(80 / files.length)
         const { error: upErr } = await supabase.storage
-          .from('documents').upload(path, compressed, { cacheControl:'3600', upsert:false })
+          .from('documents').upload(path, compressed, {
+            cacheControl: '3600',
+            upsert: false,
+            onUploadProgress: (ev) => {
+              const pct = Math.round((ev.loaded / (ev.total || 1)) * fileChunk)
+              setProgress(fileBase + pct)
+            },
+          })
         if (upErr) throw new Error(`Upload échoué: ${upErr.message}`)
         const { data: { publicUrl } } = supabase.storage.from('documents').getPublicUrl(path)
         uploadedFiles.push({ url: publicUrl, name: file.name })
-        setProgress(Math.round(10 + ((i+1)/files.length)*80))
+        setProgress(Math.round(10 + ((i + 1) / files.length) * 80))
       }
 
       const isPdf    = files.every(f => f.type === 'application/pdf')
@@ -1450,9 +1480,15 @@ export default function Upload() {
                   </div>
                 ))}
 
-                {progress > 0 && progress < 100 && (
-                  <div className="progress-wrap" style={{ marginTop:'1.5rem' }}>
-                    <div className="progress-bar" style={{ width:`${progress}%` }} />
+                {loading && progress > 0 && progress < 100 && (
+                  <div style={{ marginTop:'1.5rem' }}>
+                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.72rem', color:'var(--text2)', marginBottom:6, display:'flex', justifyContent:'space-between' }}>
+                      <span>Envoi en cours...</span>
+                      <span>{progress}%</span>
+                    </div>
+                    <div className="progress-wrap">
+                      <div className="progress-bar" style={{ width:`${progress}%` }} />
+                    </div>
                   </div>
                 )}
 
@@ -1468,6 +1504,7 @@ export default function Upload() {
         )}
       </div>
       {toast && <div className="toast">{toast}</div>}
+      {modal && <ConfirmModal {...modal} onCancel={modal.onCancel} />}
     </div>
   )
 }

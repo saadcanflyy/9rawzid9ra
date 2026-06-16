@@ -242,7 +242,7 @@ export default function Register() {
                   {resentMsg || 'Renvoyer le code'}
                 </button>
                 <button className="otp-back" onClick={() => { setStep('form'); setOtpCode(''); setOtpError('') }}>
-                  ← Modifier l'email
+                  J'ai fait une erreur dans mon email ?
                 </button>
               </div>
             </>

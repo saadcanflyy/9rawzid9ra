@@ -208,6 +208,13 @@ export default function Browse() {
   const [filReqName,       setFilReqName]       = useState('')
   const [filReqSent,       setFilReqSent]       = useState(false)
   const [filReqBusy,       setFilReqBusy]       = useState(false)
+  const [userUniId,        setUserUniId]        = useState(null)
+
+  useEffect(() => {
+    if (!user?.id) { setUserUniId(null); return }
+    supabase.from('user_profiles').select('university_id').eq('id', user.id).single()
+      .then(({ data }) => setUserUniId(data?.university_id || null))
+  }, [user?.id]) // eslint-disable-line
 
   // Sync from URL when navigated here externally (e.g. Navbar search → /browse?q=)
   useEffect(() => {
@@ -402,6 +409,29 @@ export default function Browse() {
             <span className="sidebar-title">// filtres</span>
             <button className="sidebar-reset" onClick={reset}>reset</button>
           </div>
+
+          {user && userUniId && unis.length > 0 && (() => {
+            const myUni = unis.find(u => u.id === userUniId)
+            if (!myUni) return null
+            const active = selUni === String(userUniId)
+            return (
+              <div style={{marginBottom:'1rem'}}>
+                <button
+                  onClick={() => { setSelUni(String(myUni.id)); setUniSearch(myUni.name) }}
+                  style={{
+                    width:'100%', display:'flex', alignItems:'center', gap:7,
+                    background: active ? 'rgba(79,142,247,0.12)' : 'rgba(79,142,247,0.05)',
+                    border: `1px solid ${active ? 'rgba(79,142,247,0.4)' : 'rgba(79,142,247,0.15)'}`,
+                    borderRadius:8, padding:'7px 10px', cursor:'pointer', transition:'all 0.15s',
+                    fontFamily:'Outfit,sans-serif', fontSize:'0.8rem',
+                    color: active ? 'var(--accent2)' : 'var(--text2)', textAlign:'left',
+                  }}>
+                  <span>🎓</span>
+                  <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{myUni.name}</span>
+                </button>
+              </div>
+            )
+          })()}
 
           <div className="filter-block">
             <span className="filter-label">Université</span>
