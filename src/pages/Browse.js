@@ -185,7 +185,7 @@ export default function Browse() {
     return () => clearTimeout(debounceRef.current)
   }, [query])
 
-  // Persist all active filters to URL (replace so Back button still works)
+  // Persist all active filters to URL + save to sessionStorage for Navbar restore
   useEffect(() => {
     const p = {}
     if (query)   p.q    = query
@@ -195,15 +195,9 @@ export default function Browse() {
     if (selSem)  p.sem  = selSem
     if (selType) p.type = selType
     setSearchParams(p, { replace: true })
+    const qs = new URLSearchParams(p).toString()
+    sessionStorage.setItem('lastBrowseUrl', '/browse' + (qs ? '?' + qs : ''))
   }, [query, selUni, selFac, selFil, selSem, selType, setSearchParams])
-
-  // Save full browse URL to sessionStorage on unmount so Navbar can restore it
-  useEffect(() => {
-    return () => {
-      const url = window.location.pathname + window.location.search
-      if (url.startsWith('/browse')) sessionStorage.setItem('lastBrowseUrl', url)
-    }
-  }, [])
 
   // Load universities once
   useEffect(() => {

@@ -301,8 +301,8 @@ export default function Navbar({ activePage = '' }) {
         <div className="nb-left">
           <div className="nb-logo" onClick={() => navigate('/')}>
             <div className="nb-logo-box">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <text x="9" y="13.5" textAnchor="middle" fontFamily="monospace" fontWeight="800" fontSize="13" fill="#ffffff">9</text>
+              <svg width="18" height="18" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                <text x="16" y="22" textAnchor="middle" fontFamily="'DM Mono',monospace" fontWeight="800" fontSize="14" fill="#ffffff" letterSpacing="-0.5">9Z</text>
               </svg>
             </div>
             <span className="nb-logo-text">9raw<b>Zid</b>9ra</span>
