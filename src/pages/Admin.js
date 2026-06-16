@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import ConfirmModal from '../components/ConfirmModal'
@@ -255,7 +255,10 @@ export default function Admin() {
   const [unreadMsgCount,    setUnreadMsgCount]    = useState(0)
 
   // Analytics tab
-  const [analytics,     setAnalytics]     = useState(null)
+  const [analytics,       setAnalytics]       = useState(null)
+  const [expandedContrib, setExpandedContrib] = useState(null)
+  const [contribDocs,     setContribDocs]     = useState({})
+  const [contribLoading,  setContribLoading]  = useState(null)
 
   // Announcement
   const [annText,       setAnnText]       = useState('')
@@ -762,6 +765,21 @@ export default function Admin() {
     setLoading(false)
   }
 
+  const toggleContrib = async (userId) => {
+    if (expandedContrib === userId) { setExpandedContrib(null); return }
+    setExpandedContrib(userId)
+    if (contribDocs[userId]) return
+    setContribLoading(userId)
+    const { data } = await supabase
+      .from('documents')
+      .select('doc_type, created_at, modules(name)')
+      .eq('uploader_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20)
+    setContribDocs(d => ({ ...d, [userId]: data || [] }))
+    setContribLoading(null)
+  }
+
   const sendAnnouncement = async () => {
     if (!annText.trim() || annSending) return
     setAnnSending(true)
@@ -935,19 +953,55 @@ export default function Admin() {
                         {topUsers.map((u, i) => {
                           const pts = u.points || 0
                           const rank = pts >= 600 ? {l:'Légende',c:'rank-legende'} : pts >= 300 ? {l:'Senpai',c:'rank-senpai'} : pts >= 100 ? {l:'Contributeur',c:'rank-contrib'} : {l:'Étudiant',c:'rank-etudiant'}
+                          const isExpanded = expandedContrib === u.id
+                          const docs = contribDocs[u.id]
+                          const isLoadingDocs = contribLoading === u.id
+                          const DOC_LABELS = { cours:'Cours', td:'TD', tp:'TP', exam:'Exam', résumé:'Résumé', autre:'Autre' }
                           return (
-                            <tr key={u.id}>
-                              <td className="table-mono" style={{color: i===0?'#F59E0B':i===1?'#94A3B8':i===2?'#CD7F32':'var(--text3)', fontWeight:i<3?700:400}}>
-                                {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}
-                              </td>
-                              <td>
-                                <div className="table-name">{u.name || 'Anonyme'}</div>
-                                <div className="table-mono" style={{color:'var(--text3)'}}>{u.email}</div>
-                              </td>
-                              <td className="table-mono" style={{color:'var(--accent2)'}}>{pts}</td>
-                              <td className="table-mono">{u.uploads_count || 0}</td>
-                              <td><span className={`rank-pill ${rank.c}`}>{rank.l}</span></td>
-                            </tr>
+                            <Fragment key={u.id}>
+                              <tr style={{cursor:'pointer'}} onClick={() => toggleContrib(u.id)}>
+                                <td className="table-mono" style={{color: i===0?'#F59E0B':i===1?'#94A3B8':i===2?'#CD7F32':'var(--text3)', fontWeight:i<3?700:400}}>
+                                  {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}
+                                </td>
+                                <td>
+                                  <div className="table-name">{u.name || 'Anonyme'}</div>
+                                  <div className="table-mono" style={{color:'var(--text3)'}}>{u.email}</div>
+                                </td>
+                                <td className="table-mono" style={{color:'var(--accent2)'}}>{pts}</td>
+                                <td className="table-mono">{u.uploads_count || 0}</td>
+                                <td>
+                                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                                    <span className={`rank-pill ${rank.c}`}>{rank.l}</span>
+                                    <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--text3)',display:'inline-block',transition:'transform 0.15s',transform:isExpanded?'rotate(90deg)':'rotate(0)'}}>▶</span>
+                                  </div>
+                                </td>
+                              </tr>
+                              {isExpanded && (
+                                <tr>
+                                  <td colSpan={5} style={{padding:0,background:'rgba(79,142,247,0.03)',borderBottom:'1px solid var(--border)'}}>
+                                    <div style={{padding:'10px 20px'}}>
+                                      {isLoadingDocs ? (
+                                        <div className="table-mono" style={{color:'var(--text3)'}}>Chargement...</div>
+                                      ) : !docs || docs.length === 0 ? (
+                                        <div className="table-mono" style={{color:'var(--text3)'}}>// aucun upload</div>
+                                      ) : (
+                                        <div style={{display:'flex',flexDirection:'column',gap:5,maxHeight:220,overflowY:'auto'}}>
+                                          {docs.map((d, j) => (
+                                            <div key={j} style={{display:'flex',alignItems:'center',gap:10}}>
+                                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',background:'rgba(79,142,247,0.1)',color:'var(--accent2)',border:'1px solid rgba(79,142,247,0.2)',borderRadius:3,padding:'1px 6px',minWidth:48,textAlign:'center',flexShrink:0}}>
+                                                {DOC_LABELS[d.doc_type] || d.doc_type || '?'}
+                                              </span>
+                                              <span style={{fontSize:'0.78rem',color:'var(--text)',flex:1}}>{d.modules?.name || '—'}</span>
+                                              <span className="table-mono" style={{color:'var(--text3)',fontSize:'0.68rem',flexShrink:0}}>{fmt(d.created_at)}</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </Fragment>
                           )
                         })}
                         {topUsers.length === 0 && <tr><td colSpan={5} className="empty">// aucun utilisateur</td></tr>}
@@ -1143,7 +1197,7 @@ export default function Admin() {
                 <div className="table-wrap">
                   <table className="table">
                     <thead>
-                      <tr><th>Nom</th><th>Ville</th><th>Ajouté le</th><th>Actions</th></tr>
+                      <tr><th>Nom</th><th>Ville</th><th>Type</th><th>Ajouté le</th><th>Actions</th></tr>
                     </thead>
                     <tbody>
                       {uniList.map(u => (
@@ -1161,6 +1215,7 @@ export default function Admin() {
                             </div>
                           </td>
                           <td className="table-mono">{u.city || '—'}</td>
+                          <td className="table-mono">{u.type || '—'}</td>
                           <td className="table-mono">{fmt(u.created_at)}</td>
                           <td>
                             <div className="actions">
@@ -1247,9 +1302,12 @@ export default function Admin() {
                     <tbody>
                       {users.map(u => (
                         <tr key={u.id}>
-                          <td>
+                          <td
+                            style={{cursor:'pointer'}}
+                            onClick={() => window.open('/user/' + u.id, '_blank')}
+                          >
                             <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap'}}>
-                              <span className="table-name">{u.name || 'Sans nom'}</span>
+                              <span className="table-name" style={{textDecoration:'underline',textDecorationColor:'rgba(79,142,247,0.3)'}}>{u.name || 'Sans nom'}</span>
                               {u.is_moderator && !u.is_admin && (
                                 <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',fontWeight:700,padding:'1px 6px',borderRadius:3,background:'rgba(45,212,191,0.1)',color:'var(--teal2)',border:'1px solid rgba(45,212,191,0.25)'}}>MOD</span>
                               )}
@@ -1266,6 +1324,11 @@ export default function Admin() {
                           </td>
                           <td>
                             <div className="actions">
+                              <button
+                                className="act-btn act-view"
+                                onClick={() => window.open('/user/' + u.id, '_blank')}>
+                                Voir profil
+                              </button>
                               {!u.is_admin && (
                                 <button
                                   className="act-btn"
