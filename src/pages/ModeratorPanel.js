@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
+import ConfirmModal from '../components/ConfirmModal'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
@@ -168,6 +169,9 @@ export default function ModeratorPanel() {
   const [newModFilId,  setNewModFilId]  = useState('')
   const [newModSem,    setNewModSem]    = useState('')
 
+  const [modal, setModal] = useState(null)
+  const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#4F8EF7', onCancel: null, onConfirm: () => setModal(null) })
+
   // Ban state
   const [banningId,  setBanningId]  = useState(null)
   const [banDuration,setBanDuration]= useState('7d')
@@ -306,7 +310,7 @@ export default function ModeratorPanel() {
       p_banned_until: bannedUntil,
       p_ban_reason: banReason.trim() || null,
     })
-    if (!ok) { alert('Erreur lors du bannissement.'); setBanBusy(false); return }
+    if (!ok) { showAlert('Erreur lors du bannissement.'); setBanBusy(false); return }
     setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_banned: true, banned_until: bannedUntil, ban_reason: banReason.trim() || null } : x))
     setBanningId(null)
     setBanReason('')
@@ -315,7 +319,7 @@ export default function ModeratorPanel() {
 
   const unbanUser = async (id) => {
     const { data: ok } = await supabase.rpc('mod_ban_user', { p_target_id: id, p_is_banned: false, p_banned_until: null, p_ban_reason: null })
-    if (!ok) { alert('Erreur lors du débannissement.'); return }
+    if (!ok) { showAlert('Erreur lors du débannissement.'); return }
     setUsers(prev => prev.map(x => x.id === id ? { ...x, is_banned: false, banned_until: null, ban_reason: null } : x))
   }
 
@@ -326,18 +330,25 @@ export default function ModeratorPanel() {
     setFlaggedDocs(d => d.filter(x => x.id !== id))
   }
 
-  const deleteDoc = async (doc) => {
-    if (!window.confirm('Supprimer ce document définitivement ?')) return
-    if (doc.files?.length > 0) {
-      for (const url of doc.files) {
-        const path = url.split('/documents/')[1]
-        if (path) await supabase.storage.from('documents').remove([path])
-      }
-    }
-    await supabase.from('document_reactions').delete().eq('document_id', doc.id)
-    await supabase.from('downloads_log').delete().eq('document_id', doc.id)
-    await supabase.from('documents').delete().eq('id', doc.id)
-    setFlaggedDocs(d => d.filter(x => x.id !== doc.id))
+  const deleteDoc = (doc) => {
+    setModal({
+      title: 'Supprimer ce document ?',
+      message: 'Action irréversible.',
+      confirmText: 'Supprimer', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        if (doc.files?.length > 0) {
+          for (const url of doc.files) {
+            const path = url.split('/documents/')[1]
+            if (path) await supabase.storage.from('documents').remove([path])
+          }
+        }
+        await supabase.from('document_reactions').delete().eq('document_id', doc.id)
+        await supabase.from('downloads_log').delete().eq('document_id', doc.id)
+        await supabase.from('documents').delete().eq('id', doc.id)
+        setFlaggedDocs(d => d.filter(x => x.id !== doc.id))
+      },
+    })
   }
 
   const approvePost = async (id) => {
@@ -345,10 +356,16 @@ export default function ModeratorPanel() {
     setFlaggedPosts(p => p.filter(x => x.id !== id))
   }
 
-  const deletePost = async (post) => {
-    if (!window.confirm(`Supprimer ce post ?`)) return
-    await supabase.from('senpai_posts').delete().eq('id', post.id)
-    setFlaggedPosts(p => p.filter(x => x.id !== post.id))
+  const deletePost = (post) => {
+    setModal({
+      title: 'Supprimer ce post ?',
+      confirmText: 'Supprimer', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        await supabase.from('senpai_posts').delete().eq('id', post.id)
+        setFlaggedPosts(p => p.filter(x => x.id !== post.id))
+      },
+    })
   }
 
   const renameMod = async (mod) => {
@@ -936,6 +953,7 @@ export default function ModeratorPanel() {
 
         </main>
       </div>
+      {modal && <ConfirmModal {...modal} onCancel={modal.onCancel !== undefined ? modal.onCancel : () => setModal(null)} />}
     </div>
   )
 }

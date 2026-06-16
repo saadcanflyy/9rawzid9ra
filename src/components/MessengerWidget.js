@@ -64,6 +64,7 @@ export default function MessengerWidget() {
   const [thread,        setThread]        = useState([])
   const [text,          setText]          = useState('')
   const [sending,       setSending]       = useState(false)
+  const [rateErr,       setRateErr]       = useState(false)
   const [loading,       setLoading]       = useState(false)
   const [unread,        setUnread]        = useState(0)
   const [showTooltip,   setShowTooltip]   = useState(false)
@@ -282,7 +283,8 @@ export default function MessengerWidget() {
       .eq('sender_id', user.id)
       .gte('created_at', since)
     if (recentMsgs >= 20) {
-      alert('Limite de 20 messages par minute atteinte. Attends un peu.')
+      setRateErr(true)
+      setTimeout(() => setRateErr(false), 4000)
       return
     }
     setSending(true)
@@ -504,6 +506,11 @@ export default function MessengerWidget() {
                   )}
                 </button>
               </div>
+              {rateErr && (
+                <div style={{ padding:'6px 12px', background:'rgba(248,113,113,0.1)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:7, margin:'4px 12px 8px', fontSize:'0.72rem', color:'#F87171', fontFamily:'DM Mono,monospace' }}>
+                  Limite de 20 messages/min atteinte. Attends un peu.
+                </div>
+              )}
             </>
           )}
         </div>

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
+import ConfirmModal from '../components/ConfirmModal'
 
 // ─── SVG ICONS ────────────────────────────────────────────────────────────────
 const ICONS = {
@@ -369,6 +370,9 @@ export default function SenpaiZone() {
   // ── auth / data state ──
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
+  const [modal, setModal] = useState(null)
+  const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#4F8EF7', onCancel: null, onConfirm: () => setModal(null) })
+
   const [posts,   setPosts]   = useState([])
   const [unis,    setUnis]    = useState([])
   const [loading, setLoading] = useState(true)
@@ -640,17 +644,24 @@ export default function SenpaiZone() {
   }
 
   // ── DELETE POST ───────────────────────────────────────────────────────────
-  const handleDelete = async (postId, e) => {
+  const handleDelete = (postId, e) => {
     e?.stopPropagation()
-    if (!window.confirm('Supprimer ce post définitivement ?')) return
     setMenuPostId(null)
-    const { error } = await supabase.from('senpai_posts').delete().eq('id', postId)
-    if (!error) {
-      setPosts(prev => prev.filter(p => p.id !== postId))
-      if (viewPost?.id === postId) { setViewPost(null); setReplies([]) }
-    } else {
-      alert(error.message)
-    }
+    setModal({
+      title: 'Supprimer ce post ?',
+      message: 'Cette action est irréversible.',
+      confirmText: 'Supprimer', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        const { error } = await supabase.from('senpai_posts').delete().eq('id', postId)
+        if (!error) {
+          setPosts(prev => prev.filter(p => p.id !== postId))
+          if (viewPost?.id === postId) { setViewPost(null); setReplies([]) }
+        } else {
+          showAlert(error.message)
+        }
+      },
+    })
   }
 
   // ── EDIT POST ─────────────────────────────────────────────────────────────
@@ -664,7 +675,7 @@ export default function SenpaiZone() {
       setPosts(prev => prev.map(p => p.id === post.id ? { ...p, title, content: text } : p))
       setEditingPost(null)
     } else {
-      alert(error.message)
+      showAlert(error.message)
     }
   }
 
@@ -681,7 +692,7 @@ export default function SenpaiZone() {
       .eq('author_id', user.id)
       .gte('created_at', since)
     if (recentPosts >= 10) {
-      alert('Limite de 10 posts par heure atteinte. Réessaie dans une heure.')
+      showAlert('Limite de 10 posts par heure atteinte. Réessaie dans une heure.')
       return
     }
     const lines = text.split('\n')
@@ -703,7 +714,7 @@ export default function SenpaiZone() {
     .select('id, created_at')
     .single()
     setSubmitting(false)
-    if (error) { alert('Erreur lors de la publication. Réessaie.'); return }
+    if (error) { showAlert('Erreur lors de la publication. Réessaie.'); return }
     setComposeText(''); setComposeFocused(false); setComposeMod(null); setComposeAnon(false); setComposeType('cheat_code')
     if (inserted) {
       const uniName = unis.find(u => u.id === uniId)?.name || null
@@ -1302,6 +1313,7 @@ export default function SenpaiZone() {
       </div>
 
       {renderThread()}
+      {modal && <ConfirmModal {...modal} onCancel={modal.onCancel !== undefined ? modal.onCancel : () => setModal(null)} />}
     </div>
   )
 }

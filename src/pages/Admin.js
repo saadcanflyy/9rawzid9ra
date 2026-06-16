@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
+import ConfirmModal from '../components/ConfirmModal'
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
@@ -258,6 +259,10 @@ export default function Admin() {
   const [banReason,     setBanReason]     = useState('')
   const [banBusy,       setBanBusy]       = useState(false)
 
+  const [modal, setModal] = useState(null)
+  // Alert = single OK button (onCancel:null). Confirm = with cancel (onCancel omitted → render adds it).
+  const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#4F8EF7', onCancel: null, onConfirm: () => setModal(null) })
+
   // Rename state
   const [renamingId,  setRenamingId]  = useState(null)
   const [renameVal,   setRenameVal]   = useState('')
@@ -397,10 +402,17 @@ export default function Admin() {
     setFlaggedPosts(ps => ps.filter(p => p.id !== post.id))
   }
 
-  const deletePost = async (post) => {
-    if (!window.confirm(`Supprimer ce post de "${post.user_profiles?.name || 'Anonyme'}" ?`)) return
-    await supabase.from('senpai_posts').delete().eq('id', post.id)
-    setFlaggedPosts(ps => ps.filter(p => p.id !== post.id))
+  const deletePost = (post) => {
+    setModal({
+      title: 'Supprimer ce post ?',
+      message: `Post de "${post.user_profiles?.name || 'Anonyme'}"`,
+      confirmText: 'Supprimer', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        await supabase.from('senpai_posts').delete().eq('id', post.id)
+        setFlaggedPosts(ps => ps.filter(p => p.id !== post.id))
+      },
+    })
   }
 
   const loadUsers = async () => {
@@ -416,31 +428,44 @@ export default function Admin() {
     setPendingDocs(d => d.filter(x => x.id !== id))
   }
 
-  const deleteDoc = async (id) => {
-    if (!window.confirm('Supprimer ce document ?')) return
-    await supabase.from('documents').delete().eq('id', id)
-    setPendingDocs(d => d.filter(x => x.id !== id))
+  const deleteDoc = (id) => {
+    setModal({
+      title: 'Supprimer ce document ?',
+      confirmText: 'Supprimer', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        await supabase.from('documents').delete().eq('id', id)
+        setPendingDocs(d => d.filter(x => x.id !== id))
+      },
+    })
   }
 
-  const handleDeleteDoc = async (doc) => {
-    if (!window.confirm('Supprimer ce document définitivement ?')) return
-    if (doc.files?.length > 0) {
-      for (const url of doc.files) {
-        const path = url.split('/documents/')[1]
-        if (path) await supabase.storage.from('documents').remove([path])
-      }
-    }
-    await supabase.from('document_reactions').delete().eq('document_id', doc.id)
-    await supabase.from('downloads_log').delete().eq('document_id', doc.id)
-    const { data: prof } = await supabase.from('user_profiles').select('uploads_count, points').eq('id', doc.uploader_id).single()
-    if (prof) {
-      await supabase.from('user_profiles').update({
-        uploads_count: Math.max(0, (prof.uploads_count || 1) - 1),
-        points: Math.max(0, (prof.points || 50) - 50),
-      }).eq('id', doc.uploader_id)
-    }
-    await supabase.from('documents').delete().eq('id', doc.id)
-    setPendingDocs(d => d.filter(x => x.id !== doc.id))
+  const handleDeleteDoc = (doc) => {
+    setModal({
+      title: 'Supprimer définitivement ?',
+      message: "Le fichier sera supprimé du stockage et les points de l'uploader seront déduits.",
+      confirmText: 'Supprimer', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        if (doc.files?.length > 0) {
+          for (const url of doc.files) {
+            const path = url.split('/documents/')[1]
+            if (path) await supabase.storage.from('documents').remove([path])
+          }
+        }
+        await supabase.from('document_reactions').delete().eq('document_id', doc.id)
+        await supabase.from('downloads_log').delete().eq('document_id', doc.id)
+        const { data: prof } = await supabase.from('user_profiles').select('uploads_count, points').eq('id', doc.uploader_id).single()
+        if (prof) {
+          await supabase.from('user_profiles').update({
+            uploads_count: Math.max(0, (prof.uploads_count || 1) - 1),
+            points: Math.max(0, (prof.points || 50) - 50),
+          }).eq('id', doc.uploader_id)
+        }
+        await supabase.from('documents').delete().eq('id', doc.id)
+        setPendingDocs(d => d.filter(x => x.id !== doc.id))
+      },
+    })
   }
 
   const handleIgnoreReports = async (docId) => {
@@ -484,12 +509,19 @@ export default function Admin() {
   const rejectMod = async (mod) => {
     const { count } = await supabase.from('documents').select('*', { count:'exact', head:true }).eq('module_id', mod.id)
     if (count > 0) {
-      alert(`Ce module contient ${count} document(s) et ne peut pas être supprimé.`)
+      setModal({ title: 'Suppression impossible', message: `Ce module contient ${count} document(s) et ne peut pas être supprimé.`, confirmText: 'OK', confirmColor: '#4F8EF7', onConfirm: () => setModal(null) })
       return
     }
-    if (!window.confirm(`Supprimer le module "${mod.name}" ?`)) return
-    await supabase.from('modules').delete().eq('id', mod.id)
-    setPendingMods(m => m.filter(x => x.id !== mod.id))
+    setModal({
+      title: 'Supprimer ce module ?',
+      message: `"${mod.name}" sera supprimé définitivement.`,
+      confirmText: 'Supprimer', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        await supabase.from('modules').delete().eq('id', mod.id)
+        setPendingMods(m => m.filter(x => x.id !== mod.id))
+      },
+    })
   }
 
   const approveSchool = async (id) => {
@@ -512,24 +544,36 @@ export default function Admin() {
     setFiliereReqs(f => f.map(x => x.id === id ? { ...x, status: 'rejected' } : x))
   }
 
-  const banUser = async (id, currentBan) => {
-    const msg = currentBan ? 'Débannir cet utilisateur ?' : 'Bannir cet utilisateur ?'
-    if (!window.confirm(msg)) return
-    await supabase.from('user_profiles').update({ is_banned: !currentBan }).eq('id', id)
-    setUsers(u => u.map(x => x.id === id ? { ...x, is_banned: !currentBan } : x))
+  const banUser = (id, currentBan) => {
+    setModal({
+      title: currentBan ? 'Débannir cet utilisateur ?' : 'Bannir cet utilisateur ?',
+      confirmText: currentBan ? 'Débannir' : 'Bannir',
+      confirmColor: currentBan ? '#4F8EF7' : '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        await supabase.from('user_profiles').update({ is_banned: !currentBan }).eq('id', id)
+        setUsers(u => u.map(x => x.id === id ? { ...x, is_banned: !currentBan } : x))
+      },
+    })
   }
 
-  const toggleModerator = async (id, currentMod) => {
-    const msg = currentMod ? 'Retirer le rôle Modérateur ?' : 'Donner le rôle Modérateur à cet utilisateur ?'
-    if (!window.confirm(msg)) return
-    const { error } = await supabase.from('user_profiles').update({ is_moderator: !currentMod }).eq('id', id)
-    if (error) { console.error('toggleModerator error:', error); alert('Erreur : ' + error.message); return }
-    setUsers(u => u.map(x => x.id === id ? { ...x, is_moderator: !currentMod } : x))
-    const notifContent = !currentMod
-      ? 'Tu as été nommé modérateur de 9rawZid9ra 🛡️ Bienvenue dans l\'équipe !'
-      : 'Ton rôle de modérateur a été retiré.'
-    const notifType = !currentMod ? 'moderator_assigned' : 'moderator_removed'
-    supabase.from('notifications').insert({ user_id: id, type: notifType, content: notifContent, read: false }).then()
+  const toggleModerator = (id, currentMod) => {
+    setModal({
+      title: currentMod ? 'Retirer le rôle Modérateur ?' : 'Donner le rôle Modérateur ?',
+      confirmText: currentMod ? 'Retirer' : 'Confirmer',
+      confirmColor: currentMod ? '#F87171' : '#4F8EF7',
+      onConfirm: async () => {
+        setModal(null)
+        const { error } = await supabase.from('user_profiles').update({ is_moderator: !currentMod }).eq('id', id)
+        if (error) { console.error('toggleModerator error:', error); showAlert('Erreur : ' + error.message); return }
+        setUsers(u => u.map(x => x.id === id ? { ...x, is_moderator: !currentMod } : x))
+        const notifContent = !currentMod
+          ? "Tu as été nommé modérateur de 9rawZid9ra 🛡️ Bienvenue dans l'équipe !"
+          : 'Ton rôle de modérateur a été retiré.'
+        const notifType = !currentMod ? 'moderator_assigned' : 'moderator_removed'
+        supabase.from('notifications').insert({ user_id: id, type: notifType, content: notifContent, read: false }).then()
+      },
+    })
   }
 
   const loadMessages = async () => {
@@ -662,7 +706,7 @@ export default function Admin() {
       banned_until: bannedUntil,
       ban_reason: banReason.trim() || null,
     }).eq('id', u.id)
-    if (error) { console.error('confirmBan error:', error); alert('Erreur : ' + error.message); setBanBusy(false); return }
+    if (error) { console.error('confirmBan error:', error); showAlert('Erreur : ' + error.message); setBanBusy(false); return }
     setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_banned: true, banned_until: bannedUntil, ban_reason: banReason.trim() || null } : x))
     setBanningId(null)
     setBanReason('')
@@ -671,7 +715,7 @@ export default function Admin() {
 
   const unbanUser = async (id) => {
     const { error } = await supabase.from('user_profiles').update({ is_banned: false, banned_until: null, ban_reason: null }).eq('id', id)
-    if (error) { console.error('unbanUser error:', error); alert('Erreur : ' + error.message); return }
+    if (error) { console.error('unbanUser error:', error); showAlert('Erreur : ' + error.message); return }
     setUsers(prev => prev.map(x => x.id === id ? { ...x, is_banned: false, banned_until: null, ban_reason: null } : x))
   }
 
@@ -1461,6 +1505,7 @@ export default function Admin() {
 
         </main>
       </div>
+      {modal && <ConfirmModal {...modal} onCancel={modal.onCancel !== undefined ? modal.onCancel : () => setModal(null)} />}
     </div>
   )
 }
