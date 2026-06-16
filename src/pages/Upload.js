@@ -285,7 +285,7 @@ export default function Upload() {
     document.title = 'Uploader un document — 9rawZid9ra'
     let done = false
     const loginRedirect = () => {
-      if (!done) { done = true; navigate('/login', { state: { from: '/upload', message: 'Connecte-toi pour continuer' } }) }
+      if (!done) { done = true; sessionStorage.setItem('redirectAfterLogin', '/upload'); navigate('/login', { state: { from: '/upload', message: 'Connecte-toi pour continuer' } }) }
     }
     // 3-second fallback in case getSession hangs
     const timeout = setTimeout(loginRedirect, 3000)
@@ -295,6 +295,7 @@ export default function Upload() {
         if (done) return
         done = true
         if (!session?.user) {
+          sessionStorage.setItem('redirectAfterLogin', '/upload')
           navigate('/login', { state: { from: '/upload', message: 'Connecte-toi pour continuer' } })
         } else {
           setUser(session.user)
@@ -405,7 +406,7 @@ export default function Upload() {
   // Filière suggestion submit
   const handleFiliereRequest = async () => {
     if (!filiereName.trim()) return
-    if (!user) { navigate('/login', { state: { from: '/upload' } }); return }
+    if (!user) { sessionStorage.setItem('redirectAfterLogin', '/upload'); navigate('/login', { state: { from: '/upload' } }); return }
     try {
       const { error: sugErr } = await supabase.from('filiere_suggestions').insert({
         suggested_by:    user.id,
@@ -433,7 +434,7 @@ export default function Upload() {
   // School request submit (3 cases)
   const handleSchoolRequest = async () => {
     if (isSubmittingRef.current) return   // synchronous guard (survives re-renders)
-    if (!user) { navigate('/login', { state: { from: '/upload' } }); return }
+    if (!user) { sessionStorage.setItem('redirectAfterLogin', '/upload'); navigate('/login', { state: { from: '/upload' } }); return }
     isSubmittingRef.current = true
     setSchoolSubmitting(true)             // triggers re-render → button visually disabled
     try {

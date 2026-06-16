@@ -373,6 +373,10 @@ export default function Profile() {
   const [followingList,     setFollowingList]     = useState([])
   const [listLoading,       setListLoading]       = useState(false)
 
+  // Doc delete confirmation
+  const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null)
+  const [deleteDocBusy,    setDeleteDocBusy]    = useState(false)
+
   // Doc edit state
   const [editingDocId,  setEditingDocId]  = useState(null)
   const [editDocNumber, setEditDocNumber] = useState('')
@@ -395,7 +399,7 @@ export default function Profile() {
       setCurrentUser(cu)
 
       const uid = targetId || cu?.id
-      if (!uid) { navigate('/login', { state:{ from: '/profile' } }); return }
+      if (!uid) { sessionStorage.setItem('redirectAfterLogin', '/profile'); navigate('/login', { state:{ from: '/profile' } }); return }
 
       const [
         { data: prof },
@@ -525,8 +529,14 @@ export default function Profile() {
     setEditingDocId(null)
   }
 
-  const handleDeleteDoc = async (doc) => {
-    if (!window.confirm('Supprimer ce document définitivement ? Cette action est irréversible.')) return
+  const handleDeleteDoc = (doc) => {
+    setConfirmDeleteDoc(doc)
+  }
+
+  const executeDeleteDoc = async () => {
+    const doc = confirmDeleteDoc
+    if (!doc) return
+    setDeleteDocBusy(true)
     if (doc.files?.length > 0) {
       for (const url of doc.files) {
         const path = url.split('/documents/')[1]
@@ -548,6 +558,8 @@ export default function Profile() {
       uploads_count: Math.max(0, (p?.uploads_count || 1) - 1),
       points:        Math.max(0, (p?.points || 50) - 50),
     }))
+    setDeleteDocBusy(false)
+    setConfirmDeleteDoc(null)
   }
 
   const handleSave = async () => {
@@ -1117,6 +1129,39 @@ export default function Profile() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {confirmDeleteDoc && (
+      <div className="fl-overlay" onClick={() => !deleteDocBusy && setConfirmDeleteDoc(null)}>
+        <div className="fl-modal" style={{ maxWidth:360, padding:0 }} onClick={e => e.stopPropagation()}>
+          <div style={{ padding:'1.5rem 1.5rem 1.25rem' }}>
+            <div style={{ fontSize:'1.5rem', marginBottom:'0.75rem' }}>🗑️</div>
+            <div style={{ fontFamily:'Outfit,sans-serif', fontSize:'1rem', fontWeight:700, color:'var(--white)', marginBottom:'0.4rem' }}>
+              Supprimer ce document ?
+            </div>
+            <div style={{ fontSize:'0.82rem', color:'var(--text2)', lineHeight:1.55, marginBottom:'0.5rem' }}>
+              <b style={{ color:'var(--text)' }}>{confirmDeleteDoc.modules?.name || 'Document'}</b> sera supprimé définitivement.
+            </div>
+            <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.72rem', color:'var(--red)', background:'rgba(248,113,113,0.06)', border:'1px solid rgba(248,113,113,0.18)', borderRadius:7, padding:'7px 11px', marginBottom:'1.25rem' }}>
+              −50 points · action irréversible
+            </div>
+            <div style={{ display:'flex', gap:8 }}>
+              <button
+                disabled={deleteDocBusy}
+                style={{ flex:1, background:'rgba(248,113,113,0.12)', border:'1px solid rgba(248,113,113,0.3)', color:'var(--red)', borderRadius:8, padding:'9px', fontSize:'0.85rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', opacity: deleteDocBusy ? 0.6 : 1 }}
+                onClick={executeDeleteDoc}>
+                {deleteDocBusy ? 'Suppression...' : 'Supprimer'}
+              </button>
+              <button
+                disabled={deleteDocBusy}
+                style={{ flex:1, background:'none', border:'1px solid var(--border)', color:'var(--text2)', borderRadius:8, padding:'9px', fontSize:'0.85rem', cursor:'pointer', fontFamily:'Outfit,sans-serif' }}
+                onClick={() => setConfirmDeleteDoc(null)}>
+                Annuler
+              </button>
+            </div>
           </div>
         </div>
       </div>

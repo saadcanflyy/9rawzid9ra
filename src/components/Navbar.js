@@ -442,7 +442,7 @@ export default function Navbar({ activePage = '' }) {
             </div>
           ) : (
             <>
-              <button className="nb-ghost" onClick={() => navigate('/login')}>Connexion</button>
+              <button className="nb-ghost" onClick={() => { sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search); navigate('/login') }}>Connexion</button>
               <button className="nb-accent" onClick={() => navigate('/register')}>S'inscrire</button>
             </>
           )}

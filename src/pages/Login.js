@@ -73,6 +73,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [banInfo, setBanInfo] = useState(null)
+  const [failCount, setFailCount] = useState(0)
   const isSubmittingRef = useRef(false)
 
   // Redirect if already logged in
@@ -80,8 +81,9 @@ export default function Login() {
     document.title = 'Se connecter — 9rawZid9ra'
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        const from = location.state?.from || '/'
-        navigate(from, { replace: true })
+        const dest = sessionStorage.getItem('redirectAfterLogin') || location.state?.from || '/'
+        sessionStorage.removeItem('redirectAfterLogin')
+        navigate(dest, { replace: true })
       }
     })
 
@@ -92,7 +94,8 @@ export default function Login() {
         setLoading(false)
         isSubmittingRef.current = false
         supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session?.user) navigate(location.state?.from || '/', { replace: true })
+          const dest = sessionStorage.getItem('redirectAfterLogin') || location.state?.from || '/'
+          if (session?.user) { sessionStorage.removeItem('redirectAfterLogin'); navigate(dest, { replace: true }) }
         })
       }
     }
@@ -114,6 +117,7 @@ export default function Login() {
         new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000)),
       ])
       if (err) {
+        setFailCount(c => c + 1)
         setError('Email ou mot de passe incorrect.')
         return
       }
@@ -131,8 +135,9 @@ export default function Login() {
           return
         }
       }
-      const from = location.state?.from || '/'
-      navigate(from, { replace: true })
+      const dest = sessionStorage.getItem('redirectAfterLogin') || location.state?.from || '/'
+      sessionStorage.removeItem('redirectAfterLogin')
+      navigate(dest, { replace: true })
     } catch (e) {
       if (e?.message === 'TIMEOUT') {
         setError('La connexion prend trop de temps. Vérifie ta connexion internet.')
@@ -206,6 +211,16 @@ export default function Login() {
             </div>
           )}
           {error && <div className="alert err">{error}</div>}
+          {failCount >= 2 && (
+            <div style={{ background:'rgba(79,142,247,0.06)', border:'1px solid rgba(79,142,247,0.2)', borderRadius:10, padding:'12px 16px', marginBottom:'1rem', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.78rem', color:'var(--text2)' }}>Mot de passe oublié ?</span>
+              <button type="button"
+                style={{ background:'var(--accent)', color:'#fff', border:'none', borderRadius:7, padding:'6px 14px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}
+                onClick={() => navigate('/forgot-password')}>
+                Réinitialiser
+              </button>
+            </div>
+          )}
           <form onSubmit={handleLogin}>
             <div className="field">
               <label className="label">Adresse email</label>

@@ -93,7 +93,7 @@ export default function MyModules() {
     document.title = 'Mes modules — 9rawZid9ra'
     supabase.auth.getSession().then(({ data: { session } }) => {
       const user = session?.user
-      if (!user) { navigate('/login', { state: { from: '/my-modules' } }); return }
+      if (!user) { sessionStorage.setItem('redirectAfterLogin', '/my-modules'); navigate('/login', { state: { from: '/my-modules' } }); return }
       loadBookmarks(user.id)
     })
   }, []) // eslint-disable-line

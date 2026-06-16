@@ -558,7 +558,7 @@ export default function SenpaiZone() {
   // ── VOTE ──────────────────────────────────────────────────────────────────
   const handleVote = async (post, e) => {
     e?.stopPropagation()
-    if (!user) { navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { sessionStorage.setItem('redirectAfterLogin', '/senpai'); navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
     if (voting.has(post.id)) return
     setVoting(s => new Set([...s, post.id]))
     const isVoted = post.senpai_votes?.some(v => v.user_id === user.id)
@@ -588,8 +588,7 @@ export default function SenpaiZone() {
   // ── FOLLOW ────────────────────────────────────────────────────────────────
   const handleFollow = async (authorId, e) => {
     e?.stopPropagation()
-    if (!user) { navigate('/login'); return }
-    if (!user) { navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { sessionStorage.setItem('redirectAfterLogin', '/senpai'); navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
     if (authorId === user.id || toggling.has(authorId)) return
     setToggling(s => new Set([...s, authorId]))
     const isF = following.has(authorId)
@@ -617,7 +616,7 @@ export default function SenpaiZone() {
 
   // ── SEND REPLY ────────────────────────────────────────────────────────────
   const sendReply = async () => {
-    if (!user) { navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { sessionStorage.setItem('redirectAfterLogin', '/senpai'); navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
     const cleanReply = stripHtml(replyText).slice(0, 500)
     if (cleanReply.length < 1) return
     setSendingR(true)
@@ -671,7 +670,7 @@ export default function SenpaiZone() {
 
   // ── PUBLISH POST ──────────────────────────────────────────────────────────
   const handlePublish = async () => {
-    if (!user) { navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
+    if (!user) { sessionStorage.setItem('redirectAfterLogin', '/senpai'); navigate('/login', { state: { from: '/senpai', message: 'Connecte-toi pour continuer' } }); return }
     const text = stripHtml(composeText).slice(0, 1000)
     if (text.length < 1) return
     // Rate limit: max 10 posts per hour
@@ -1033,7 +1032,7 @@ export default function SenpaiZone() {
           {!user ? (
             <div className="sz-compose-cta">
               <span className="sz-compose-cta-text">Connecte-toi pour partager ton expérience</span>
-              <button className="sz-login-btn" onClick={() => navigate('/login')}>Se connecter</button>
+              <button className="sz-login-btn" onClick={() => { sessionStorage.setItem('redirectAfterLogin', '/senpai'); navigate('/login') }}>Se connecter</button>
             </div>
           ) : !composeFocused ? (
             <div className="sz-compose-ph" onClick={() => setComposeFocused(true)}>
@@ -1174,6 +1173,17 @@ export default function SenpaiZone() {
 
         {/* ── CENTER FEED ── */}
         <main className="sz-center">
+          {/* Page header */}
+          <div style={{ padding:'18px 20px 0', borderBottom:'1px solid var(--border)' }}>
+            <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:2 }}>
+              <h1 style={{ fontFamily:'Outfit,sans-serif', fontSize:'1.15rem', fontWeight:700, color:'var(--text)', letterSpacing:'-0.3px', lineHeight:1 }}>Senpai Zone</h1>
+              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'var(--accent)', letterSpacing:'1.5px', textTransform:'uppercase' }}>// beta</span>
+            </div>
+            <p style={{ fontSize:'0.78rem', color:'var(--text2)', lineHeight:1.5, marginBottom:14 }}>
+              Partage ton expérience, tes conseils et tes astuces avec la communauté
+            </p>
+          </div>
+
           {/* Mobile filter pills */}
           <div className="sz-mobile-bar">
             {[{ k: '', label: 'Tous' }, ...Object.entries(PT).map(([k, v]) => ({ k, label: v.label }))].map(item => (
@@ -1194,7 +1204,7 @@ export default function SenpaiZone() {
               { k: 'abonnements', l: 'Abonnements' },
             ].map(t => (
               <button key={t.k} className={`sz-feed-tab ${feedTab === t.k ? 'on' : ''}`}
-                onClick={() => { if (t.k === 'abonnements' && !user) { navigate('/login'); return } setFeedTab(t.k) }}>
+                onClick={() => { if (t.k === 'abonnements' && !user) { sessionStorage.setItem('redirectAfterLogin', '/senpai'); navigate('/login'); return } setFeedTab(t.k) }}>
                 {t.l}
               </button>
             ))}
