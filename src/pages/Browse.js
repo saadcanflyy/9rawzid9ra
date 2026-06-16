@@ -402,6 +402,23 @@ export default function Browse() {
       <style>{css}</style>
       <Navbar activePage="browse" />
 
+      {user && userUniId && !hasFilters && (() => {
+        const myUni = unis.find(u => u.id === userUniId)
+        if (!myUni) return null
+        return (
+          <div style={{ borderBottom:'1px solid rgba(79,142,247,0.1)', padding:'9px 24px', display:'flex', alignItems:'center', justifyContent:'center', gap:12, flexWrap:'wrap', background:'rgba(79,142,247,0.04)' }}>
+            <span style={{ fontSize:'0.875rem', color:'var(--text2)', fontFamily:'Outfit,sans-serif' }}>
+              🎓 Tu étudies à <b style={{ color:'var(--accent2)' }}>{myUni.name}</b> — voir les modules de ton université
+            </span>
+            <button
+              onClick={() => { setSelUni(String(myUni.id)); setUniSearch(myUni.name) }}
+              style={{ background:'rgba(79,142,247,0.1)', border:'1px solid rgba(79,142,247,0.25)', color:'var(--accent2)', borderRadius:7, padding:'4px 14px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}>
+              Voir →
+            </button>
+          </div>
+        )
+      })()}
+
       <div className="layout">
         {/* SIDEBAR */}
         <aside className="sidebar">

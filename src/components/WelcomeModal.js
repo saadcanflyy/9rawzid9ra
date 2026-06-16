@@ -72,6 +72,7 @@ const css = `
     transition: opacity 0.15s;
   }
   .wm-cta:hover { opacity: 0.9; }
+  .wm-cta:disabled { opacity: 0.5; cursor: not-allowed; }
   .wm-skip {
     display: block; text-align: center; margin-top: 10px;
     font-size: 0.75rem; color: #4A5568; background: none; border: none;
@@ -79,6 +80,27 @@ const css = `
     transition: color 0.15s;
   }
   .wm-skip:hover { color: #94A3B8; }
+
+  .wm-uni-wrap { position: relative; margin-bottom: 1.5rem; }
+  .wm-uni-input {
+    width: 100%; background: #0C1222; border: 1px solid #1C2A45; border-radius: 10px;
+    padding: 11px 14px; color: #E2E8F0; font-size: 0.875rem;
+    font-family: 'Outfit',sans-serif; outline: none; transition: border-color 0.15s;
+  }
+  .wm-uni-input:focus { border-color: #4F8EF7; }
+  .wm-uni-dd {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: #0C1222; border: 1px solid #1C2A45; border-radius: 10px;
+    max-height: 190px; overflow-y: auto; z-index: 10;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+  }
+  .wm-uni-dd-item {
+    padding: 9px 14px; cursor: pointer; font-size: 0.85rem; color: #E2E8F0;
+    font-family: 'Outfit',sans-serif; border-bottom: 1px solid #111827; transition: background 0.1s;
+  }
+  .wm-uni-dd-item:last-child { border-bottom: none; }
+  .wm-uni-dd-item:hover { background: rgba(79,142,247,0.08); }
+  .wm-uni-dd-empty { padding: 9px 14px; font-size: 0.75rem; color: #4A5568; font-family: 'DM Mono',monospace; }
 `
 
 const SLIDES = [
@@ -101,14 +123,21 @@ const SLIDES = [
     bg: 'rgba(167,139,250,0.1)',
     title: 'Rejoins la communauté',
     desc: 'Dans la Senpai Zone, partage ton expérience, tes conseils et tes astuces avec tes camarades.',
-    cta: 'C\'est parti !',
+    cta: 'Suivant →',
   },
 ]
 
 export default function WelcomeModal() {
   const navigate = useNavigate()
-  const [show,  setShow]  = useState(false)
-  const [slide, setSlide] = useState(0)
+  const [show,       setShow]       = useState(false)
+  const [slide,      setSlide]      = useState(0)
+  const [showUniStep, setShowUniStep] = useState(false)
+
+  const [unis,       setUnis]       = useState([])
+  const [uniSearch,  setUniSearch]  = useState('')
+  const [showUniDd,  setShowUniDd]  = useState(false)
+  const [selUni,     setSelUni]     = useState('')
+  const [uniSaving,  setUniSaving]  = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -116,6 +145,7 @@ export default function WelcomeModal() {
       const key = `9rz_welcomed_${session.user.id}`
       if (!localStorage.getItem(key)) setShow(true)
     })
+    supabase.from('universities').select('id, name').order('name').then(({ data }) => setUnis(data || []))
   }, [])
 
   const dismiss = () => {
@@ -127,12 +157,23 @@ export default function WelcomeModal() {
 
   const next = () => {
     if (slide < SLIDES.length - 1) setSlide(s => s + 1)
-    else dismiss()
+    else setShowUniStep(true)
+  }
+
+  const saveUni = async () => {
+    if (!selUni) { dismiss(); return }
+    setUniSaving(true)
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      await supabase.from('user_profiles').update({ university_id: parseInt(selUni) }).eq('id', session.user.id)
+    }
+    setUniSaving(false)
+    dismiss()
   }
 
   if (!show) return null
 
-  const s = SLIDES[slide]
+  const filteredUnis = unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase()))
 
   return (
     <>
@@ -148,18 +189,65 @@ export default function WelcomeModal() {
             <span className="wm-logo-text">9raw<b>Zid</b>9ra</span>
           </div>
 
-          <div className="wm-slide-icon" style={{ background: s.bg }}>{s.icon}</div>
-          <div className="wm-slide-title">{s.title}</div>
-          <div className="wm-slide-desc">{s.desc}</div>
+          {showUniStep ? (
+            <>
+              <div className="wm-slide-icon" style={{ background:'rgba(79,142,247,0.1)' }}>🎓</div>
+              <div className="wm-slide-title">Quelle est ton université ?</div>
+              <div className="wm-slide-desc">Personnalise Browse pour voir directement les modules de ton université.</div>
 
-          <div className="wm-dots">
-            {SLIDES.map((_, i) => (
-              <button key={i} className={`wm-dot ${i === slide ? 'on' : ''}`} onClick={() => setSlide(i)} />
-            ))}
-          </div>
+              <div className="wm-uni-wrap">
+                <input
+                  className="wm-uni-input"
+                  placeholder="Cherche ton université..."
+                  value={selUni ? (unis.find(u => String(u.id) === selUni)?.name ?? uniSearch) : uniSearch}
+                  onChange={e => { setUniSearch(e.target.value); setSelUni(''); setShowUniDd(true) }}
+                  onFocus={() => setShowUniDd(true)}
+                  onBlur={() => setTimeout(() => setShowUniDd(false), 150)}
+                />
+                {showUniDd && (
+                  <div className="wm-uni-dd">
+                    {filteredUnis.length > 0
+                      ? filteredUnis.map(u => (
+                          <div key={u.id} className="wm-uni-dd-item"
+                            onMouseDown={() => { setSelUni(String(u.id)); setUniSearch(u.name); setShowUniDd(false) }}>
+                            {u.name}
+                          </div>
+                        ))
+                      : <div className="wm-uni-dd-empty">// Aucun résultat</div>
+                    }
+                  </div>
+                )}
+              </div>
 
-          <button className="wm-cta" onClick={next}>{s.cta}</button>
-          <button className="wm-skip" onClick={dismiss}>Passer — je connais déjà</button>
+              <div className="wm-dots">
+                {SLIDES.map((_, i) => (
+                  <button key={i} className="wm-dot" onClick={() => { setShowUniStep(false); setSlide(i) }} />
+                ))}
+                <button className="wm-dot on" />
+              </div>
+
+              <button className="wm-cta" onClick={saveUni} disabled={uniSaving}>
+                {uniSaving ? 'Enregistrement...' : selUni ? 'Enregistrer et commencer →' : 'Passer pour l\'instant →'}
+              </button>
+              <button className="wm-skip" onClick={dismiss}>Passer — je le ferai plus tard</button>
+            </>
+          ) : (
+            <>
+              <div className="wm-slide-icon" style={{ background: SLIDES[slide].bg }}>{SLIDES[slide].icon}</div>
+              <div className="wm-slide-title">{SLIDES[slide].title}</div>
+              <div className="wm-slide-desc">{SLIDES[slide].desc}</div>
+
+              <div className="wm-dots">
+                {SLIDES.map((_, i) => (
+                  <button key={i} className={`wm-dot ${i === slide ? 'on' : ''}`} onClick={() => setSlide(i)} />
+                ))}
+                <button className="wm-dot" onClick={() => setShowUniStep(true)} />
+              </div>
+
+              <button className="wm-cta" onClick={next}>{SLIDES[slide].cta}</button>
+              <button className="wm-skip" onClick={dismiss}>Passer — je connais déjà</button>
+            </>
+          )}
         </div>
       </div>
     </>

@@ -377,6 +377,9 @@ export default function Profile() {
   const [uploadNudgeDismissed, setUploadNudgeDismissed] = useState(
     () => localStorage.getItem('9rz_upload_nudge') === '1'
   )
+  const [showUniModal,  setShowUniModal]  = useState(false)
+  const [uniModalSel,   setUniModalSel]   = useState('')
+  const [uniModalSaving, setUniModalSaving] = useState(false)
 
   // Doc delete confirmation
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null)
@@ -592,6 +595,16 @@ export default function Profile() {
     }
   }
 
+  const saveUniFromModal = async () => {
+    if (!uniModalSel || !currentUser) return
+    setUniModalSaving(true)
+    await supabase.from('user_profiles').update({ university_id: parseInt(uniModalSel) }).eq('id', currentUser.id)
+    const uniObj = unis.find(u => String(u.id) === uniModalSel)
+    setProfile(p => ({ ...p, university_id: parseInt(uniModalSel), universities: { name: uniObj?.name || '' } }))
+    setUniModalSaving(false)
+    setShowUniModal(false)
+  }
+
   async function openFollowers() {
     setShowFollowersList(true)
     setListLoading(true)
@@ -700,6 +713,18 @@ export default function Profile() {
               <span className="meta-sep">·</span>
               <span className="meta-item"><b>{profile?.uploads_count || uploads.length}</b> uploads</span>
             </div>
+            {isOwnProfile && !loading && !profile?.university_id && (
+              <div style={{ marginTop:8, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.72rem', color:'var(--text3)' }}>
+                  📍 Ajoute ton université pour personnaliser ton expérience
+                </span>
+                <button
+                  onClick={() => { setUniModalSel(''); setShowUniModal(true) }}
+                  style={{ background:'none', border:'1px solid rgba(79,142,247,0.25)', color:'var(--accent2)', borderRadius:6, padding:'2px 10px', fontSize:'0.72rem', cursor:'pointer', fontFamily:'DM Mono,monospace', whiteSpace:'nowrap', transition:'border-color 0.15s' }}>
+                  Ajouter →
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="profile-right">
@@ -1238,6 +1263,37 @@ export default function Profile() {
       </div>
     )}
 
+      {showUniModal && (
+        <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(2,4,10,0.85)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }}
+          onClick={() => setShowUniModal(false)}>
+          <div style={{ background:'#070C18', border:'1px solid #1C2A45', borderRadius:14, padding:'1.75rem', maxWidth:400, width:'100%', boxShadow:'0 24px 60px rgba(0,0,0,0.6)' }}
+            onClick={e => e.stopPropagation()}>
+            <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'var(--accent)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:8 }}>// ton université</div>
+            <h3 style={{ fontSize:'1.1rem', fontWeight:700, color:'#FFFFFF', marginBottom:6 }}>Quelle est ton université ?</h3>
+            <p style={{ fontSize:'0.82rem', color:'var(--text2)', marginBottom:'1.25rem', lineHeight:1.5 }}>Personnalise ton expérience pour voir directement les modules de ton université.</p>
+            <select
+              style={{ width:'100%', background:'#0C1222', border:'1px solid #1C2A45', borderRadius:9, padding:'10px 12px', color:'#E2E8F0', fontSize:'0.875rem', fontFamily:'Outfit,sans-serif', outline:'none', marginBottom:'1.25rem', cursor:'pointer' }}
+              value={uniModalSel}
+              onChange={e => setUniModalSel(e.target.value)}>
+              <option value="">Sélectionner ton université...</option>
+              {unis.map(u => <option key={u.id} value={String(u.id)}>{u.name}</option>)}
+            </select>
+            <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
+              <button
+                style={{ background:'none', border:'1px solid #1C2A45', color:'#94A3B8', borderRadius:8, padding:'8px 18px', fontSize:'0.85rem', fontFamily:'Outfit,sans-serif', cursor:'pointer' }}
+                onClick={() => setShowUniModal(false)}>
+                Annuler
+              </button>
+              <button
+                disabled={!uniModalSel || uniModalSaving}
+                style={{ background:'#4F8EF7', color:'#fff', border:'none', borderRadius:8, padding:'8px 18px', fontSize:'0.85rem', fontWeight:600, fontFamily:'Outfit,sans-serif', cursor: !uniModalSel ? 'not-allowed' : 'pointer', opacity: !uniModalSel || uniModalSaving ? 0.5 : 1 }}
+                onClick={saveUniFromModal}>
+                {uniModalSaving ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
