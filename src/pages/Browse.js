@@ -23,8 +23,8 @@ const css = `
   .sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
   .sidebar-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; padding-bottom:1rem; border-bottom:1px solid var(--border); }
   .sidebar-title { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); letter-spacing:2px; text-transform:uppercase; }
-  .sidebar-reset { font-size:0.7rem; color:var(--text3); background:none; border:none; cursor:pointer; font-family:'DM Mono',monospace; transition:color 0.15s; padding:0; }
-  .sidebar-reset:hover { color:var(--accent2); }
+  .sidebar-reset { font-size:0.7rem; color:var(--red); background:none; border:none; cursor:pointer; font-family:'DM Mono',monospace; transition:color 0.15s; padding:0; font-weight:500; }
+  .sidebar-reset:hover { color:#FF9999; }
 
   .filter-block { margin-bottom:1.25rem; }
   .filter-label { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:0.5rem; display:block; }
