@@ -146,10 +146,11 @@ const fmtAgo = d => {
 }
 
 const NOTIF_TEXT = {
-  follow:      actor => <><b>{actor}</b> vous a suivi</>,
-  reply:       actor => <><b>{actor}</b> a répondu à votre post</>,
-  like:        actor => <><b>{actor}</b> a trouvé votre post utile</>,
-  doc_request: ()    => <>📩 Demande de document</>,
+  follow:       (actor)    => <><b>{actor}</b> vous a suivi</>,
+  reply:        (actor)    => <><b>{actor}</b> a répondu à votre post</>,
+  like:         (actor)    => <><b>{actor}</b> a trouvé votre post utile</>,
+  doc_request:  ()         => <>📩 Demande de document</>,
+  new_document: (_, n)     => <><span style={{marginRight:3}}>📄</span>{n?.content || 'Nouveau document'}</>,
 }
 
 export default function Navbar({ activePage = '' }) {
@@ -368,6 +369,8 @@ export default function Navbar({ activePage = '' }) {
                           else if (n.type === 'reply') {
                             if (rid) localStorage.setItem('senpai_highlight_post', String(rid))
                             navigate('/senpai')
+                          } else if (n.type === 'new_document') {
+                            navigate(n.link || '/browse')
                           } else if (['helpful','reaction','comment','download','request_fulfilled'].includes(n.type)) {
                             navigate(`/module/${rid}`)
                           } else if (n.type === 'doc_request') {
@@ -390,7 +393,7 @@ export default function Navbar({ activePage = '' }) {
                           ? <><b>{sender}</b> · <span style={{background:'rgba(79,142,247,0.15)',color:'var(--accent2)',borderRadius:4,padding:'1px 6px',fontSize:'0.72rem',fontWeight:700}}>{count} nouveau{count > 1 ? 'x' : ''} message{count > 1 ? 's' : ''}</span></>
                           : <><b>{sender}</b>: {(n.content || '').split(' : ').slice(1).join(' : ') || 'message'}</>
                       } else {
-                        textNode = renderText ? renderText(actorName) : (n.content || actorName)
+                        textNode = renderText ? renderText(actorName, n) : (n.content || actorName)
                       }
                       return (
                         <div key={n.id} className={`nb-notif-item ${isUnread ? 'unread' : ''}`} onClick={handleClick} style={{ cursor:'pointer' }}>

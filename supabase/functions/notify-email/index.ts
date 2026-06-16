@@ -21,9 +21,12 @@ function escHtml(str: string): string {
 
 interface EmailTemplate { subject: string; html: string }
 
-function buildTemplate(type: string, content: string): EmailTemplate | null {
-  // Escape sender name extracted from notification content
-  const raw   = content?.split(" : ")?.[0]?.trim() || "Quelqu'un";
+function buildTemplate(type: string, record: Record<string, unknown>): EmailTemplate | null {
+  const content = (record.content as string) ?? "";
+  const link    = (record.link    as string) ?? "";
+
+  // For message/social types, sender name is embedded as "SenderName : message text"
+  const raw    = content?.split(" : ")?.[0]?.trim() || "Quelqu'un";
   const sender = escHtml(raw);
 
   const templates: Record<string, EmailTemplate> = {
@@ -42,6 +45,10 @@ function buildTemplate(type: string, content: string): EmailTemplate | null {
     helpful: {
       subject: `⭐ ${raw} a trouvé votre post utile`,
       html: `<b>${sender}</b> a marqué votre post comme utile.`,
+    },
+    new_document: {
+      subject: `📄 ${escHtml(content)}`,
+      html: `Un nouveau document a été ajouté dans un module que tu suis.<br><br><a href="${SITE_URL}${escHtml(link)}" style="color:#4F8EF7;text-decoration:none;font-weight:600">Voir le module →</a>`,
     },
   };
   return templates[type] ?? null;
@@ -103,7 +110,7 @@ Deno.serve(async (req: Request) => {
     return new Response("Skipping admin", { status: 200 });
   }
 
-  const template = buildTemplate(record.type as string, (record.content as string) ?? "");
+  const template = buildTemplate(record.type as string, record);
   if (!template) {
     return new Response(`No template for type: ${record.type}`, { status: 200 });
   }
