@@ -397,10 +397,13 @@ export default function ModulePage() {
       setMod(m)
       if (m) document.title = `${m.name} — 9rawZid9ra`
 
-      // Load documents (with uploader name)
+      // Load documents — skip user_profiles join for anon (RLS blocks it)
+      const docSelect = user
+        ? '*, user_profiles!uploader_id(name, is_fondateur)'
+        : '*'
       const { data: d } = await supabase
         .from('documents')
-        .select('*, user_profiles!uploader_id(name, is_fondateur)')
+        .select(docSelect)
         .eq('module_id', parseInt(id))
         .order('created_at', { ascending: false })
       setDocs(d || [])
@@ -1166,14 +1169,14 @@ export default function ModulePage() {
             </div>
             <div style={{display:'flex',gap:10,justifyContent:'center'}}>
               <button
-                onClick={() => navigate('/login', { state: { from: `/module/${slug}` } })}
+                onClick={() => { sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search); navigate('/login', { state: { from: `/module/${slug}` } }) }}
                 style={{background:'#4F8EF7',color:'#fff',border:'none',borderRadius:9,padding:'10px 22px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'background 0.15s'}}
                 onMouseEnter={e => e.currentTarget.style.background='#3A7BEF'}
                 onMouseLeave={e => e.currentTarget.style.background='#4F8EF7'}>
                 Se connecter
               </button>
               <button
-                onClick={() => navigate('/register', { state: { from: `/module/${slug}` } })}
+                onClick={() => { sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search); navigate('/register', { state: { from: `/module/${slug}` } }) }}
                 style={{background:'none',border:'1px solid #1C2A45',color:'#94A3B8',borderRadius:9,padding:'10px 22px',fontSize:'0.875rem',fontWeight:500,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'all 0.15s'}}
                 onMouseEnter={e => { e.currentTarget.style.borderColor='#2D4A7A'; e.currentTarget.style.color='#E2E8F0' }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor='#1C2A45'; e.currentTarget.style.color='#94A3B8' }}>
