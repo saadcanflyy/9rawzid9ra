@@ -185,8 +185,12 @@ const css = `
   .empty-upload-btn:hover { background: #3A7BEF; transform: translateY(-1px); }
 
   /* Skeleton */
-  .skel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; height: 72px; animation: pulse 1.8s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:0.35} 50%{opacity:0.7} }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .skel {
+    background: linear-gradient(90deg,#070C18,#0C1222,#070C18);
+    background-size: 200% 100%; animation: shimmer 1.5s infinite;
+    border-radius: 10px;
+  }
 
   /* ─── SIDEBAR ─── */
   .aside { display: flex; flex-direction: column; gap: 1rem; }
@@ -382,6 +386,7 @@ export default function ModulePage() {
   const [userRequested,setUserRequested]= useState({})
   const [previewDoc,   setPreviewDoc]   = useState(null)
   const [showAuthGate, setShowAuthGate] = useState(false)
+  const [copyToast,    setCopyToast]    = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -623,11 +628,59 @@ export default function ModulePage() {
     <div className="page">
       <style>{css}</style>
       <Navbar />
-      <div style={{ padding: '4rem 2.5rem', maxWidth: 1000, margin: '0 auto' }}>
-        <div className="skel" style={{ height: 120, marginBottom: 16 }} />
-        <div className="skel" style={{ height: 72, marginBottom: 8 }} />
-        <div className="skel" style={{ height: 72, marginBottom: 8 }} />
-        <div className="skel" style={{ height: 72 }} />
+      {/* Breadcrumb skeleton */}
+      <div style={{ padding:'0.6rem 2.5rem', background:'#070C18', borderBottom:'1px solid #1C2A45', display:'flex', gap:8 }}>
+        {[60,80,90,110].map((w,i) => <div key={i} className="skel" style={{ height:12, width:w, borderRadius:4 }} />)}
+      </div>
+      {/* Hero skeleton */}
+      <div style={{ background:'#070C18', borderBottom:'1px solid #1C2A45', padding:'2rem 2.5rem' }}>
+        <div style={{ maxWidth:1000, display:'flex', flexDirection:'column', gap:14 }}>
+          <div style={{ display:'flex', gap:8 }}>
+            {[48,72,80].map((w,i) => <div key={i} className="skel" style={{ height:22, width:w, borderRadius:4 }} />)}
+          </div>
+          <div className="skel" style={{ height:36, width:'55%', borderRadius:8 }} />
+          <div style={{ display:'flex', gap:32 }}>
+            {[3].fill(0).map((_,i) => (
+              <div key={i} style={{ display:'flex', flexDirection:'column', gap:5 }}>
+                <div className="skel" style={{ height:10, width:68, borderRadius:3 }} />
+                <div className="skel" style={{ height:15, width:48, borderRadius:4 }} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      {/* Doc list skeleton */}
+      <div style={{ maxWidth:1300, margin:'0 auto', padding:'2rem 2.5rem', display:'grid', gridTemplateColumns:'1fr 320px', gap:'2rem' }}>
+        <div>
+          {/* Tabs skeleton */}
+          <div style={{ display:'flex', gap:4, marginBottom:'1.5rem', background:'#070C18', border:'1px solid #1C2A45', borderRadius:10, padding:4 }}>
+            {[48,68,32,32,56,32,32,52].map((w,i) => <div key={i} className="skel" style={{ height:32, width:w+16, borderRadius:7 }} />)}
+          </div>
+          {/* Doc card skeletons */}
+          {[...Array(4)].map((_, i) => (
+            <div key={i} style={{ marginBottom:8, border:'1px solid #1C2A45', borderRadius:10, overflow:'hidden' }}>
+              <div style={{ padding:'14px 16px', display:'flex', alignItems:'center', gap:14 }}>
+                <div className="skel" style={{ width:42, height:42, borderRadius:9, flexShrink:0 }} />
+                <div style={{ flex:1, display:'flex', flexDirection:'column', gap:7 }}>
+                  <div className="skel" style={{ height:14, width:'45%', borderRadius:4 }} />
+                  <div className="skel" style={{ height:11, width:'65%', borderRadius:4 }} />
+                </div>
+                <div style={{ display:'flex', gap:6 }}>
+                  <div className="skel" style={{ height:32, width:72, borderRadius:7 }} />
+                  <div className="skel" style={{ height:32, width:88, borderRadius:7 }} />
+                </div>
+              </div>
+              <div style={{ height:36, borderTop:'1px solid #1C2A45', padding:'0 16px', display:'flex', alignItems:'center', gap:12 }}>
+                <div className="skel" style={{ height:12, width:64, borderRadius:4 }} />
+                <div className="skel" style={{ height:12, width:80, borderRadius:4 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          <div className="skel" style={{ height:180, borderRadius:12 }} />
+          <div className="skel" style={{ height:120, borderRadius:12 }} />
+        </div>
       </div>
     </div>
   )
@@ -691,6 +744,18 @@ export default function ModulePage() {
               {isBookmarked ? 'Sauvegardé' : 'Sauvegarder'}
             </button>
           </div>
+          {docs.length > 0 && (() => {
+            const totalTypes   = Object.keys(TYPE_CONFIG).length
+            const distinctTypes = new Set(docs.map(d => d.doc_type)).size
+            const color  = distinctTypes >= 7 ? '#4ADE80' : distinctTypes >= 4 ? '#FBD34D' : '#F87171'
+            const bg     = distinctTypes >= 7 ? 'rgba(74,222,128,0.08)' : distinctTypes >= 4 ? 'rgba(251,211,77,0.08)' : 'rgba(248,113,113,0.08)'
+            const border = distinctTypes >= 7 ? 'rgba(74,222,128,0.2)'  : distinctTypes >= 4 ? 'rgba(251,211,77,0.2)'  : 'rgba(248,113,113,0.2)'
+            return (
+              <div style={{ display:'inline-flex', alignItems:'center', gap:7, background:bg, border:`1px solid ${border}`, borderRadius:7, padding:'4px 12px', marginBottom:'1rem', fontSize:'0.72rem', fontFamily:'DM Mono,monospace', color }}>
+                📊 {distinctTypes}/{totalTypes} types de documents disponibles
+              </div>
+            )
+          })()}
           <div className="mod-meta">
             <div className="mod-meta-item">
               <span className="mod-meta-label">DOCUMENTS</span>
@@ -817,7 +882,7 @@ export default function ModulePage() {
 
                     {/* Docs in group */}
                     {groupDocs.map(doc => (
-                      <div key={doc.id} style={{ marginBottom:6, border:'1px solid #1C2A45', borderRadius:10, overflow:'hidden', transition:'border-color 0.15s' }}
+                      <div key={doc.id} id={`doc-${doc.id}`} style={{ marginBottom:6, border:'1px solid #1C2A45', borderRadius:10, overflow:'hidden', transition:'border-color 0.15s' }}
                         onMouseEnter={e => e.currentTarget.style.borderColor='#2D4A7A'}
                         onMouseLeave={e => e.currentTarget.style.borderColor='#1C2A45'}
                       >
@@ -887,7 +952,7 @@ export default function ModulePage() {
                         ) : doc.files?.length === 1 ? (
                           <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                             <button
-                              onClick={e => { e.stopPropagation(); if (!user) { setShowAuthGate(true); return } setPreviewDoc(doc) }}
+                              onClick={e => { e.stopPropagation(); if (!user) { setShowAuthGate(true); return } if (window.innerWidth <= 768) { window.open(doc.files[0], '_blank') } else { setPreviewDoc(doc) } }}
                               style={{ background:'rgba(45,212,191,0.07)', border:'1px solid rgba(45,212,191,0.2)', color:'#2DD4BF', borderRadius:7, padding:'7px 12px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
                               onMouseEnter={e => { e.currentTarget.style.background='rgba(45,212,191,0.15)'; e.currentTarget.style.borderColor='#2DD4BF' }}
                               onMouseLeave={e => { e.currentTarget.style.background='rgba(45,212,191,0.07)'; e.currentTarget.style.borderColor='rgba(45,212,191,0.2)' }}
@@ -929,6 +994,19 @@ export default function ModulePage() {
                             </span>
                           )}
                         </div>
+                        <button
+                          onClick={e => {
+                            e.stopPropagation()
+                            navigator.clipboard.writeText(`https://9rawzid9ra.space/module/${slug}#doc-${doc.id}`)
+                            setCopyToast(true)
+                            setTimeout(() => setCopyToast(false), 2000)
+                          }}
+                          style={{ background:'none', border:'none', color:'#4A5568', fontSize:'0.72rem', fontFamily:'DM Mono,monospace', cursor:'pointer', transition:'color 0.15s', padding:'4px 6px' }}
+                          onMouseEnter={e => e.currentTarget.style.color='#94A3B8'}
+                          onMouseLeave={e => e.currentTarget.style.color='#4A5568'}
+                        >
+                          🔗 Partager
+                        </button>
                         <div style={{marginLeft:'auto',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
                           <button onClick={e => { e.stopPropagation(); handleReport(doc) }}
                             style={{ background:'none', border:'none',
@@ -1220,6 +1298,11 @@ export default function ModulePage() {
         </div>
       )}
 
+      {copyToast && (
+        <div style={{ position:'fixed', bottom:28, left:'50%', transform:'translateX(-50%)', zIndex:9999, background:'#0C1222', border:'1px solid #2D4A7A', borderRadius:10, padding:'10px 22px', fontFamily:'DM Mono,monospace', fontSize:'0.75rem', color:'#5EEAD4', boxShadow:'0 8px 32px rgba(0,0,0,0.5)', whiteSpace:'nowrap', pointerEvents:'none' }}>
+          ✓ Lien copié !
+        </div>
+      )}
     </div>
   )
 }

@@ -149,6 +149,14 @@ const css = `
   .suggest-dismiss { position:absolute; top:8px; right:10px; background:none; border:none; color:var(--text3); cursor:pointer; font-size:0.85rem; line-height:1; padding:2px; transition:color 0.15s; }
   .suggest-dismiss:hover { color:var(--text); }
 
+  /* SKELETON */
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .skel {
+    background:linear-gradient(90deg,#070C18,#0C1222,#070C18);
+    background-size:200% 100%; animation:shimmer 1.5s infinite;
+    border-radius:8px;
+  }
+
   @media(max-width:768px) {
     .hero { padding:2.5rem 1.25rem 3.5rem; min-height:auto; }
     .hero-inner h1 { font-size:2.1rem; }
@@ -193,8 +201,9 @@ const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
 export default function Home() {
   const navigate = useNavigate()
   const { user, profile } = useAuth()
-  const [query, setQuery] = useState('')
-  const [docCount, setDocCount] = useState(0)
+  const [query,        setQuery]        = useState('')
+  const [docCount,     setDocCount]     = useState(0)
+  const [schoolsReady, setSchoolsReady] = useState(false)
   const [followingCount, setFollowingCount] = useState(null)
   const [suggestFollowing, setSuggestFollowing] = useState(false)
   const [suggestDismissed, setSuggestDismissed] = useState(() =>
@@ -210,6 +219,7 @@ export default function Home() {
       .eq('is_verified', true)
       .then(({ count }) => { if (count) setDocCount(count) })
       .catch(() => {})
+      .finally(() => setSchoolsReady(true))
   }, [])
 
   useEffect(() => {
@@ -357,20 +367,36 @@ export default function Home() {
           <button className="section-link" onClick={() => navigate('/browse')}>Voir tous les modules</button>
         </div>
         <div className="school-grid">
-          {SCHOOLS.map(s => (
-            <div key={s.id} className="school-card" onClick={() => navigate(`/browse?uni=${s.id}`)}>
-              <div className="school-row1">
-                <span className="school-abbr">{s.abbr}</span>
-                <span className={`school-badge ${badgeClass(s.type)}`}>{badgeLabel(s.type)}</span>
+          {!schoolsReady ? (
+            [...Array(6)].map((_, i) => (
+              <div key={i} className="school-card" style={{ cursor:'default', gap:12, display:'flex', flexDirection:'column' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <div className="skel" style={{ height:12, width:'25%', borderRadius:4 }} />
+                  <div className="skel" style={{ height:18, width:'22%', borderRadius:4 }} />
+                </div>
+                <div className="skel" style={{ height:20, width:'82%', borderRadius:4 }} />
+                <div style={{ display:'flex', gap:16, paddingTop:'0.75rem', borderTop:'1px solid #1C2A45' }}>
+                  <div className="skel" style={{ height:13, width:'28%', borderRadius:4 }} />
+                  <div className="skel" style={{ height:13, width:'28%', borderRadius:4 }} />
+                </div>
               </div>
-              <div className="school-name">{s.name}</div>
-              <div className="school-meta">
-                <span className="school-meta-item"><b>{s.facs}</b> facultés</span>
-                <span className="school-meta-item"><b>{s.fils}</b> filières</span>
-                <span className="school-city">{s.city}</span>
+            ))
+          ) : (
+            SCHOOLS.map(s => (
+              <div key={s.id} className="school-card" onClick={() => navigate(`/browse?uni=${s.id}`)}>
+                <div className="school-row1">
+                  <span className="school-abbr">{s.abbr}</span>
+                  <span className={`school-badge ${badgeClass(s.type)}`}>{badgeLabel(s.type)}</span>
+                </div>
+                <div className="school-name">{s.name}</div>
+                <div className="school-meta">
+                  <span className="school-meta-item"><b>{s.facs}</b> facultés</span>
+                  <span className="school-meta-item"><b>{s.fils}</b> filières</span>
+                  <span className="school-city">{s.city}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </section>
 

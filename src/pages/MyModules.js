@@ -82,6 +82,12 @@ const css = `
     .mm-grid { grid-template-columns:1fr; }
     .mm-card { padding:14px; }
   }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .skel {
+    background:linear-gradient(90deg,#070C18,#0C1222,#070C18);
+    background-size:200% 100%; animation:shimmer 1.5s infinite;
+    border-radius:6px;
+  }
 `
 
 export default function MyModules() {
@@ -152,8 +158,24 @@ export default function MyModules() {
       </div>
 
       {loading ? (
-        <div style={{ textAlign:'center', padding:'3rem', fontFamily:'DM Mono,monospace', fontSize:'0.72rem', color:'#4A5568' }}>
-          // chargement...
+        <div className="mm-grid">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="mm-card" style={{ cursor:'default', gap:12 }}>
+              <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:8 }}>
+                <div className="skel" style={{ height:17, width:'72%', borderRadius:5 }} />
+                <div className="skel" style={{ width:18, height:18, borderRadius:4, flexShrink:0 }} />
+              </div>
+              <div style={{ display:'flex', gap:6 }}>
+                <div className="skel" style={{ height:20, width:38, borderRadius:4 }} />
+                <div className="skel" style={{ height:20, width:60, borderRadius:4 }} />
+                <div className="skel" style={{ height:20, width:72, borderRadius:4 }} />
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', paddingTop:10, borderTop:'1px solid #1C2A45' }}>
+                <div className="skel" style={{ height:12, width:'38%', borderRadius:4 }} />
+                <div className="skel" style={{ height:12, width:'18%', borderRadius:4 }} />
+              </div>
+            </div>
+          ))}
         </div>
       ) : bookmarks.length === 0 ? (
         <div className="mm-empty">

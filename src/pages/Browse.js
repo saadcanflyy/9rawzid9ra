@@ -130,11 +130,8 @@ const css = `
   @keyframes pulse { 0%,100%{opacity:0.35} 50%{opacity:0.7} }
 
   @media(max-width:768px) {
-    .layout { flex-direction:column; height:auto; overflow:visible; }
-    .sidebar { width:100%; height:auto; max-height:none; border-right:none; border-bottom:1px solid var(--border); padding:1rem; overflow-x:auto; overflow-y:visible; display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px; }
-    .sidebar-header { width:100%; margin-bottom:0; padding-bottom:0; border-bottom:none; }
-    .filter-block { min-width:150px; flex:1; margin-bottom:0; }
-    .sidebar-divider { display:none; }
+    .layout { height:auto; overflow:visible; }
+    .sidebar { display:none; }
     .main { height:auto; overflow:visible; }
     .topbar { padding:0.75rem 1rem; flex-wrap:wrap; gap:8px; }
     .breadcrumb { padding:0.5rem 1rem; }
@@ -143,10 +140,60 @@ const css = `
     .modules-grid { grid-template-columns:1fr 1fr; }
   }
   @media(max-width:480px) {
-    .sidebar { gap:8px; }
-    .filter-block { min-width:100%; }
     .modules-grid { grid-template-columns:1fr; }
     .search-prompt { display:none; }
+  }
+
+  /* MOBILE FILTER DRAWER */
+  .mob-filter-btn { display:none; }
+  @media(max-width:768px) {
+    .mob-filter-btn {
+      display:flex; align-items:center; gap:7px;
+      position:fixed; bottom:24px; right:20px; z-index:500;
+      background:var(--accent); color:#fff; border:none; border-radius:24px;
+      padding:11px 20px; font-size:0.875rem; font-weight:700;
+      font-family:'Outfit',sans-serif; cursor:pointer;
+      box-shadow:0 4px 24px rgba(79,142,247,0.5); transition:all 0.2s;
+    }
+  }
+  .mob-badge {
+    background:#F87171; color:#fff; border-radius:10px;
+    min-width:18px; height:18px; display:flex; align-items:center; justify-content:center;
+    font-size:0.68rem; font-weight:700; padding:0 4px;
+  }
+  .mob-overlay {
+    position:fixed; inset:0; z-index:600; background:rgba(2,4,10,0.75);
+    backdrop-filter:blur(4px);
+  }
+  .mob-drawer {
+    position:fixed; bottom:0; left:0; right:0; z-index:601;
+    background:var(--surface); border-top:1px solid var(--border);
+    border-radius:18px 18px 0 0; padding:0 1.25rem 2rem;
+    max-height:85vh; overflow-y:auto;
+    animation:mob-slide-up 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+  @keyframes mob-slide-up { from { transform:translateY(100%) } to { transform:translateY(0) } }
+  .mob-drawer::-webkit-scrollbar { width:3px; }
+  .mob-drawer::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+  .mob-handle { width:40px; height:4px; background:var(--border); border-radius:2px; margin:14px auto 1.25rem; }
+  .mob-drawer-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; padding-bottom:1rem; border-bottom:1px solid var(--border); }
+  .mob-drawer-title { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); letter-spacing:2px; text-transform:uppercase; }
+  .mob-drawer-reset { background:none; border:none; color:#F87171; font-size:0.7rem; cursor:pointer; font-family:'DM Mono',monospace; font-weight:500; }
+  .mob-apply { width:100%; background:linear-gradient(135deg,#4F8EF7,#3A6ED4); color:#fff; border:none; border-radius:12px; padding:13px; font-size:0.9rem; font-weight:700; font-family:'Outfit',sans-serif; cursor:pointer; margin-top:1.25rem; }
+
+  @keyframes fade-hint {
+    0%   { opacity:0; transform:translateX(-50%) translateY(8px); }
+    15%  { opacity:1; transform:translateX(-50%) translateY(0); }
+    70%  { opacity:1; transform:translateX(-50%) translateY(0); }
+    100% { opacity:0; transform:translateX(-50%) translateY(-6px); }
+  }
+  .scroll-hint {
+    position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
+    z-index:700; background:#0C1222; border:1px solid #2D4A7A;
+    border-radius:10px; padding:10px 22px;
+    font-family:'DM Mono',monospace; font-size:0.78rem; color:#5EEAD4;
+    box-shadow:0 8px 32px rgba(0,0,0,0.5); white-space:nowrap;
+    pointer-events:none; animation:fade-hint 1.5s ease forwards;
   }
 `
 
@@ -209,6 +256,8 @@ export default function Browse() {
   const [filReqSent,       setFilReqSent]       = useState(false)
   const [filReqBusy,       setFilReqBusy]       = useState(false)
   const [userUniId,        setUserUniId]        = useState(null)
+  const [showDrawer,       setShowDrawer]       = useState(false)
+  const [showScrollHint,   setShowScrollHint]   = useState(false)
 
   useEffect(() => {
     if (!user?.id) { setUserUniId(null); return }
@@ -392,7 +441,8 @@ export default function Browse() {
   const facName  = facs.find(f => f.id === parseInt(selFac))?.name
   const filName  = fils.find(f => f.id === parseInt(selFil))?.name
   const typeName = DOC_TYPES.find(t => t.k === selType)?.l
-  const hasFilters      = selUni || selFac || selFil || selSem || selType || query
+  const hasFilters         = selUni || selFac || selFil || selSem || selType || query
+  const activeFilterCount  = [selUni, selFac, selFil, selSem, selType].filter(Boolean).length
   const hasActiveFilter = !!(selUni || selSem || selType || debouncedQuery.trim())
   // University selected, facs loaded, no other filters, no results → uni has no content yet
   const isUniEmpty = !loading && facsReady && selUni && !selSem && !selType && !debouncedQuery.trim() && displayed.length === 0
@@ -702,7 +752,7 @@ export default function Browse() {
             </div>
           )}
 
-          <div className="grid-wrap">
+          <div className="grid-wrap" id="browse-results">
             <div className="modules-grid">
               {!hasActiveFilter ? (
                 <div className="empty">
@@ -781,6 +831,99 @@ export default function Browse() {
           </div>
         </main>
       </div>
+
+      {showScrollHint && <div className="scroll-hint">👇 Voir les résultats</div>}
+
+      {/* Mobile floating filter button */}
+      <button className="mob-filter-btn" onClick={() => setShowDrawer(true)}>
+        ⚙ Filtres
+        {activeFilterCount > 0 && <span className="mob-badge">{activeFilterCount}</span>}
+      </button>
+
+      {/* Mobile filter drawer */}
+      {showDrawer && (
+        <>
+          <div className="mob-overlay" onClick={() => setShowDrawer(false)} />
+          <div className="mob-drawer">
+            <div className="mob-handle" />
+            <div className="mob-drawer-head">
+              <span className="mob-drawer-title">// Filtres</span>
+              <button className="mob-drawer-reset" onClick={() => { reset(); setShowDrawer(false) }}>Tout effacer</button>
+            </div>
+
+            <div className="filter-block">
+              <span className="filter-label">Université</span>
+              <div className="uni-wrap">
+                <input className="uni-input"
+                  placeholder="Toutes les universités"
+                  value={selUni ? (unis.find(u => String(u.id) === selUni)?.name ?? uniSearch) : uniSearch}
+                  onChange={e => { setUniSearch(e.target.value); setSelUni(''); setShowUniDd(true) }}
+                  onFocus={() => setShowUniDd(true)}
+                  onBlur={() => setTimeout(() => setShowUniDd(false), 150)} />
+                {showUniDd && (
+                  <div className="uni-dd">
+                    <div className="uni-dd-item reset" onMouseDown={() => { setSelUni(''); setUniSearch(''); setShowUniDd(false) }}>Toutes les universités</div>
+                    {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).map(u => (
+                      <div key={u.id} className="uni-dd-item"
+                        onMouseDown={() => { setSelUni(String(u.id)); setUniSearch(u.name); setShowUniDd(false) }}>
+                        {u.name}
+                      </div>
+                    ))}
+                    {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).length === 0 && (
+                      <div className="uni-dd-empty">Aucun résultat</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {fils.length > 0 && (
+              <div className="filter-block">
+                <span className="filter-label">Filière</span>
+                <select className="filter-select" value={selFil} onChange={e => setSelFil(e.target.value)}>
+                  <option value="">Toutes les filières</option>
+                  {fils.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                </select>
+              </div>
+            )}
+
+            <div className="filter-block">
+              <span className="filter-label">Semestre</span>
+              <div className="sem-wrap">
+                {['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10'].map(s => (
+                  <button key={s} className={`sem-btn ${selSem===s?'on':''}`}
+                    onClick={() => setSelSem(selSem===s?'':s)}>{s}</button>
+                ))}
+              </div>
+            </div>
+
+            <div className="filter-block">
+              <span className="filter-label">Type de document</span>
+              <div className="type-wrap">
+                {DOC_TYPES.map(t => (
+                  <div key={t.k} className={`type-row ${selType===t.k?'on':''}`}
+                    onClick={() => setSelType(selType===t.k?'':t.k)}>
+                    <div className="type-dot" />
+                    <span className="type-name">{t.l}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button className="mob-apply" onClick={() => {
+              setShowDrawer(false)
+              setShowScrollHint(true)
+              setTimeout(() => setShowScrollHint(false), 1500)
+              setTimeout(() => {
+                const el = document.getElementById('browse-results')
+                if (el) el.scrollIntoView({ behavior: 'smooth' })
+              }, 100)
+            }}>
+              Appliquer{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

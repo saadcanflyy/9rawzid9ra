@@ -242,8 +242,12 @@ const css = `
   .btn-primary:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(79,142,247,0.4); }
 
   /* ── SKELETON ── */
-  .skel { background:var(--surface); border:1px solid var(--border); border-radius:12px; animation:pulse 1.8s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:0.35} 50%{opacity:0.7} }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .skel {
+    background:linear-gradient(90deg,#070C18,#0C1222,#070C18);
+    background-size:200% 100%; animation:shimmer 1.5s infinite;
+    border-radius:8px;
+  }
 
   @media(max-width:768px) {
     .layout { padding:1.25rem 1rem; }
@@ -391,6 +395,14 @@ export default function Profile() {
   const [editDocYear,   setEditDocYear]   = useState('')
   const [editDocProf,   setEditDocProf]   = useState('')
   const [editDocSaving, setEditDocSaving] = useState(false)
+
+  // Move request state
+  const [moveReqDocId,  setMoveReqDocId]  = useState(null)
+  const [moveReqSearch, setMoveReqSearch] = useState('')
+  const [moveReqMods,   setMoveReqMods]   = useState([])
+  const [moveReqSelMod, setMoveReqSelMod] = useState(null)
+  const [moveReqBusy,   setMoveReqBusy]   = useState(false)
+  const [moveReqSent,   setMoveReqSent]   = useState({})
 
   // Settings fields
   const [editName,    setEditName]    = useState('')
@@ -570,6 +582,32 @@ export default function Profile() {
     setConfirmDeleteDoc(null)
   }
 
+  const searchModules = async (q) => {
+    setMoveReqSearch(q)
+    setMoveReqSelMod(null)
+    if (q.trim().length < 2) { setMoveReqMods([]); return }
+    const { data } = await supabase.from('modules').select('id, name').ilike('name', `%${q.trim()}%`).limit(8)
+    setMoveReqMods(data || [])
+  }
+
+  const submitMoveReq = async (doc) => {
+    if (!moveReqSelMod || !currentUser) return
+    setMoveReqBusy(true)
+    await supabase.from('document_move_requests').insert({
+      document_id: doc.id,
+      requester_id: currentUser.id,
+      requested_module_id: moveReqSelMod.id,
+      requested_module_name: moveReqSelMod.name,
+      status: 'open',
+    })
+    setMoveReqSent(p => ({ ...p, [doc.id]: true }))
+    setMoveReqBusy(false)
+    setMoveReqDocId(null)
+    setMoveReqSearch('')
+    setMoveReqSelMod(null)
+    setMoveReqMods([])
+  }
+
   const handleSave = async () => {
     if (!editName.trim()) {
       setSaveMsg('Le nom ne peut pas être vide.'); setSaveMsgType('err'); return
@@ -634,12 +672,27 @@ export default function Profile() {
       <style>{css}</style>
       <Navbar />
       <div className="layout">
-        <div className="skel" style={{ height:160, marginBottom:12 }} />
-        <div className="skel" style={{ height:48,  marginBottom:12 }} />
-        <div className="skel" style={{ height:80,  marginBottom:12 }} />
-        <div className="skel" style={{ height:44,  marginBottom:16 }} />
-        <div className="skel" style={{ height:72,  marginBottom:8  }} />
-        <div className="skel" style={{ height:72  }} />
+        {/* Header card skeleton */}
+        <div className="skel" style={{ height:156, marginBottom:10, borderRadius:16 }} />
+        {/* Social row skeleton */}
+        <div className="skel" style={{ height:48, marginBottom:10, borderRadius:10 }} />
+        {/* Stats row skeleton */}
+        <div className="skel" style={{ height:72, marginBottom:10, borderRadius:12 }} />
+        {/* Tabs skeleton */}
+        <div style={{ display:'flex', gap:6, marginBottom:16 }}>
+          {[80,72,80,100].map((w,i) => <div key={i} className="skel" style={{ height:34, width:w, borderRadius:8 }} />)}
+        </div>
+        {/* Upload card skeletons */}
+        {[...Array(3)].map((_, i) => (
+          <div key={i} style={{ marginBottom:8, border:'1px solid #1C2A45', borderRadius:12, padding:'14px 18px', display:'flex', alignItems:'center', gap:14 }}>
+            <div className="skel" style={{ width:44, height:44, borderRadius:9, flexShrink:0 }} />
+            <div style={{ flex:1, display:'flex', flexDirection:'column', gap:7 }}>
+              <div className="skel" style={{ height:14, width:'55%', borderRadius:4 }} />
+              <div className="skel" style={{ height:11, width:'75%', borderRadius:4 }} />
+            </div>
+            <div className="skel" style={{ height:28, width:70, borderRadius:7 }} />
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -849,7 +902,7 @@ export default function Profile() {
                 return (
                   <div key={doc.id}>
                     <div className="upload-card"
-                      style={{ borderRadius: isEditing ? '12px 12px 0 0' : undefined, cursor: isEditing ? 'default' : 'pointer', marginBottom:0 }}
+                      style={{ borderRadius: (isEditing || moveReqDocId === doc.id) ? '12px 12px 0 0' : undefined, cursor: isEditing ? 'default' : 'pointer', marginBottom:0 }}
                       onClick={() => !isEditing && doc.modules?.id && navigate(`/module/${doc.modules.id}`)}>
                       <div className={`doc-icon ${DOC_ICON[doc.doc_type] || 'icon-cours'}`}>
                         {DOC_LABEL[doc.doc_type] || 'DOC'}
@@ -865,7 +918,7 @@ export default function Profile() {
                           {doc.professor && <><span>·</span><span>Prof. {doc.professor}</span></>}
                         </div>
                         {isOwnProfile && !isEditing && (
-                          <div style={{ display:'flex', gap:5, marginTop:5 }}>
+                          <div style={{ display:'flex', gap:5, marginTop:5, flexWrap:'wrap' }}>
                             <button
                               style={{ background:'rgba(79,142,247,0.07)', border:'1px solid rgba(79,142,247,0.18)', color:'var(--accent2)', borderRadius:5, padding:'2px 9px', fontSize:'0.68rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif' }}
                               onClick={e => { e.stopPropagation(); startEditDoc(doc) }}>
@@ -876,6 +929,17 @@ export default function Profile() {
                               onClick={e => { e.stopPropagation(); handleDeleteDoc(doc) }}>
                               Supprimer
                             </button>
+                            {moveReqSent[doc.id] ? (
+                              <span style={{ fontSize:'0.68rem', color:'#4ADE80', fontFamily:'DM Mono,monospace', padding:'2px 4px', display:'flex', alignItems:'center' }}>
+                                ✓ Demande envoyée
+                              </span>
+                            ) : (
+                              <button
+                                style={{ background:'rgba(251,211,77,0.06)', border:'1px solid rgba(251,211,77,0.18)', color:'#FBD34D', borderRadius:5, padding:'2px 9px', fontSize:'0.68rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif' }}
+                                onClick={e => { e.stopPropagation(); setMoveReqDocId(moveReqDocId === doc.id ? null : doc.id); setMoveReqSearch(''); setMoveReqSelMod(null); setMoveReqMods([]) }}>
+                                ⚠ Mauvais module ?
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -887,6 +951,50 @@ export default function Profile() {
                         </span>
                       </div>
                     </div>
+                    {isOwnProfile && !isEditing && moveReqDocId === doc.id && !moveReqSent[doc.id] && (
+                      <div style={{ background:'rgba(251,211,77,0.03)', border:'1px solid rgba(251,211,77,0.15)', borderTop:'none', borderRadius:'0 0 12px 12px', padding:'0.875rem 1.25rem' }}
+                        onClick={e => e.stopPropagation()}>
+                        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'#FBD34D', letterSpacing:'1px', textTransform:'uppercase', marginBottom:8 }}>// Quel est le bon module ?</div>
+                        <div style={{ position:'relative' }}>
+                          <input
+                            style={{ width:'100%', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:7, padding:'7px 10px', color:'var(--text)', fontSize:'0.8rem', fontFamily:'Outfit,sans-serif', outline:'none', transition:'border-color 0.15s' }}
+                            placeholder="Cherche le bon module..."
+                            value={moveReqSearch}
+                            onChange={e => searchModules(e.target.value)}
+                            onFocus={e => e.currentTarget.style.borderColor='rgba(251,211,77,0.4)'}
+                            onBlur={e => { e.currentTarget.style.borderColor='var(--border)'; setTimeout(() => setMoveReqMods([]), 150) }}
+                            autoFocus
+                          />
+                          {moveReqMods.length > 0 && (
+                            <div style={{ position:'absolute', top:'100%', left:0, right:0, zIndex:100, background:'var(--s2)', border:'1px solid var(--borderhi)', borderRadius:8, marginTop:3, maxHeight:160, overflowY:'auto', boxShadow:'0 8px 24px rgba(0,0,0,0.4)' }}>
+                              {moveReqMods.map(m => (
+                                <div key={m.id}
+                                  style={{ padding:'8px 10px', cursor:'pointer', fontSize:'0.82rem', color:'var(--text)', borderBottom:'1px solid var(--border)', fontFamily:'Outfit,sans-serif' }}
+                                  onMouseDown={() => { setMoveReqSelMod(m); setMoveReqSearch(m.name); setMoveReqMods([]) }}
+                                  onMouseEnter={e => e.currentTarget.style.background='var(--s3)'}
+                                  onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                                  {m.name}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display:'flex', gap:7, marginTop:8 }}>
+                          <button
+                            disabled={!moveReqSelMod || moveReqBusy}
+                            style={{ background:'rgba(251,211,77,0.1)', border:'1px solid rgba(251,211,77,0.28)', color:'#FBD34D', borderRadius:6, padding:'5px 14px', fontSize:'0.75rem', fontWeight:600, cursor: (!moveReqSelMod || moveReqBusy) ? 'not-allowed' : 'pointer', fontFamily:'Outfit,sans-serif', opacity: (!moveReqSelMod || moveReqBusy) ? 0.5 : 1, transition:'opacity 0.15s' }}
+                            onClick={() => submitMoveReq(doc)}>
+                            {moveReqBusy ? 'Envoi...' : 'Envoyer la demande'}
+                          </button>
+                          <button
+                            style={{ background:'none', border:'1px solid var(--border)', color:'var(--text3)', borderRadius:6, padding:'5px 10px', fontSize:'0.75rem', cursor:'pointer', fontFamily:'Outfit,sans-serif' }}
+                            onClick={e => { e.stopPropagation(); setMoveReqDocId(null) }}>
+                            Annuler
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {isOwnProfile && isEditing && (
                       <div style={{ background:'rgba(79,142,247,0.03)', border:'1px solid rgba(79,142,247,0.15)', borderTop:'none', borderRadius:'0 0 12px 12px', padding:'1rem 1.25rem' }}>
                         <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--accent2)', letterSpacing:'1px', textTransform:'uppercase', marginBottom:'0.75rem' }}>// modifier le document</div>
@@ -1151,7 +1259,17 @@ export default function Profile() {
           </div>
           <div className="fl-list">
             {listLoading ? (
-              <div className="fl-empty">Chargement...</div>
+              <div>
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 18px' }}>
+                    <div className="skel" style={{ width:38, height:38, borderRadius:'50%', flexShrink:0 }} />
+                    <div style={{ flex:1, display:'flex', flexDirection:'column', gap:6 }}>
+                      <div className="skel" style={{ height:13, width:'50%', borderRadius:4 }} />
+                      <div className="skel" style={{ height:11, width:'32%', borderRadius:4 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : followersList.length === 0 ? (
               <div className="fl-empty">Aucun abonné pour l'instant</div>
             ) : followersList.map(u => (
@@ -1176,7 +1294,17 @@ export default function Profile() {
           </div>
           <div className="fl-list">
             {listLoading ? (
-              <div className="fl-empty">Chargement...</div>
+              <div>
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 18px' }}>
+                    <div className="skel" style={{ width:38, height:38, borderRadius:'50%', flexShrink:0 }} />
+                    <div style={{ flex:1, display:'flex', flexDirection:'column', gap:6 }}>
+                      <div className="skel" style={{ height:13, width:'50%', borderRadius:4 }} />
+                      <div className="skel" style={{ height:11, width:'32%', borderRadius:4 }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : followingList.length === 0 ? (
               <div className="fl-empty">Aucun abonnement pour l'instant</div>
             ) : followingList.map(u => (
