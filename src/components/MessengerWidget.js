@@ -66,6 +66,7 @@ export default function MessengerWidget() {
   const [sending,       setSending]       = useState(false)
   const [loading,       setLoading]       = useState(false)
   const [unread,        setUnread]        = useState(0)
+  const [showTooltip,   setShowTooltip]   = useState(false)
 
   const navigate          = useNavigate()
   const threadEndRef      = useRef(null)
@@ -77,6 +78,17 @@ export default function MessengerWidget() {
   useEffect(() => { isOpenRef.current = isOpen }, [isOpen])
   useEffect(() => { activeContactRef.current = activeContact }, [activeContact])
   useEffect(() => { userRef.current = user }, [user])
+
+  // ── First-time tooltip ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!user) return
+    const key = '9rz_msg_tooltip'
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, '1')
+      setShowTooltip(true)
+      setTimeout(() => setShowTooltip(false), 5000)
+    }
+  }, [user?.id]) // eslint-disable-line
 
   // ── Auth — driven by AuthContext, no local listeners ─────────────────────
   useEffect(() => {
@@ -494,6 +506,21 @@ export default function MessengerWidget() {
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* ── First-time tooltip ── */}
+      {showTooltip && !isOpen && (
+        <div style={{
+          position:'fixed', bottom:152, right:20, zIndex:9999,
+          background:'#0C1222', border:'1px solid #2D4A7A', borderRadius:10,
+          padding:'10px 14px', fontSize:'0.8rem', color:'#94A3B8',
+          fontFamily:'Outfit,sans-serif', maxWidth:220, lineHeight:1.5,
+          boxShadow:'0 8px 24px rgba(0,0,0,0.5)',
+          animation:'mw-slide 0.3s cubic-bezier(.34,1.2,.64,1)',
+        }}>
+          💬 Tu peux contacter l'admin ou tes camarades ici
+          <div style={{ position:'absolute', bottom:-7, right:26, width:13, height:13, background:'#0C1222', border:'1px solid #2D4A7A', borderTop:'none', borderLeft:'none', transform:'rotate(45deg)' }} />
         </div>
       )}
 

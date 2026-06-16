@@ -158,9 +158,9 @@ export default function MyModules() {
       ) : bookmarks.length === 0 ? (
         <div className="mm-empty">
           <div className="mm-empty-icon">🔖</div>
-          <div className="mm-empty-title">Aucun module sauvegardé</div>
+          <div className="mm-empty-title">Tu n'as pas encore sauvegardé de modules</div>
           <div className="mm-empty-sub">
-            Sauvegarde des modules depuis leur page pour les retrouver ici rapidement.
+            Explore les modules et clique sur 🔖 pour les sauvegarder ici.
           </div>
           <button className="mm-empty-btn" onClick={() => navigate('/browse')}>
             Explorer les modules

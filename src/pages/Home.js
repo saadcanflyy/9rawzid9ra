@@ -192,13 +192,16 @@ const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
 
 export default function Home() {
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [query, setQuery] = useState('')
   const [docCount, setDocCount] = useState(0)
   const [followingCount, setFollowingCount] = useState(null)
   const [suggestFollowing, setSuggestFollowing] = useState(false)
   const [suggestDismissed, setSuggestDismissed] = useState(() =>
     localStorage.getItem('suggest_admin_dismissed') === 'true'
+  )
+  const [uploadNudgeDismissed, setUploadNudgeDismissed] = useState(
+    () => localStorage.getItem('9rz_upload_nudge') === '1'
   )
 
   useEffect(() => {
@@ -246,6 +249,26 @@ export default function Home() {
     <div className="page">
       <style>{css}</style>
       <Navbar activePage="home" />
+
+      {/* UPLOAD NUDGE */}
+      {user && !uploadNudgeDismissed && profile?.uploads_count === 0 && (
+        <div style={{ background:'linear-gradient(135deg,rgba(79,142,247,0.07),rgba(45,212,191,0.05))', borderBottom:'1px solid rgba(79,142,247,0.15)', padding:'10px 24px', display:'flex', alignItems:'center', justifyContent:'center', gap:12, flexWrap:'wrap', position:'relative' }}>
+          <span style={{ fontSize:'0.875rem', color:'var(--text2)', fontFamily:'Outfit,sans-serif' }}>
+            📤 Upload ton premier document et gagne <b style={{ color:'var(--accent2)' }}>50 points</b> !
+          </span>
+          <button
+            onClick={() => navigate('/upload')}
+            style={{ background:'var(--accent)', color:'#fff', border:'none', borderRadius:7, padding:'5px 16px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}>
+            Uploader maintenant
+          </button>
+          <button
+            onClick={() => { setUploadNudgeDismissed(true); localStorage.setItem('9rz_upload_nudge', '1') }}
+            style={{ position:'absolute', right:16, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text3)', cursor:'pointer', fontSize:'1.2rem', lineHeight:1, padding:'0 4px' }}
+            aria-label="Fermer">
+            ×
+          </button>
+        </div>
+      )}
 
       {/* HERO */}
       <section className="hero">

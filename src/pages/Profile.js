@@ -373,6 +373,11 @@ export default function Profile() {
   const [followingList,     setFollowingList]     = useState([])
   const [listLoading,       setListLoading]       = useState(false)
 
+  const [showPointsInfo,       setShowPointsInfo]       = useState(false)
+  const [uploadNudgeDismissed, setUploadNudgeDismissed] = useState(
+    () => localStorage.getItem('9rz_upload_nudge') === '1'
+  )
+
   // Doc delete confirmation
   const [confirmDeleteDoc, setConfirmDeleteDoc] = useState(null)
   const [deleteDocBusy,    setDeleteDocBusy]    = useState(false)
@@ -698,9 +703,17 @@ export default function Profile() {
           </div>
 
           <div className="profile-right">
-            <div className="points-badge">
-              <div className="points-val">{points}</div>
-              <div className="points-label">POINTS</div>
+            <div style={{ position:'relative' }}>
+              <div className="points-badge">
+                <div className="points-val">{points}</div>
+                <div className="points-label">POINTS</div>
+              </div>
+              <button
+                onClick={() => setShowPointsInfo(true)}
+                style={{ position:'absolute', top:5, right:7, background:'none', border:'none', color:'var(--text3)', cursor:'pointer', fontSize:'0.78rem', lineHeight:1, padding:2, transition:'color 0.15s' }}
+                title="Comment fonctionnent les points ?">
+                ⓘ
+              </button>
             </div>
             <span className={`rank-badge ${level.cls}`}>{level.label}</span>
           </div>
@@ -764,6 +777,27 @@ export default function Profile() {
             <div className="stat-l">Niveau</div>
           </div>
         </div>
+
+        {/* ── UPLOAD NUDGE (own profile, 0 uploads) ── */}
+        {isOwnProfile && !loading && uploads.length === 0 && !uploadNudgeDismissed && (
+          <div style={{ background:'linear-gradient(135deg,rgba(79,142,247,0.07),rgba(45,212,191,0.05))', border:'1px solid rgba(79,142,247,0.18)', borderRadius:12, padding:'14px 18px', marginBottom:'1.25rem', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', position:'relative' }}>
+            <span style={{ fontSize:'1.1rem' }}>📤</span>
+            <span style={{ flex:1, fontSize:'0.85rem', color:'var(--text2)', lineHeight:1.4 }}>
+              Upload ton premier document et gagne <b style={{ color:'var(--accent2)' }}>50 points</b> !
+            </span>
+            <button
+              onClick={() => navigate('/upload')}
+              style={{ background:'var(--accent)', color:'#fff', border:'none', borderRadius:7, padding:'6px 16px', fontSize:'0.82rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}>
+              Uploader maintenant
+            </button>
+            <button
+              onClick={() => { setUploadNudgeDismissed(true); localStorage.setItem('9rz_upload_nudge', '1') }}
+              style={{ position:'absolute', top:8, right:10, background:'none', border:'none', color:'var(--text3)', cursor:'pointer', fontSize:'1.1rem', lineHeight:1, padding:'0 4px' }}
+              aria-label="Fermer">
+              ×
+            </button>
+          </div>
+        )}
 
         {/* ── TABS ── */}
         <div className="tabs">
@@ -1129,6 +1163,43 @@ export default function Profile() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {showPointsInfo && (
+      <div className="fl-overlay" onClick={() => setShowPointsInfo(false)}>
+        <div className="fl-modal" style={{ maxWidth:360, padding:0 }} onClick={e => e.stopPropagation()}>
+          <div style={{ padding:'1.5rem 1.5rem 1.25rem' }}>
+            <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'var(--teal2)', letterSpacing:'2px', textTransform:'uppercase', marginBottom:'0.75rem' }}>// système de points</div>
+            <div style={{ fontFamily:'Outfit,sans-serif', fontSize:'1rem', fontWeight:700, color:'var(--white)', marginBottom:'1rem' }}>Comment gagner des points ?</div>
+            <div style={{ background:'var(--s2)', border:'1px solid var(--border)', borderRadius:10, padding:'12px 14px', marginBottom:'1rem' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                <span style={{ fontSize:'0.82rem', color:'var(--text2)' }}>📤 Upload un document</span>
+                <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.82rem', color:'var(--teal2)', fontWeight:600 }}>+50 pts</span>
+              </div>
+            </div>
+            <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'var(--text3)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:'0.6rem' }}>Niveaux</div>
+            {[
+              { label:'Étudiant',      range:'0 – 99 pts',    cls:'rank-etudiant' },
+              { label:'Contributeur',  range:'100 – 299 pts',  cls:'rank-contrib' },
+              { label:'Senpai',        range:'300 – 599 pts',  cls:'rank-senpai' },
+              { label:'Légende',       range:'600+ pts',       cls:'rank-legende' },
+            ].map(r => (
+              <div key={r.label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'7px 0', borderBottom:'1px solid var(--border)' }}>
+                <span className={`rank-badge ${r.cls}`}>{r.label}</span>
+                <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.72rem', color:'var(--text3)' }}>{r.range}</span>
+              </div>
+            ))}
+            <div style={{ marginTop:'1rem', fontFamily:'Outfit,sans-serif', fontSize:'0.8rem', color:'var(--text2)', textAlign:'center', background:'rgba(79,142,247,0.05)', border:'1px solid rgba(79,142,247,0.12)', borderRadius:8, padding:'8px 12px' }}>
+              Plus tu contribues, plus tu montes en grade !
+            </div>
+            <button
+              onClick={() => setShowPointsInfo(false)}
+              style={{ width:'100%', marginTop:'1rem', background:'var(--s2)', border:'1px solid var(--border)', color:'var(--text2)', borderRadius:8, padding:'9px', fontSize:'0.85rem', cursor:'pointer', fontFamily:'Outfit,sans-serif' }}>
+              Fermer
+            </button>
           </div>
         </div>
       </div>
