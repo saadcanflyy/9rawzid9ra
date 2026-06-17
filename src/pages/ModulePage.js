@@ -445,7 +445,12 @@ export default function ModulePage() {
         .single()
 
       setMod(m)
-      if (m) document.title = `${m.name} — 9rawZid9ra`
+      if (m) {
+        const uniName = m.filieres?.faculties?.universities?.name
+        document.title = uniName
+          ? `${m.name} — ${uniName} — 9rawZid9ra`
+          : `${m.name} — 9rawZid9ra`
+      }
 
       // Load documents — skip user_profiles join for anon (RLS blocks it)
       const docSelect = user

@@ -296,10 +296,17 @@ export default function Browse() {
 
   // Load universities once
   useEffect(() => {
-    document.title = 'Explorer les modules — 9rawZid9ra'
     supabase.from('universities').select('*').order('name')
       .then(({ data }) => setUnis(data || []))
   }, [])
+
+  // Dynamic page title based on active university filter
+  useEffect(() => {
+    const uniName = unis.find(u => u.id === parseInt(selUni))?.name
+    document.title = uniName
+      ? `Modules ${uniName} — 9rawZid9ra`
+      : 'Explorer les modules — 9rawZid9ra'
+  }, [selUni, unis])
 
   // Load faculties when uni changes (preserves URL-restored fac value on first load)
   useEffect(() => {
