@@ -447,9 +447,15 @@ export default function ModulePage() {
       setMod(m)
       if (m) {
         const uniName = m.filieres?.faculties?.universities?.name
+        const filName = m.filieres?.name
         document.title = uniName
           ? `${m.name} — ${uniName} — 9rawZid9ra`
           : `${m.name} — 9rawZid9ra`
+        const metaDesc = document.querySelector('meta[name="description"]')
+        if (metaDesc) {
+          const parts = [m.name, 'Examens, TD, TP et cours', filName, uniName].filter(Boolean)
+          metaDesc.setAttribute('content', parts.join(' — ') + ' — 9rawZid9ra')
+        }
       }
 
       // Load documents — skip user_profiles join for anon (RLS blocks it)

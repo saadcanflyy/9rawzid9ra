@@ -296,7 +296,7 @@ export default function Home() {
             Trouve tes ressources
             <span className="grad">en 30 secondes.</span>
           </h1>
-          <p className="hero-sub-slogan">Sharing is caring. 🤝</p>
+          <p className="hero-sub-slogan">Annales, examens, TD et TP gratuits — 9ra w zid 9ra m3a 9rawZid9ra</p>
           <p className="hero-desc">
             Examens, CCs, TDs et TPs organisés par école, filière et semestre.
             Uploadés par des étudiants comme toi. Gratuit, rapide, structuré.

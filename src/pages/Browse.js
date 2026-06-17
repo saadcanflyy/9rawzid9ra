@@ -300,12 +300,19 @@ export default function Browse() {
       .then(({ data }) => setUnis(data || []))
   }, [])
 
-  // Dynamic page title based on active university filter
+  // Dynamic page title + meta description based on active university filter
   useEffect(() => {
     const uniName = unis.find(u => u.id === parseInt(selUni))?.name
     document.title = uniName
       ? `Modules ${uniName} — 9rawZid9ra`
       : 'Explorer les modules — 9rawZid9ra'
+    const metaDesc = document.querySelector('meta[name="description"]')
+    if (metaDesc) {
+      metaDesc.setAttribute('content', uniName
+        ? `Modules et examens de ${uniName} — Annales, TD, TP et cours gratuits sur 9rawZid9ra.`
+        : '9rawZid9ra - Plateforme gratuite pour étudiants marocains. Télécharge examens, TD, TP et cours pour EMSI, UM5, UIR, UH2C et plus de 100 établissements au Maroc.'
+      )
+    }
   }, [selUni, unis])
 
   // Load faculties when uni changes (preserves URL-restored fac value on first load)
