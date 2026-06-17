@@ -28,11 +28,9 @@ const css = `
   }
   .nb-left { display: flex; align-items: center; gap: 10px; }
   .nb-logo { display: flex; align-items: center; gap: 9px; cursor: pointer; flex-shrink: 0; }
-  .nb-logo-box {
-    width: 30px; height: 30px; border-radius: 7px; flex-shrink: 0;
-    background: linear-gradient(135deg, #4F8EF7, #2DD4BF);
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 0 10px rgba(79,142,247,0.35);
+  .nb-logo-img {
+    width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0;
+    object-fit: contain; display: block;
   }
   .nb-logo-text { font-family: 'DM Mono', monospace; font-size: 0.88rem; font-weight: 500; color: #FFFFFF; letter-spacing: -0.3px; }
   .nb-logo-text b { color: #7BB3FF; font-weight: 700; }
@@ -301,11 +299,7 @@ export default function Navbar({ activePage = '' }) {
         {/* col 1 — logo */}
         <div className="nb-left">
           <div className="nb-logo" onClick={() => navigate('/')}>
-            <div className="nb-logo-box">
-              <svg width="18" height="18" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                <text x="16" y="22" textAnchor="middle" fontFamily="'DM Mono',monospace" fontWeight="800" fontSize="14" fill="#ffffff" letterSpacing="-0.5">9Z</text>
-              </svg>
-            </div>
+            <img src="/logo.png" alt="9rawZid9ra" className="nb-logo-img" />
             <span className="nb-logo-text">9raw<b>Zid</b>9ra</span>
           </div>
         </div>
