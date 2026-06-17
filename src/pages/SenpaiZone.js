@@ -416,6 +416,11 @@ export default function SenpaiZone() {
   const [editingPost, setEditingPost] = useState(null)
   const [editText,    setEditText]    = useState('')
 
+  // ── reply CRUD state ──
+  const [menuReplyId,   setMenuReplyId]   = useState(null)
+  const [editingReply,  setEditingReply]  = useState(null)
+  const [editReplyText, setEditReplyText] = useState('')
+
   // ── LOAD ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     document.title = 'Senpai Zone — 9rawZid9ra'
@@ -470,6 +475,14 @@ export default function SenpaiZone() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [menuPostId])
+
+  // click-outside to close reply menu
+  useEffect(() => {
+    if (!menuReplyId) return
+    const handler = e => { if (!e.target.closest('[data-reply-menu]')) setMenuReplyId(null) }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [menuReplyId])
 
   // real-time feed subscription
   useEffect(() => {
@@ -662,6 +675,42 @@ export default function SenpaiZone() {
         }
       },
     })
+  }
+
+  // ── DELETE REPLY ──────────────────────────────────────────────────────────
+  const handleDeleteReply = (reply, e) => {
+    e?.stopPropagation()
+    setMenuReplyId(null)
+    const postId = reply.post_id
+    setModal({
+      title: 'Supprimer cette réponse ?',
+      message: 'Cette action est irréversible.',
+      confirmText: 'Supprimer', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        const { error } = await supabase.from('senpai_replies').delete().eq('id', reply.id)
+        if (!error) {
+          setReplies(prev => prev.filter(r => r.id !== reply.id))
+          setViewPost(vp => vp ? { ...vp, reply_count: Math.max(0, (vp.reply_count || 0) - 1) } : vp)
+          setPosts(ps => ps.map(p => p.id === postId ? { ...p, reply_count: Math.max(0, (p.reply_count || 0) - 1) } : p))
+        } else {
+          showAlert(error.message)
+        }
+      },
+    })
+  }
+
+  // ── EDIT REPLY ────────────────────────────────────────────────────────────
+  const handleEditReplySave = async (reply) => {
+    const text = editReplyText.trim().slice(0, 500)
+    if (text.length < 1) return
+    const { error } = await supabase.from('senpai_replies').update({ content: text }).eq('id', reply.id)
+    if (!error) {
+      setReplies(prev => prev.map(r => r.id === reply.id ? { ...r, content: text } : r))
+      setEditingReply(null)
+    } else {
+      showAlert(error.message)
+    }
   }
 
   // ── EDIT POST ─────────────────────────────────────────────────────────────
@@ -979,6 +1028,42 @@ export default function SenpaiZone() {
               </div>
             ) : replies.map(r => {
               const rn = r.is_anonymous ? 'Anonyme' : (r.user_profiles?.name || 'Anonyme')
+              const isReplyOwn   = r.author_id === user?.id
+              const isReplyAdmin = profile?.is_admin === true
+              const canActOnReply = isReplyOwn || isReplyAdmin
+
+              if (editingReply?.id === r.id) {
+                return (
+                  <div key={r.id} className="sz-reply-item">
+                    <div className="sz-av"
+                      style={{ width: 30, height: 30, fontSize: '0.55rem', background: r.is_anonymous ? '#1C2A45' : aGrad(r.author_id), flexShrink: 0 }}>
+                      {r.is_anonymous ? <Ico n="user" size={12} color="#4A5568" /> : inits(rn)}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <textarea className="sz-reply-ta" autoFocus
+                        value={editReplyText}
+                        onChange={e => setEditReplyText(e.target.value.slice(0, 500))}
+                        rows={2}
+                        style={{ width: '100%', marginBottom: 6 }} />
+                      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => setEditingReply(null)}
+                          style={{ background: 'none', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, padding: '4px 12px', fontSize: '0.76rem', cursor: 'pointer', fontFamily: 'Outfit,sans-serif' }}>
+                          Annuler
+                        </button>
+                        <button
+                          className="sz-publish-btn"
+                          style={{ padding: '4px 14px', fontSize: '0.76rem' }}
+                          disabled={!editReplyText.trim()}
+                          onClick={() => handleEditReplySave(r)}>
+                          Sauvegarder
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+
               return (
                 <div key={r.id} className="sz-reply-item">
                   <div className="sz-av"
@@ -996,6 +1081,37 @@ export default function SenpaiZone() {
                         {rn}
                       </span>
                       <span style={{ fontSize: '0.62rem', color: 'var(--text3)', fontFamily: 'DM Mono,monospace', marginLeft: 'auto' }}>{fmtAgo(r.created_at)}</span>
+                      {canActOnReply && (
+                        <div style={{ position: 'relative', flexShrink: 0 }} data-reply-menu>
+                          <button
+                            style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: '2px 4px', display: 'flex', alignItems: 'center', borderRadius: 4, transition: 'color 0.15s' }}
+                            onMouseEnter={e => e.currentTarget.style.color = 'var(--text2)'}
+                            onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
+                            onClick={() => setMenuReplyId(menuReplyId === r.id ? null : r.id)}>
+                            <Ico n="more" size={13} sw={2.5} />
+                          </button>
+                          {menuReplyId === r.id && (
+                            <div data-reply-menu style={{ position: 'absolute', bottom: 'calc(100% + 4px)', right: 0, background: '#0C1222', border: '1px solid #1C2A45', borderRadius: 10, minWidth: 130, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', zIndex: 400, overflow: 'hidden' }}>
+                              {isReplyOwn && (
+                                <button
+                                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', fontSize: '0.8rem', color: '#94A3B8', background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'Outfit,sans-serif', borderBottom: '1px solid #1C2A45' }}
+                                  onMouseEnter={e => e.currentTarget.style.background = '#111827'}
+                                  onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                  onClick={() => { setEditingReply(r); setEditReplyText(r.content); setMenuReplyId(null) }}>
+                                  <Ico n="edit" size={13} sw={1.8} /> Modifier
+                                </button>
+                              )}
+                              <button
+                                style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', fontSize: '0.8rem', color: '#F87171', background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'Outfit,sans-serif' }}
+                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(248,113,113,0.08)'}
+                                onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                                onClick={e => handleDeleteReply(r, e)}>
+                                <Ico n="trash" size={13} sw={1.8} /> Supprimer
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <div className="sz-reply-content">{r.content}</div>
                   </div>
