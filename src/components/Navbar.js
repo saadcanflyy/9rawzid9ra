@@ -28,10 +28,6 @@ const css = `
   }
   .nb-left { display: flex; align-items: center; gap: 10px; }
   .nb-logo { display: flex; align-items: center; gap: 9px; cursor: pointer; flex-shrink: 0; }
-  .nb-logo-img {
-    width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0;
-    object-fit: contain; display: block;
-  }
   .nb-logo-text { font-family: 'DM Mono', monospace; font-size: 0.88rem; font-weight: 500; color: #FFFFFF; letter-spacing: -0.3px; }
   .nb-logo-text b { color: #7BB3FF; font-weight: 700; }
   .nb-divider { display: none; }
@@ -299,7 +295,6 @@ export default function Navbar({ activePage = '' }) {
         {/* col 1 — logo */}
         <div className="nb-left">
           <div className="nb-logo" onClick={() => navigate('/')}>
-            <img src="/logo.png" alt="9rawZid9ra" className="nb-logo-img" />
             <span className="nb-logo-text">9raw<b>Zid</b>9ra</span>
           </div>
         </div>
