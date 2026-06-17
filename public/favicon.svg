@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <rect width="32" height="32" rx="6" fill="#ffffff"/>
-  <text font-family="'DM Mono', 'Courier New', monospace" font-size="16" font-weight="700" text-anchor="middle">
-    <tspan x="14" y="22" fill="#111827">9</tspan><tspan fill="#1e88e5">Z</tspan>
+  <text font-family="'DM Mono', 'Courier New', monospace" font-size="13" font-weight="700" text-anchor="middle" x="16" y="21">
+    <tspan fill="#111827">9</tspan><tspan fill="#1e88e5">z</tspan><tspan fill="#111827">9</tspan>
   </text>
 </svg>
