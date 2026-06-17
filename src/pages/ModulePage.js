@@ -106,6 +106,31 @@ const css = `
     scrollbar-width: none; -ms-overflow-style: none;
   }
   .filter-tabs::-webkit-scrollbar { display: none; }
+
+  /* Tab scroll hints */
+  .tabs-wrap { position:relative; margin-bottom:1.5rem; }
+  .tabs-fade {
+    position:absolute; right:0; top:0; bottom:0; width:88px;
+    background:linear-gradient(to right, transparent, var(--bg) 80%);
+    pointer-events:none; border-radius:0 10px 10px 0;
+    transition:opacity 0.3s;
+  }
+  .tabs-chevron {
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    width:26px; height:26px; border-radius:50%;
+    background:var(--s3); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text2); font-size:1rem; pointer-events:none;
+    transition:opacity 0.3s; line-height:1;
+  }
+  .tabs-hint {
+    display:none;
+    font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text3);
+    text-align:right; padding:4px 2px 0;
+    animation:hint-fade 0.4s ease both;
+  }
+  @keyframes hint-fade { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+  @media(max-width:768px) { .tabs-hint { display:block; } }
   .filter-tab {
     padding: 6px 16px; border-radius: 7px; font-size: 0.8rem; font-weight: 500;
     color: var(--text2); cursor: pointer; transition: all 0.15s;
@@ -381,12 +406,32 @@ export default function ModulePage() {
   const { user } = useAuth()
   const [userReactions,setUserReactions]= useState({})
   const [isBookmarked, setIsBookmarked] = useState(false)
-  const docsRef = useRef([])
-  const [requests,     setRequests]     = useState({})
-  const [userRequested,setUserRequested]= useState({})
-  const [previewDoc,   setPreviewDoc]   = useState(null)
-  const [showAuthGate, setShowAuthGate] = useState(false)
-  const [copyToast,    setCopyToast]    = useState(false)
+  const docsRef    = useRef([])
+  const tabsBarRef = useRef(null)
+  const [requests,      setRequests]      = useState({})
+  const [userRequested, setUserRequested] = useState({})
+  const [previewDoc,    setPreviewDoc]    = useState(null)
+  const [showAuthGate,  setShowAuthGate]  = useState(false)
+  const [copyToast,     setCopyToast]     = useState(false)
+  const [tabsAtEnd,     setTabsAtEnd]     = useState(false)
+  const [slideHintDone, setSlideHintDone] = useState(
+    () => localStorage.getItem('9rz_tab_hint') === '1'
+  )
+
+  useEffect(() => {
+    const el = tabsBarRef.current
+    if (!el) return
+    const check = () => {
+      setTabsAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4)
+      if (!slideHintDone && el.scrollLeft > 10) {
+        setSlideHintDone(true)
+        localStorage.setItem('9rz_tab_hint', '1')
+      }
+    }
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    return () => el.removeEventListener('scroll', check)
+  }, [slideHintDone])
 
   useEffect(() => {
     async function load() {
@@ -432,6 +477,12 @@ export default function ModulePage() {
           if (r.reaction_type === 'rating')  rxnMap[r.document_id].rating  = r.rating
           if (r.reaction_type === 'report')  rxnMap[r.document_id].reported = true
         })
+        try {
+          JSON.parse(localStorage.getItem('signaled_docs') || '[]').forEach(id => {
+            if (!rxnMap[id]) rxnMap[id] = {}
+            rxnMap[id].reported = true
+          })
+        } catch {}
         setUserReactions(rxnMap)
       }
 
@@ -573,9 +624,14 @@ export default function ModulePage() {
   const handleReport = async (doc) => {
     if (!user) { setShowAuthGate(true); return }
     if (userReactions[doc.id]?.reported) return
+    // Optimistic update + localStorage persistence (prevents spam, survives refresh)
+    setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], reported: true } }))
+    try {
+      const stored = JSON.parse(localStorage.getItem('signaled_docs') || '[]')
+      if (!stored.includes(doc.id)) localStorage.setItem('signaled_docs', JSON.stringify([...stored, doc.id]))
+    } catch {}
     await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'report' })
     await supabase.from('documents').update({ report_count: (doc.report_count || 0) + 1 }).eq('id', doc.id)
-    setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], reported: true } }))
   }
 
   // ── BOOKMARK ──────────────────────────────────────────────────────────────
@@ -782,8 +838,8 @@ export default function ModulePage() {
         {/* MAIN */}
         <div className="main">
           {/* Tabs */}
-          <div style={{ position:'relative', overflow:'hidden', marginBottom:'1.5rem' }}>
-            <div className="filter-tabs" style={{ marginBottom:0 }}>
+          <div className="tabs-wrap">
+            <div className="filter-tabs" ref={tabsBarRef} style={{ marginBottom:0 }}>
               {TABS.map(t => (
                 <button key={t.k} className={`filter-tab ${activeTab===t.k?'on':''}`}
                   onClick={() => setActiveTab(t.k)}>
@@ -796,7 +852,15 @@ export default function ModulePage() {
                 </button>
               ))}
             </div>
-            <div style={{ position:'absolute', right:0, top:0, bottom:0, width:40, background:'linear-gradient(to right, transparent, #070C18)', pointerEvents:'none' }} />
+            <div className="tabs-fade" style={{ opacity: tabsAtEnd ? 0 : 1 }} />
+            <div className="tabs-chevron" style={{ opacity: tabsAtEnd ? 0 : 1 }}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <path d="M4.5 2.5L8 6L4.5 9.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            {!slideHintDone && (
+              <div className="tabs-hint">Glisse pour voir plus →</div>
+            )}
           </div>
 
           {/* Document list */}
@@ -1008,16 +1072,19 @@ export default function ModulePage() {
                           🔗 Partager
                         </button>
                         <div style={{marginLeft:'auto',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
-                          <button onClick={e => { e.stopPropagation(); handleReport(doc) }}
-                            style={{ background:'none', border:'none',
-                              color: userReactions[doc.id]?.reported ? '#F87171' : '#4A5568',
-                              fontSize:'0.72rem', fontFamily:'DM Mono,monospace', transition:'color 0.15s',
-                              cursor: userReactions[doc.id]?.reported ? 'default' : 'pointer',
-                              pointerEvents: userReactions[doc.id]?.reported ? 'none' : 'auto' }}>
-                            {userReactions[doc.id]?.reported ? '🚩 Signalé' : '🚩 Signaler'}
-                          </button>
-                          {userReactions[doc.id]?.reported && (
-                            <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'#4A5568'}}>notre équipe va vérifier</span>
+                          {userReactions[doc.id]?.reported ? (
+                            <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.7rem',color:'#F87171'}}>
+                              🚩 Signalé — notre équipe va vérifier
+                            </span>
+                          ) : (
+                            <button onClick={e => { e.stopPropagation(); handleReport(doc) }}
+                              style={{ background:'none', border:'none', color:'#4A5568',
+                                fontSize:'0.72rem', fontFamily:'DM Mono,monospace',
+                                transition:'color 0.15s', cursor:'pointer' }}
+                              onMouseEnter={e => e.currentTarget.style.color='#94A3B8'}
+                              onMouseLeave={e => e.currentTarget.style.color='#4A5568'}>
+                              🚩 Signaler
+                            </button>
                           )}
                         </div>
                       </div>

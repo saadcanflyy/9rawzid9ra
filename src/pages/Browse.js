@@ -149,7 +149,7 @@ const css = `
   @media(max-width:768px) {
     .mob-filter-btn {
       display:flex; align-items:center; gap:7px;
-      position:fixed; bottom:24px; right:20px; z-index:500;
+      position:fixed; bottom:24px; left:20px; z-index:500;
       background:var(--accent); color:#fff; border:none; border-radius:24px;
       padding:11px 20px; font-size:0.875rem; font-weight:700;
       font-family:'Outfit',sans-serif; cursor:pointer;
@@ -311,6 +311,7 @@ export default function Browse() {
         setFacs(data || [])
         setFacsReady(true)
         if (restoreFac) { restoringRef.current.fac = ''; setSelFac(restoreFac) }
+        else if (data?.length === 1 && data[0].name === '__root__') setSelFac(String(data[0].id))
       })
     if (!restoreFac) { setSelFac(''); setSelFil('') }
   }, [selUni])
@@ -438,11 +439,12 @@ export default function Browse() {
 
   const displayed = mods
   const uniName  = unis.find(u => u.id === parseInt(selUni))?.name
-  const facName  = facs.find(f => f.id === parseInt(selFac))?.name
+  const facNameRaw = facs.find(f => f.id === parseInt(selFac))?.name
+  const facName  = facNameRaw === '__root__' ? null : facNameRaw
   const filName  = fils.find(f => f.id === parseInt(selFil))?.name
   const typeName = DOC_TYPES.find(t => t.k === selType)?.l
   const hasFilters         = selUni || selFac || selFil || selSem || selType || query
-  const activeFilterCount  = [selUni, selFac, selFil, selSem, selType].filter(Boolean).length
+  const activeFilterCount  = [selUni, facNameRaw === '__root__' ? '' : selFac, selFil, selSem, selType].filter(Boolean).length
   const hasActiveFilter = !!(selUni || selSem || selType || debouncedQuery.trim())
   // University selected, facs loaded, no other filters, no results → uni has no content yet
   const isUniEmpty = !loading && facsReady && selUni && !selSem && !selType && !debouncedQuery.trim() && displayed.length === 0
@@ -561,13 +563,13 @@ export default function Browse() {
             </div>
           </div>
 
-          {/* Faculté dropdown — only when faculties exist */}
-          {selUni && facsReady && facs.length > 0 && (
+          {/* Faculté dropdown — only when named (non-root) faculties exist */}
+          {selUni && facsReady && facs.filter(f => f.name !== '__root__').length > 0 && (
             <div className="filter-block">
               <span className="filter-label">Faculté / École</span>
               <select className="filter-select" value={selFac} onChange={e => setSelFac(e.target.value)}>
                 <option value="">Toutes les facultés</option>
-                {facs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                {facs.filter(f => f.name !== '__root__').map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
               </select>
               {!showFacReq && !facReqSent && (
                 <button className="req-link" onClick={() => setShowFacReq(true)}>Faculté introuvable ?</button>
@@ -819,7 +821,9 @@ export default function Browse() {
                   </div>
                   <div className="mod-name">{m.name}</div>
                   <div className="mod-path">
-                    {m.filieres?.name} · {m.filieres?.faculties?.name}
+                    {m.filieres?.faculties?.name && m.filieres.faculties.name !== '__root__'
+                      ? `${m.filieres?.name} · ${m.filieres.faculties.name}`
+                      : m.filieres?.name}
                   </div>
                   <div className="mod-footer">
                     <span className="mod-docs">{m.filieres?.faculties?.universities?.name || ''}</span>

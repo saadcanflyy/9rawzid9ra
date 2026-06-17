@@ -207,7 +207,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
 .sz-post-author-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
 .sz-post-name{font-size:0.85rem;font-weight:700;color:#fff;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.sz-post-name:hover{text-decoration:underline;text-decoration-color:rgba(255,255,255,0.3)}
+.sz-post-name:hover{color:var(--accent2);text-decoration:underline;text-decoration-color:rgba(79,142,247,0.4)}
 .sz-post-sub{font-size:0.72rem;color:var(--text3);white-space:nowrap;font-family:'DM Mono',monospace}
 .sz-post-sep{color:var(--text3);font-size:0.6rem}
 .sz-post-ago{font-size:0.72rem;color:var(--text3);white-space:nowrap;font-family:'DM Mono',monospace;margin-left:2px}
@@ -813,12 +813,16 @@ export default function SenpaiZone() {
                 )}
                 {!isOwn && !anon && user && (
                   <button
+                    title="Envoyer un message"
                     onClick={e => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('open-dm', { detail: { userId: post.author_id, name } })) }}
-                    style={{ background:'none', border:'none', color:'#4A5568', cursor:'pointer', padding:'1px 4px', fontSize:'0.72rem', fontFamily:'Outfit,sans-serif', display:'inline-flex', alignItems:'center', gap:3, transition:'color 0.12s' }}
-                    onMouseEnter={e => e.currentTarget.style.color='#7BB3FF'}
-                    onMouseLeave={e => e.currentTarget.style.color='#4A5568'}
+                    style={{ background:'rgba(79,142,247,0.07)', border:'1px solid rgba(79,142,247,0.18)', color:'#7BB3FF', cursor:'pointer', padding:'6px 8px', borderRadius:8, display:'inline-flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', flexShrink:0 }}
+                    onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.16)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.4)'; e.currentTarget.style.color='#fff' }}
+                    onMouseLeave={e => { e.currentTarget.style.background='rgba(79,142,247,0.07)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.18)'; e.currentTarget.style.color='#7BB3FF' }}
                   >
-                    ✉
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                      <polyline points="22,6 12,13 2,6"/>
+                    </svg>
                   </button>
                 )}
               </div>
