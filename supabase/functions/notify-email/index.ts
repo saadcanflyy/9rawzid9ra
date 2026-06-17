@@ -9,7 +9,6 @@ const ADMIN_ID         = "84c11086-6041-4118-8f4c-138a0664966f";
 const FROM             = "9rawZid9ra <no-reply@mail.9rawzid9ra.space>";
 const SITE_URL         = "https://9rawzid9ra.space";
 
-// Escape HTML to prevent injected user content from becoming executable in email clients
 function escHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -19,7 +18,12 @@ function escHtml(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
-interface EmailTemplate { subject: string; html: string }
+interface EmailTemplate {
+  subject: string;
+  html: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+}
 
 function buildTemplate(type: string, record: Record<string, unknown>): EmailTemplate | null {
   const content = (record.content as string) ?? "";
@@ -50,11 +54,38 @@ function buildTemplate(type: string, record: Record<string, unknown>): EmailTemp
       subject: `📄 ${escHtml(content)}`,
       html: `Un nouveau document a été ajouté dans un module que tu suis.<br><br><a href="${SITE_URL}${escHtml(link)}" style="color:#4F8EF7;text-decoration:none;font-weight:600">Voir le module →</a>`,
     },
+    welcome: {
+      subject: `🎉 Bienvenue sur 9rawZid9ra !`,
+      html: `Salut <b>${escHtml(content)}</b> ! 👋<br><br>
+Ton compte est prêt. Voici ce que tu peux faire dès maintenant :<br><br>
+<table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+  <tr>
+    <td style="padding:12px 0;border-bottom:1px solid #1C2A45">
+      <span style="color:#4F8EF7;font-weight:700;font-size:0.9rem">📚 Explorer les modules</span><br>
+      <span style="color:#94A3B8;font-size:0.85rem;line-height:1.6">Trouve les examens, contrôles continus, TDs et TPs de ton université — organisés par filière et semestre.</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:12px 0;border-bottom:1px solid #1C2A45">
+      <span style="color:#2DD4BF;font-weight:700;font-size:0.9rem">⬆️ Uploader des documents</span><br>
+      <span style="color:#94A3B8;font-size:0.85rem;line-height:1.6">Partage tes annales et aide les étudiants de ta filière. Chaque document uploadé fait avancer toute la communauté.</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:12px 0">
+      <span style="color:#7BB3FF;font-weight:700;font-size:0.9rem">🧠 Senpai Zone</span><br>
+      <span style="color:#94A3B8;font-size:0.85rem;line-height:1.6">Pose tes questions, réponds à celles des autres, et construis ta réputation dans la communauté marocaine.</span>
+    </td>
+  </tr>
+</table>`,
+      ctaLabel: "Commencer à explorer →",
+      ctaUrl: `${SITE_URL}/browse`,
+    },
   };
   return templates[type] ?? null;
 }
 
-function emailHtml(body: string): string {
+function emailHtml(body: string, ctaLabel = "Ouvrir 9rawZid9ra →", ctaUrl = SITE_URL): string {
   return `<!DOCTYPE html>
 <html>
 <body style="margin:0;padding:0;background:#0A0F1E;font-family:sans-serif">
@@ -64,8 +95,8 @@ function emailHtml(body: string): string {
     </div>
     <div style="padding:28px">
       <p style="color:#94A3B8;font-size:0.95rem;line-height:1.7;margin:0 0 24px">${body}</p>
-      <a href="${SITE_URL}" style="display:inline-block;background:linear-gradient(135deg,#4F8EF7,#2DD4BF);color:#fff;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:0.9rem">
-        Ouvrir 9rawZid9ra →
+      <a href="${ctaUrl}" style="display:inline-block;background:linear-gradient(135deg,#4F8EF7,#2DD4BF);color:#fff;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:0.9rem">
+        ${ctaLabel}
       </a>
     </div>
     <div style="padding:18px 28px;border-top:1px solid #1C2A45;font-size:0.72rem;color:#4A5568">
@@ -82,8 +113,6 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  // ── Webhook secret verification ──────────────────────────────────────────
-  // Supabase dashboard webhook must send header: x-webhook-secret: <WEBHOOK_SECRET>
   if (!WEBHOOK_SECRET) {
     console.error("WEBHOOK_SECRET env var not set — rejecting all requests");
     return new Response("Server misconfiguration", { status: 500 });
@@ -135,12 +164,11 @@ Deno.serve(async (req: Request) => {
       from: FROM,
       to: [user.email],
       subject: template.subject,
-      html: emailHtml(template.html),
+      html: emailHtml(template.html, template.ctaLabel, template.ctaUrl),
     }),
   });
 
   if (!emailResp.ok) {
-    // Log internally, never expose to caller
     console.error("Resend error:", await emailResp.text());
     return new Response("Email delivery error", { status: 500 });
   }
