@@ -178,6 +178,22 @@ const css = `
     .cta-actions { flex-direction:column; }
     .btn-primary, .btn-outline { width:100%; text-align:center; }
   }
+
+  /* FAQ */
+  .faq-section { max-width:780px; margin:0 auto; padding:4rem 2.5rem; }
+  .faq-label { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:0.6rem; }
+  .faq-title { font-size:1.4rem; font-weight:700; color:var(--white); margin-bottom:2rem; letter-spacing:-0.4px; }
+  .faq-list { display:flex; flex-direction:column; gap:8px; }
+  details.faq-item { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; transition:border-color 0.2s; }
+  details.faq-item[open] { border-color:var(--borderhi); }
+  details.faq-item summary { list-style:none; cursor:pointer; padding:1.1rem 1.4rem; font-size:0.92rem; font-weight:600; color:var(--text); display:flex; align-items:center; justify-content:space-between; gap:1rem; user-select:none; }
+  details.faq-item summary::-webkit-details-marker { display:none; }
+  details.faq-item summary::after { content:'+'; font-family:'DM Mono',monospace; font-size:1.1rem; color:var(--text3); transition:transform 0.2s, color 0.2s; flex-shrink:0; }
+  details.faq-item[open] summary::after { content:'−'; color:var(--accent2); }
+  details.faq-item summary:hover { color:var(--accent2); }
+  .faq-body { padding:0 1.4rem 1.2rem; font-size:0.875rem; color:var(--text2); line-height:1.8; border-top:1px solid var(--border); padding-top:1rem; margin-top:0; }
+  .faq-body a { color:var(--accent2); cursor:pointer; }
+  @media(max-width:768px) { .faq-section { padding:3rem 1.25rem; } }
 `
 
 const SCHOOLS = [
@@ -472,6 +488,38 @@ export default function Home() {
           ☕ Soutenir le projet
         </a>
       </div>
+
+      {/* FAQ */}
+      <section className="faq-section">
+        <div className="faq-label">// FAQ</div>
+        <h2 className="faq-title">Questions fréquentes</h2>
+        <div className="faq-list">
+          <details className="faq-item">
+            <summary>Comment trouver les examens de mon université ?</summary>
+            <div className="faq-body">
+              Clique sur <strong>Explorer</strong> dans la barre de navigation, puis sélectionne ton université dans la liste. Tu peux ensuite filtrer par faculté, filière et semestre pour trouver exactement ce que tu cherches — examens, contrôles continus, TDs et TPs.
+            </div>
+          </details>
+          <details className="faq-item">
+            <summary>Comment uploader mes documents ?</summary>
+            <div className="faq-body">
+              Crée un compte gratuitement, puis clique sur <strong>Uploader</strong>. Sélectionne l'université, la filière, le module et le semestre correspondants, puis dépose ton fichier PDF. Tes documents sont vérifiés avant publication pour garantir la qualité.
+            </div>
+          </details>
+          <details className="faq-item">
+            <summary>9rawZid9ra est-il gratuit ?</summary>
+            <div className="faq-body">
+              Oui, 100% gratuit et sans publicité intrusive. Télécharge autant d'examens, de TDs et de cours que tu veux sans limite. La plateforme est entièrement financée par la communauté — si tu veux la soutenir, il y a un bouton de don optionnel.
+            </div>
+          </details>
+          <details className="faq-item">
+            <summary>Quelles universités et écoles sont disponibles ?</summary>
+            <div className="faq-body">
+              Plus de 55 établissements marocains sont référencés : universités publiques (UM5 Rabat, UH2C Casablanca, Université Ibn Tofaïl, UAE Tétouan…), grandes écoles d'ingénieurs (EMSI, ENSA, EHTP, ENSEM, ENSET…), écoles de commerce (ENCG, ISCAE, HEM, ISGA…) et instituts privés. Si ton école est absente, tu peux la demander directement dans l'explorateur.
+            </div>
+          </details>
+        </div>
+      </section>
 
       {/* FOOTER */}
       <footer className="footer">
