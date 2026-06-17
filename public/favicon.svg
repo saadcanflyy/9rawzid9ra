@@ -1,6 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="6" fill="#ffffff"/>
-  <text font-family="'DM Mono', 'Courier New', monospace" font-weight="700" text-anchor="middle" x="16" y="22">
-    <tspan font-size="12" fill="#111827">9</tspan><tspan font-size="17" fill="#1e88e5">z</tspan><tspan font-size="12" fill="#111827">9</tspan>
-  </text>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4F8EF7"/>
+      <stop offset="100%" stop-color="#2DD4BF"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- container: rx=7 ≈ 22% of 32 -->
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+  <rect x="0.5" y="0.5" width="31" height="31" rx="6.5"
+        fill="none" stroke="url(#rim)" stroke-width="1"/>
+
+  <!--
+    Simplified geometric 9Z9 at favicon scale.
+    Stroke weight: 2.2px — scales to ~0.9px at 16px display (retina: 1.8px, legible)
+
+    LEFT  9: circle cx=7.2  cy=11.5 r=3.0, tail x=10.2 down to 26
+    RIGHT 9: circle cx=24.8 cy=11.5 r=3.0, tail x=21.8 down to 26 (mirrored)
+    Z       : x 12.5→19.5, top y=8.5, bottom y=26
+  -->
+
+  <!-- LEFT "9" -->
+  <path d="M 10.2,11.5 A 3,3 0 1,0 10.2,11.51 L 10.2,26"
+        fill="none" stroke="white" stroke-width="2.2"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- "Z" -->
+  <path d="M 12.5,8.5 H 19.5 L 12.5,26 H 19.5"
+        fill="none" stroke="white" stroke-width="2.2"
+        stroke-linecap="round" stroke-linejoin="miter"
+        stroke-miterlimit="10"/>
+
+  <!-- RIGHT "9" mirrored -->
+  <path d="M 21.8,11.5 A 3,3 0 1,1 21.8,11.51 L 21.8,26"
+        fill="none" stroke="white" stroke-width="2.2"
+        stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
