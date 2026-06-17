@@ -1,6 +1,34 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="6" fill="#ffffff"/>
-  <text font-family="'DM Mono', 'Courier New', monospace" font-size="13" font-weight="700" text-anchor="middle" x="16" y="21">
-    <tspan fill="#111827">9</tspan><tspan fill="#1e88e5">z</tspan><tspan fill="#111827">9</tspan>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0C1222"/>
+      <stop offset="100%" stop-color="#070C18"/>
+    </linearGradient>
+    <linearGradient id="zg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4F8EF7"/>
+      <stop offset="100%" stop-color="#2DD4BF"/>
+    </linearGradient>
+  </defs>
+
+  <!-- dark card background -->
+  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
+
+  <!-- subtle top edge highlight -->
+  <rect x="1" y="1" width="30" height="1" rx="0.5" fill="#ffffff" opacity="0.06"/>
+
+  <!-- subtle border -->
+  <rect x="0.5" y="0.5" width="31" height="31" rx="6.5" fill="none" stroke="#2D4A7A" stroke-width="1"/>
+
+  <!-- 9z9 text: white 9s, gradient z -->
+  <text
+    font-family="'DM Mono', 'Courier New', monospace"
+    font-size="14"
+    font-weight="700"
+    text-anchor="middle"
+    x="16"
+    y="22"
+    letter-spacing="0.5"
+  >
+    <tspan fill="#E2E8F0">9</tspan><tspan fill="url(#zg)">z</tspan><tspan fill="#E2E8F0">9</tspan>
   </text>
 </svg>
