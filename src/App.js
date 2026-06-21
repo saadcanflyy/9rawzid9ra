@@ -17,7 +17,12 @@ import AICoach from './pages/AICoach'
 import MyModules from './pages/MyModules'
 import WelcomeModal from './components/WelcomeModal'
 import ModeratorPanel from './pages/ModeratorPanel'
+import PrivacyPolicy from './pages/PrivacyPolicy'
+import Terms from './pages/Terms'
+import About from './pages/About'
+import Contact from './pages/Contact'
 import MessengerWidget from './components/MessengerWidget'
+import Footer from './components/Footer'
 
 const notFoundCss = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap');
@@ -129,8 +134,13 @@ function App() {
         <Route path="/senpai" element={<SenpaiZone />} />
         <Route path="/ai" element={<AICoach />} />
         <Route path="/my-modules" element={<MyModules />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <Footer />
       <WelcomeModal />
       <MessengerWidget />
     </BrowserRouter>

@@ -259,6 +259,16 @@ export default function Browse() {
   const [showDrawer,       setShowDrawer]       = useState(false)
   const [showScrollHint,   setShowScrollHint]   = useState(false)
 
+  // Module suggestion state
+  const [showModReq,  setShowModReq]  = useState(false)
+  const [modReqName,  setModReqName]  = useState('')
+  const [modReqSem,   setModReqSem]   = useState('S1')
+  const [modReqFilId, setModReqFilId] = useState('')
+  const [modReqBusy,  setModReqBusy]  = useState(false)
+  const [modReqSent,  setModReqSent]  = useState(false)
+  const [modReqDup,   setModReqDup]   = useState(null)
+  const [newModId,    setNewModId]    = useState(null)
+
   useEffect(() => {
     if (!user?.id) { setUserUniId(null); return }
     supabase.from('user_profiles').select('university_id').eq('id', user.id).single()
@@ -392,6 +402,10 @@ export default function Browse() {
 
   useEffect(() => { loadModules() }, [loadModules])
 
+  useEffect(() => {
+    setShowModReq(false); setModReqSent(false); setModReqDup(null); setNewModId(null)
+  }, [debouncedQuery])
+
   const flushSearch = () => { clearTimeout(debounceRef.current); setDebouncedQuery(query) }
 
   const handleUniRequest = async () => {
@@ -441,6 +455,34 @@ export default function Browse() {
     setFilReqSent(true)
   }
 
+  const handleModRequest = async () => {
+    const targetFilId = modReqFilId || selFil
+    if (!modReqName.trim() || !user || !targetFilId) return
+    setModReqBusy(true)
+    setModReqDup(null)
+    const { data: existing } = await supabase
+      .from('modules')
+      .select('id, slug, name')
+      .ilike('name', modReqName.trim())
+      .eq('filiere_id', parseInt(targetFilId))
+      .limit(1)
+    if (existing?.length > 0) {
+      setModReqDup(existing[0])
+      setModReqBusy(false)
+      return
+    }
+    const { data: newMod, error } = await supabase
+      .from('modules')
+      .insert({ name: modReqName.trim().slice(0, 120), filiere_id: parseInt(targetFilId), semester: modReqSem, type: 'cours' })
+      .select('id, slug')
+      .single()
+    setModReqBusy(false)
+    if (error) return
+    setNewModId(newMod.id)
+    setModReqSent(true)
+    loadModules()
+  }
+
   const reset = () => {
     setSearchParams({})
     setQuery(''); setDebouncedQuery(''); setSelUni(''); setSelFac(''); setSelFil(''); setSelSem(''); setSelType('')
@@ -449,6 +491,8 @@ export default function Browse() {
     setFacsReady(false)
     setShowFacReq(false); setFacReqName(''); setFacReqSent(false)
     setShowFilReq(false); setShowEmptyFilForm(false); setFilReqName(''); setFilReqSent(false)
+    setShowModReq(false); setModReqName(''); setModReqSem('S1'); setModReqFilId('')
+    setModReqSent(false); setModReqDup(null); setNewModId(null)
   }
 
   const displayed = mods
@@ -821,8 +865,105 @@ export default function Browse() {
                 ) : (
                   <div className="empty">
                     <div className="empty-code">// 0 results</div>
-                    <div className="empty-title">Aucun module trouvé</div>
+                    <div className="empty-title">
+                      {debouncedQuery.trim() ? `Aucun module pour "${debouncedQuery}"` : 'Aucun module trouvé'}
+                    </div>
                     <div className="empty-sub">Modifie ta recherche ou réinitialise les filtres</div>
+
+                    {debouncedQuery.trim() && (selFil || fils.length > 0) && !modReqSent && (
+                      <div style={{ marginTop: '1.25rem', width: '100%', maxWidth: 420 }}>
+                        {!showModReq ? (
+                          <button
+                            onClick={() => {
+                              setShowModReq(true)
+                              setModReqName(debouncedQuery.trim())
+                              setModReqFilId(selFil)
+                            }}
+                            style={{ background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.3)', color: 'var(--accent2)', borderRadius: 8, padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit,sans-serif' }}
+                          >
+                            + Ajouter "{debouncedQuery}" comme module
+                          </button>
+                        ) : (
+                          <div className="req-form" style={{ marginTop: 0, textAlign: 'left' }}>
+                            <div className="req-form-title">// nouveau module</div>
+                            {!user ? (
+                              <p style={{ color: 'var(--text2)', fontSize: '0.85rem', margin: '0.5rem 0' }}>
+                                <span style={{ color: '#F87171' }}>Connecte-toi</span> pour ajouter ce module.
+                              </p>
+                            ) : (
+                              <>
+                                {modReqDup && (
+                                  <div style={{ color: '#FBBF24', fontSize: '0.82rem', marginBottom: '0.6rem' }}>
+                                    Ce module existe déjà.{' '}
+                                    <span
+                                      onClick={() => navigate(`/module/${modReqDup.slug || modReqDup.id}`)}
+                                      style={{ color: 'var(--accent2)', cursor: 'pointer', textDecoration: 'underline' }}
+                                    >
+                                      Voir le module →
+                                    </span>
+                                  </div>
+                                )}
+                                <input
+                                  className="req-input"
+                                  value={modReqName}
+                                  onChange={e => setModReqName(e.target.value)}
+                                  placeholder="Nom du module *"
+                                  maxLength={120}
+                                />
+                                {!selFil && fils.length > 0 && (
+                                  <select
+                                    className="req-input"
+                                    value={modReqFilId}
+                                    onChange={e => setModReqFilId(e.target.value)}
+                                    style={{ marginTop: '0.5rem' }}
+                                  >
+                                    <option value="">Sélectionne la filière *</option>
+                                    {fils.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                  </select>
+                                )}
+                                <select
+                                  className="req-input"
+                                  value={modReqSem}
+                                  onChange={e => setModReqSem(e.target.value)}
+                                  style={{ marginTop: '0.5rem' }}
+                                >
+                                  {['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10'].map(s => (
+                                    <option key={s} value={s}>{s}</option>
+                                  ))}
+                                </select>
+                                <div style={{ display: 'flex', gap: 8, marginTop: '0.5rem' }}>
+                                  <button
+                                    className="req-send"
+                                    onClick={handleModRequest}
+                                    disabled={!modReqName.trim() || modReqBusy || (!selFil && !modReqFilId)}
+                                  >
+                                    {modReqBusy ? '...' : 'Ajouter'}
+                                  </button>
+                                  <button
+                                    className="req-cancel"
+                                    onClick={() => { setShowModReq(false); setModReqDup(null) }}
+                                  >
+                                    Annuler
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {modReqSent && (
+                      <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
+                        <div className="req-ok">✓ Module ajouté !</div>
+                        <button
+                          onClick={() => navigate('/upload')}
+                          style={{ marginTop: '0.75rem', background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.3)', color: 'var(--accent2)', borderRadius: 8, padding: '7px 16px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit,sans-serif' }}
+                        >
+                          Uploader des documents →
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               ) : displayed.map(m => (
