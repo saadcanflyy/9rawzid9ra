@@ -36,6 +36,8 @@ const css = `
   @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 
   .hero-sub-slogan { font-size:1rem; font-weight:600; color:var(--accent); letter-spacing:0.04em; margin:0 auto 0.6rem; animation:fadeUp 0.5s 0.12s ease both; }
+  .hero-byline { font-size:0.82rem; font-weight:500; color:var(--text3); margin:0 auto 1.2rem; animation:fadeUp 0.5s 0.14s ease both; letter-spacing:0.02em; }
+  .hero-byline span { background:linear-gradient(90deg,var(--accent2),var(--teal2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; font-weight:700; }
   .hero-desc { max-width:520px; font-size:1.05rem; font-weight:400; color:var(--text2); line-height:1.75; margin:0 auto 2.5rem; animation:fadeUp 0.5s 0.16s ease both; }
 
   /* SEARCH */
@@ -313,6 +315,7 @@ export default function Home() {
             <span className="grad">en 30 secondes.</span>
           </h1>
           <p className="hero-sub-slogan">Annales, examens, TD et TP gratuits — 9ra w zid 9ra m3a 9rawZid9ra</p>
+          <p className="hero-byline">Créé par un étudiant, pour les <span>étudiants</span></p>
           <p className="hero-desc">
             Examens, CCs, TDs et TPs organisés par école, filière et semestre.
             Uploadés par des étudiants comme toi. Gratuit, rapide, structuré.
