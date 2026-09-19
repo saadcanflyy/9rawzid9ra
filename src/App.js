@@ -1,6 +1,7 @@
 // src/App.js
 import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import { supabase } from './supabase'
 import { AuthProvider } from './context/AuthContext'
 import Home from './pages/Home'
@@ -143,6 +144,23 @@ function App() {
       <Footer />
       <WelcomeModal />
       <MessengerWidget />
+      <Toaster
+        position="bottom-center"
+        toastOptions={{
+          duration: 3200,
+          style: {
+            background: '#0C1222',
+            color: '#E2E8F0',
+            border: '1px solid #1C2A45',
+            borderRadius: '10px',
+            fontFamily: "'Outfit', sans-serif",
+            fontSize: '0.85rem',
+            boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
+          },
+          success: { iconTheme: { primary: '#2DD4BF', secondary: '#0C1222' } },
+          error: { iconTheme: { primary: '#F87171', secondary: '#0C1222' } },
+        }}
+      />
     </BrowserRouter>
     </AuthProvider>
   )

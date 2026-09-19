@@ -1,8 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import toast from 'react-hot-toast'
+import { FiSearch, FiArrowRight } from 'react-icons/fi'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
+
+const reveal = {
+  hidden: { opacity: 0, y: 24 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+}
+const staggerParent = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+}
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
@@ -255,6 +267,7 @@ export default function Home() {
     if (!user || suggestFollowing) return
     await supabase.from('user_follows').insert({ follower_id: user.id, following_id: ADMIN_ID })
     setSuggestFollowing(true)
+    toast.success('Abonné avec succès !')
   }
 
   const dismissSuggest = () => {
@@ -323,7 +336,7 @@ export default function Home() {
           <div className="search-wrap">
             <form onSubmit={onSearch}>
               <div className="search-bar">
-                <span className="search-ico">$_</span>
+                <FiSearch size={16} style={{ color:'var(--text3)', flexShrink:0 }} />
                 <input className="search-input"
                   placeholder="Recherche un module... ex: Analyse 1, POO, Droit Commercial"
                   value={query} onChange={e => setQuery(e.target.value)} />
@@ -379,13 +392,13 @@ export default function Home() {
       )}
 
       {/* SCHOOLS */}
-      <section className="section">
+      <motion.section className="section" initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }} variants={reveal}>
         <div className="section-eyebrow">// établissements couverts</div>
         <div className="section-head">
           <h2 className="section-title">Couverture <span>complète</span><br />de la région</h2>
           <button className="section-link" onClick={() => navigate('/browse')}>Voir tous les modules</button>
         </div>
-        <div className="school-grid">
+        <motion.div className="school-grid" initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }} variants={staggerParent}>
           {!schoolsReady ? (
             [...Array(6)].map((_, i) => (
               <div key={i} className="school-card" style={{ cursor:'default', gap:12, display:'flex', flexDirection:'column' }}>
@@ -402,7 +415,7 @@ export default function Home() {
             ))
           ) : (
             SCHOOLS.map(s => (
-              <div key={s.id} className="school-card" onClick={() => navigate(`/browse?uni=${s.id}`)}>
+              <motion.div key={s.id} className="school-card" variants={reveal} whileHover={{ y: -3 }} transition={{ duration: 0.15 }} onClick={() => navigate(`/browse?uni=${s.id}`)}>
                 <div className="school-row1">
                   <span className="school-abbr">{s.abbr}</span>
                   <span className={`school-badge ${badgeClass(s.type)}`}>{badgeLabel(s.type)}</span>
@@ -413,32 +426,32 @@ export default function Home() {
                   <span className="school-meta-item"><b>{s.fils}</b> filières</span>
                   <span className="school-city">{s.city}</span>
                 </div>
-              </div>
+              </motion.div>
             ))
           )}
-        </div>
-      </section>
+        </motion.div>
+      </motion.section>
 
       {/* METRICS */}
       <div className="metrics">
-        <div className="metrics-inner">
+        <motion.div className="metrics-inner" initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }} variants={staggerParent}>
           {[
             { v:'762+',  l:'Modules structurés',    s:'Organisés par filière et semestre' },
             { v:'19',    l:'Établissements',         s:'Toutes les grandes écoles' },
             { v:'48',    l:'Filières couvertes',     s:'Licence, Ingénieur, Master' },
             { v:'0 MAD', l:'Coût d\'accès',          s:'Gratuit pour tous les étudiants' },
           ].map(m => (
-            <div key={m.l}>
+            <motion.div key={m.l} variants={reveal}>
               <div className="metric-val">{m.v}</div>
               <div className="metric-label">{m.l}</div>
               <div className="metric-sub">{m.s}</div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
 
       {/* HOW IT WORKS */}
-      <div className="how-section">
+      <motion.div className="how-section" initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }} variants={reveal}>
         <div className="section-eyebrow">// comment ça marche</div>
         <h2 className="section-title" style={{marginBottom:0}}>
           Simple.{' '}
@@ -446,20 +459,20 @@ export default function Home() {
             Rapide. Gratuit.
           </span>
         </h2>
-        <div className="steps">
+        <motion.div className="steps" initial="hidden" whileInView="show" viewport={{ once: true, margin: '-40px' }} variants={staggerParent}>
           {STEPS.map(s => (
-            <div key={s.n} className="step">
+            <motion.div key={s.n} className="step" variants={reveal}>
               <div className="step-num">ÉTAPE {s.n}</div>
               <div className="step-bar" />
               <div className="step-title">{s.title}</div>
               <div className="step-desc">{s.desc}</div>
-            </div>
+            </motion.div>
           ))}
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* CTA */}
-      <div className="cta-wrap">
+      <motion.div className="cta-wrap" initial="hidden" whileInView="show" viewport={{ once: true, margin: '-60px' }} variants={reveal}>
         <div className="cta-block">
           <div>
             <div className="cta-label">// contribue à la communauté</div>
@@ -473,23 +486,26 @@ export default function Home() {
             {!user && (
               <button className="btn-primary" onClick={() => navigate('/register')}>Créer un compte</button>
             )}
-            <button className="btn-outline" onClick={() => navigate('/upload')}>Uploader un document</button>
+            <button className="btn-outline" onClick={() => navigate('/upload')}>Uploader un document <FiArrowRight size={14} style={{marginLeft:6, verticalAlign:'-2px'}}/></button>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* FLOATING TIP BUTTON */}
       <div style={{ position:'fixed', bottom:'24px', right:'24px', zIndex:100 }}>
-        <a
+        <motion.a
           href="https://paypal.me/saadga2003"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ background:'linear-gradient(135deg,#FBD34D,#F59E0B)', color:'#02040A', border:'none', borderRadius:100, padding:'12px 20px', fontSize:'0.85rem', fontWeight:700, cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:8, boxShadow:'0 4px 20px rgba(251,211,77,0.35)', transition:'all 0.2s', textDecoration:'none' }}
-          onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px) scale(1.02)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(251,211,77,0.5)' }}
-          onMouseLeave={e => { e.currentTarget.style.transform='translateY(0) scale(1)'; e.currentTarget.style.boxShadow='0 4px 20px rgba(251,211,77,0.35)' }}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.6, type: 'spring', stiffness: 300, damping: 20 }}
+          whileHover={{ y: -2, scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          style={{ background:'linear-gradient(135deg,#FBD34D,#F59E0B)', color:'#02040A', border:'none', borderRadius:100, padding:'12px 20px', fontSize:'0.85rem', fontWeight:700, cursor:'pointer', fontFamily:"'Outfit',sans-serif", display:'flex', alignItems:'center', gap:8, boxShadow:'0 4px 20px rgba(251,211,77,0.35)', textDecoration:'none' }}
         >
           ☕ Soutenir le projet
-        </a>
+        </motion.a>
       </div>
 
       {/* FAQ */}
