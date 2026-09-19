@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  FiBell, FiUser, FiBookmark, FiShield, FiLogOut,
+  FiUpload, FiHeart, FiMenu, FiX, FiAward
+} from 'react-icons/fi'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
 
@@ -16,11 +21,11 @@ const css = `
   @media (min-width: 769px) { .mobile-banner { display: none; } }
 
   .navbar {
-    position: sticky; top: 0; z-index: 500; height: 58px;
+    position: sticky; top: 0; z-index: 500; height: 60px;
     display: grid; grid-template-columns: 1fr auto 1fr;
     align-items: center;
     padding: 0 2rem;
-    background: rgba(2,4,10,0.94);
+    background: rgba(2,4,10,0.82);
     backdrop-filter: blur(32px) saturate(180%);
     -webkit-backdrop-filter: blur(32px) saturate(180%);
     border-bottom: 1px solid #1C2A45;
@@ -28,30 +33,42 @@ const css = `
   }
   .nb-left { display: flex; align-items: center; gap: 10px; }
   .nb-logo { display: flex; align-items: center; gap: 9px; cursor: pointer; flex-shrink: 0; }
+  .nb-logo-mark {
+    width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+    background: linear-gradient(135deg, #4F8EF7, #2DD4BF);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Mono', monospace; font-weight: 700; font-size: 0.72rem; color: #02040A;
+    transition: transform 0.2s ease;
+  }
+  .nb-logo:hover .nb-logo-mark { transform: rotate(-8deg) scale(1.05); }
   .nb-logo-text { font-family: 'DM Mono', monospace; font-size: 0.88rem; font-weight: 500; color: #FFFFFF; letter-spacing: -0.3px; }
   .nb-logo-text b { color: #7BB3FF; font-weight: 700; }
-  .nb-divider { display: none; }
-  .nb-links { display: flex; align-items: center; gap: 2px; justify-content: center; }
-  .nb-link { background: none; border: none; padding: 6px 12px; font-size: 0.82rem; color: #64748B; cursor: pointer; border-radius: 7px; font-family: 'Outfit', sans-serif; transition: all 0.15s; white-space: nowrap; }
-  .nb-link:hover { color: #E2E8F0; background: rgba(255,255,255,0.05); }
-  .nb-link.active { color: #E2E8F0; background: rgba(255,255,255,0.06); }
+  .nb-links { position: relative; display: flex; align-items: center; gap: 2px; justify-content: center; }
+  .nb-link { position: relative; background: none; border: none; padding: 7px 14px; font-size: 0.82rem; color: #64748B; cursor: pointer; border-radius: 7px; font-family: 'Outfit', sans-serif; transition: color 0.15s; white-space: nowrap; z-index: 1; }
+  .nb-link:hover { color: #E2E8F0; }
+  .nb-link.active { color: #E2E8F0; font-weight: 600; }
+  .nb-link:focus-visible, .nb-ghost:focus-visible, .nb-accent:focus-visible, .nb-upload-btn:focus-visible, .nb-bell:focus-visible, .nb-burger:focus-visible {
+    outline: 2px solid #4F8EF7; outline-offset: 2px;
+  }
+  .nb-link-pill { position: absolute; inset: 0; background: rgba(255,255,255,0.06); border-radius: 7px; z-index: 0; }
   .nb-right { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
-  .nb-ghost { background: none; border: 1px solid #1C2A45; color: #94A3B8; padding: 5px 14px; border-radius: 7px; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: 'Outfit', sans-serif; }
+  .nb-ghost { background: none; border: 1px solid #1C2A45; color: #94A3B8; padding: 6px 15px; border-radius: 7px; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: 'Outfit', sans-serif; }
   .nb-ghost:hover { border-color: #2D4A7A; color: #E2E8F0; }
-  .nb-accent { background: #4F8EF7; color: #fff; border: none; padding: 5px 16px; border-radius: 7px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.15s; }
-  .nb-accent:hover { background: #3A7BEF; }
-  .nb-user { display: flex; align-items: center; gap: 10px; }
-  .nb-upload-btn { background: rgba(79,142,247,0.1); border: 1px solid rgba(79,142,247,0.2); color: #7BB3FF; padding: 5px 14px; border-radius: 7px; font-size: 0.8rem; font-weight: 500; cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.15s; white-space: nowrap; }
+  .nb-accent { background: linear-gradient(135deg,#4F8EF7,#3A7BEF); color: #fff; border: none; padding: 6px 17px; border-radius: 7px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: 'Outfit', sans-serif; transition: transform 0.15s, box-shadow 0.15s; box-shadow: 0 2px 12px rgba(79,142,247,0.25); }
+  .nb-accent:hover { transform: translateY(-1px); box-shadow: 0 4px 18px rgba(79,142,247,0.4); }
+  .nb-user { display: flex; align-items: center; gap: 6px; }
+  .nb-upload-btn { display: flex; align-items: center; gap: 6px; background: rgba(79,142,247,0.1); border: 1px solid rgba(79,142,247,0.2); color: #7BB3FF; padding: 6px 14px; border-radius: 7px; font-size: 0.8rem; font-weight: 500; cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.15s; white-space: nowrap; }
   .nb-upload-btn:hover { background: rgba(79,142,247,0.18); }
   .nb-avatar-wrap { position: relative; }
-  .nb-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #4F8EF7, #2DD4BF); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 700; color: white; cursor: pointer; border: 2px solid rgba(79,142,247,0.3); transition: border-color 0.15s; flex-shrink: 0; }
-  .nb-avatar:hover { border-color: #4F8EF7; }
-  .nb-dropdown { position: absolute; top: calc(100% + 10px); right: 0; background: #0C1222; border: 1px solid #1C2A45; border-radius: 12px; padding: 6px; min-width: 200px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 600; }
-  .nb-dd-header { padding: 8px 10px 10px; border-bottom: 1px solid #1C2A45; margin-bottom: 4px; }
+  .nb-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #4F8EF7, #2DD4BF); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 700; color: white; cursor: pointer; border: 2px solid rgba(79,142,247,0.3); transition: border-color 0.15s, transform 0.15s; flex-shrink: 0; }
+  .nb-avatar:hover { border-color: #4F8EF7; transform: scale(1.04); }
+  .nb-dropdown { position: absolute; top: calc(100% + 10px); right: 0; background: #0C1222; border: 1px solid #1C2A45; border-radius: 14px; padding: 6px; min-width: 220px; box-shadow: 0 16px 40px rgba(0,0,0,0.55); z-index: 600; transform-origin: top right; }
+  .nb-dd-header { padding: 10px 10px 12px; border-bottom: 1px solid #1C2A45; margin-bottom: 4px; }
   .nb-dd-name { font-size: 0.85rem; font-weight: 600; color: #E2E8F0; display: flex; align-items: center; gap: 6px; }
   .nb-dd-email { font-size: 0.68rem; color: #4A5568; font-family: 'DM Mono', monospace; margin-top: 3px; }
-  .nb-dd-points { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: #4F8EF7; background: rgba(79,142,247,0.1); padding: 2px 8px; border-radius: 4px; margin-top: 4px; display: inline-block; }
-  .nb-dd-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; cursor: pointer; transition: background 0.15s; font-size: 0.82rem; color: #94A3B8; width: 100%; background: none; border: none; font-family: 'Outfit', sans-serif; text-align: left; }
+  .nb-dd-points { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: #4F8EF7; background: rgba(79,142,247,0.1); padding: 2px 8px; border-radius: 4px; margin-top: 6px; display: inline-block; }
+  .nb-dd-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 0.82rem; color: #94A3B8; width: 100%; background: none; border: none; font-family: 'Outfit', sans-serif; text-align: left; }
+  .nb-dd-item svg { flex-shrink: 0; opacity: 0.8; }
   .nb-dd-item:hover { background: rgba(255,255,255,0.05); color: #E2E8F0; }
   .nb-dd-item.admin { color: #F87171; }
   .nb-dd-item.admin:hover { background: rgba(248,113,113,0.08); }
@@ -63,8 +80,8 @@ const css = `
   .nb-bell-wrap { position: relative; }
   .nb-bell { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: none; border: none; cursor: pointer; color: #64748B; transition: all 0.15s; flex-shrink: 0; }
   .nb-bell:hover { background: rgba(255,255,255,0.05); color: #E2E8F0; }
-  .nb-bell-badge { position: absolute; top: 2px; right: 2px; min-width: 15px; height: 15px; border-radius: 8px; background: #F87171; color: #fff; font-size: 0.58rem; font-weight: 700; font-family: 'DM Mono', monospace; display: flex; align-items: center; justify-content: center; padding: 0 3px; pointer-events: none; border: 2px solid rgba(2,4,10,0.94); }
-  .nb-notifs-dd { position: absolute; top: calc(100% + 10px); right: -60px; background: #0C1222; border: 1px solid #1C2A45; border-radius: 12px; width: 320px; max-height: 420px; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 600; scrollbar-width: thin; scrollbar-color: #1C2A45 transparent; }
+  .nb-bell-badge { position: absolute; top: 2px; right: 2px; min-width: 15px; height: 15px; border-radius: 8px; background: #F87171; color: #fff; font-size: 0.58rem; font-weight: 700; font-family: 'DM Mono', monospace; display: flex; align-items: center; justify-content: center; padding: 0 3px; pointer-events: none; border: 2px solid #02040A; }
+  .nb-notifs-dd { position: absolute; top: calc(100% + 10px); right: -60px; background: #0C1222; border: 1px solid #1C2A45; border-radius: 14px; width: 320px; max-height: 420px; overflow-y: auto; box-shadow: 0 16px 40px rgba(0,0,0,0.55); z-index: 600; scrollbar-width: thin; scrollbar-color: #1C2A45 transparent; transform-origin: top right; }
   .nb-notifs-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #1C2A45; position: sticky; top: 0; background: #0C1222; }
   .nb-notifs-title { font-size: 0.85rem; font-weight: 700; color: #E2E8F0; }
   .nb-mark-read { font-size: 0.72rem; color: #4A5568; background: none; border: none; cursor: pointer; font-family: 'Outfit', sans-serif; transition: color 0.15s; }
@@ -85,44 +102,37 @@ const css = `
 
   /* ── HAMBURGER ── */
   .nb-burger {
-    display: none; background: none; border: none; cursor: pointer;
-    padding: 6px; border-radius: 7px; transition: background 0.15s; flex-shrink: 0;
+    display: none; align-items: center; justify-content: center; background: none; border: none; cursor: pointer;
+    width: 36px; height: 36px; border-radius: 8px; transition: background 0.15s; flex-shrink: 0; color: #94A3B8;
   }
-  .nb-burger:hover { background: rgba(255,255,255,0.05); }
-  .nb-burger-bar { display: block; width: 20px; height: 2px; background: #94A3B8; border-radius: 1px; transition: all 0.25s; }
-  .nb-burger-bar + .nb-burger-bar { margin-top: 4px; }
-  .nb-burger.open .nb-burger-bar:nth-child(1) { transform: translateY(6px) rotate(45deg); }
-  .nb-burger.open .nb-burger-bar:nth-child(2) { opacity: 0; transform: scaleX(0); }
-  .nb-burger.open .nb-burger-bar:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+  .nb-burger:hover { background: rgba(255,255,255,0.05); color: #E2E8F0; }
 
   /* ── MOBILE MENU DRAWER ── */
   .nb-drawer {
-    display: none; position: fixed; top: 58px; left: 0; right: 0; bottom: 0; z-index: 490;
+    position: fixed; top: 58px; left: 0; right: 0; bottom: 0; z-index: 490;
     background: rgba(2,4,10,0.98); backdrop-filter: blur(24px);
-    flex-direction: column; padding: 1.25rem;
+    display: flex; flex-direction: column; padding: 1.25rem;
     border-top: 1px solid #1C2A45; overflow-y: auto;
   }
-  .nb-drawer.open { display: flex; }
   .nb-drawer-link {
-    display: flex; align-items: center; padding: 12px 14px; border-radius: 10px;
-    font-size: 0.92rem; color: #94A3B8; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; padding: 13px 14px; border-radius: 10px;
+    font-size: 0.94rem; color: #94A3B8; cursor: pointer; transition: all 0.15s;
     background: none; border: none; font-family: 'Outfit', sans-serif; text-align: left; width: 100%;
   }
-  .nb-drawer-link:hover { color: #E2E8F0; background: rgba(255,255,255,0.04); }
-  .nb-drawer-link.active { color: #E2E8F0; background: rgba(255,255,255,0.06); font-weight: 600; }
+  .nb-drawer-link:active { transform: scale(0.98); }
+  .nb-drawer-link.active { color: #E2E8F0; background: rgba(79,142,247,0.08); font-weight: 600; }
   .nb-drawer-sep { height: 1px; background: #1C2A45; margin: 8px 0; }
   .nb-drawer-auth { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-  .nb-drawer-btn-full { width: 100%; padding: 11px; border-radius: 9px; font-size: 0.88rem; font-weight: 600; cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.15s; }
+  .nb-drawer-btn-full { width: 100%; padding: 12px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.15s; }
 
   /* ── RESPONSIVE ── */
   @media(max-width: 768px) {
     .navbar { padding: 0 1rem; display: flex; justify-content: space-between; align-items: center; }
-    .nb-divider { display: none; }
     .nb-links { display: none; }
     .nb-upload-btn { display: none; }
     .nb-ghost { display: none; }
     .nb-accent { display: none; }
-    .nb-burger { display: block; }
+    .nb-burger { display: flex; }
     .nb-left { flex: 0; }
     .nb-right { flex: 0; }
   }
@@ -171,6 +181,12 @@ export default function Navbar({ activePage = '' }) {
     setMenuOpen(false)
   }, [location.pathname])
 
+  // Lock body scroll while mobile drawer is open
+  useEffect(() => {
+    document.body.style.overflow = menuOpen ? 'hidden' : ''
+    return () => { document.body.style.overflow = '' }
+  }, [menuOpen])
+
   const loadNotifs = async (uid) => {
     const { data } = await supabase.from('notifications')
       .select('*, actor:user_profiles!actor_id(name)')
@@ -212,7 +228,7 @@ export default function Navbar({ activePage = '' }) {
     return () => document.removeEventListener('mousedown', handler)
   }, [menuOpen])
 
-  // Click-outside for notif dropdown
+  // Close notif dropdown on outside click
   useEffect(() => {
     if (!showNotifs) return
     const handler = (e) => {
@@ -259,6 +275,8 @@ export default function Navbar({ activePage = '' }) {
   }
   const navigate_ = (path) => { handleNav(path); setMenuOpen(false) }
 
+  const unreadCount = notifs.filter(n => !n.read).length
+
   const displayNotifs = (() => {
     const result = []
     const msgMap = new Map()
@@ -295,38 +313,47 @@ export default function Navbar({ activePage = '' }) {
         {/* col 1 — logo */}
         <div className="nb-left">
           <div className="nb-logo" onClick={() => navigate('/')}>
+            <span className="nb-logo-mark">9z</span>
             <span className="nb-logo-text">9raw<b>Zid</b>9ra</span>
           </div>
         </div>
 
         {/* col 2 — centered nav links */}
         <div className="nb-links">
-          {NAV_LINKS.map(l => (
-            <button key={l.k} className={`nb-link ${page === (l.k || 'home') ? 'active' : ''}`} onClick={() => handleNav(l.path)}>
-              {l.label}
-            </button>
-          ))}
+          {NAV_LINKS.map(l => {
+            const isActive = page === (l.k || 'home')
+            return (
+              <button key={l.k} className={`nb-link ${isActive ? 'active' : ''}`} onClick={() => handleNav(l.path)}>
+                {isActive && <motion.span layoutId="nb-active-pill" className="nb-link-pill" transition={{ type: 'spring', stiffness: 500, damping: 35 }} />}
+                <span style={{ position:'relative', zIndex:1 }}>{l.label}</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* col 3 — auth / avatar */}
         <div className="nb-right">
           {user ? (
             <div className="nb-user">
-              <button className="nb-upload-btn" onClick={() => navigate('/upload')}>+ Uploader</button>
+              <button className="nb-upload-btn" onClick={() => navigate('/upload')}><FiUpload size={14} /> Uploader</button>
 
               {/* Bell */}
               <div className="nb-bell-wrap" ref={notifRef}>
-                <button className="nb-bell" onClick={() => setShowNotifs(v => !v)}>
-                  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                    <path d="M13.73 21a2 2 0 01-3.46 0"/>
-                  </svg>
-                  {notifs.filter(n => !n.read).length > 0 && (
-                    <span className="nb-bell-badge">{notifs.filter(n => !n.read).length}</span>
+                <button className="nb-bell" onClick={() => setShowNotifs(v => !v)} aria-label="Notifications">
+                  <FiBell size={18} />
+                  {unreadCount > 0 && (
+                    <motion.span className="nb-bell-badge" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 20 }}>{unreadCount}</motion.span>
                   )}
                 </button>
-                {showNotifs && (
-                  <div className="nb-notifs-dd">
+                <AnimatePresence>
+                  {showNotifs && (
+                    <motion.div
+                      className="nb-notifs-dd"
+                      initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                      transition={{ duration: 0.15, ease: 'easeOut' }}
+                    >
                     <div className="nb-notifs-head">
                       <span className="nb-notifs-title">Notifications</span>
                       {notifs.some(n => !n.read) && (
@@ -395,41 +422,50 @@ export default function Navbar({ activePage = '' }) {
                         </div>
                       )
                     })}
-                  </div>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <div className="nb-avatar-wrap" ref={dropdownRef}>
                 <div className="nb-avatar" onClick={() => setShowDropdown(d => !d)}>{initials}</div>
-                {showDropdown && (
-                  <div className="nb-dropdown">
-                    <div className="nb-dd-header">
-                      <div className="nb-dd-name">
-                        {profile?.name || 'Étudiant'}
-                        {profile?.is_admin && <span className="nb-admin-tag">ADMIN</span>}
-                        {profile?.is_fondateur && (
-                          <span style={{ display:'inline-flex', alignItems:'center', background:'#FBD34D', color:'#02040A', borderRadius:5, padding:'1px 7px', fontFamily:'DM Mono,monospace', fontSize:'0.58rem', fontWeight:700, marginLeft:4 }}>
-                            🏆 Fondateur
-                          </span>
-                        )}
+                <AnimatePresence>
+                  {showDropdown && (
+                    <motion.div
+                      className="nb-dropdown"
+                      initial={{ opacity: 0, scale: 0.95, y: -6 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -6 }}
+                      transition={{ duration: 0.15, ease: 'easeOut' }}
+                    >
+                      <div className="nb-dd-header">
+                        <div className="nb-dd-name">
+                          {profile?.name || 'Étudiant'}
+                          {profile?.is_admin && <span className="nb-admin-tag">ADMIN</span>}
+                          {profile?.is_fondateur && (
+                            <span style={{ display:'inline-flex', alignItems:'center', background:'#FBD34D', color:'#02040A', borderRadius:5, padding:'1px 7px', fontFamily:'DM Mono,monospace', fontSize:'0.58rem', fontWeight:700, marginLeft:4 }}>
+                              <FiAward size={9} style={{marginRight:3}}/> Fondateur
+                            </span>
+                          )}
+                        </div>
+                        <div className="nb-dd-email">{user.email}</div>
+                        <div className="nb-dd-points">{profile?.points || 0} points · {profile?.uploads_count || 0} uploads</div>
                       </div>
-                      <div className="nb-dd-email">{user.email}</div>
-                      <div className="nb-dd-points">{profile?.points || 0} points · {profile?.uploads_count || 0} uploads</div>
-                    </div>
-                    <button className="nb-dd-item" onClick={() => { navigate('/profile'); setShowDropdown(false) }}>Mon profil</button>
-                    <button className="nb-dd-item" onClick={() => { navigate('/my-modules'); setShowDropdown(false) }}>Mes modules</button>
-                    {profile?.is_admin && (
-                      <button className="nb-dd-item admin" onClick={() => { navigate('/admin'); setShowDropdown(false) }}>Panneau Admin</button>
-                    )}
-                    {profile?.is_moderator && !profile?.is_admin && (
-                      <button className="nb-dd-item" style={{color:'var(--teal2)'}} onClick={() => { navigate('/moderator'); setShowDropdown(false) }}>Panneau Modérateur</button>
-                    )}
-                    <div className="nb-dd-sep" />
-                    <a className="nb-dd-item" href="https://paypal.me/saadga2003" target="_blank" rel="noopener noreferrer" onClick={() => setShowDropdown(false)} style={{ color:'#FBD34D', textDecoration:'none' }}>☕ Soutenir 9rawZid9ra</a>
-                    <div className="nb-dd-sep" />
-                    <button className="nb-dd-item danger" onClick={handleLogout}>Se déconnecter</button>
-                  </div>
-                )}
+                      <button className="nb-dd-item" onClick={() => { navigate('/profile'); setShowDropdown(false) }}><FiUser size={15}/> Mon profil</button>
+                      <button className="nb-dd-item" onClick={() => { navigate('/my-modules'); setShowDropdown(false) }}><FiBookmark size={15}/> Mes modules</button>
+                      {profile?.is_admin && (
+                        <button className="nb-dd-item admin" onClick={() => { navigate('/admin'); setShowDropdown(false) }}><FiShield size={15}/> Panneau Admin</button>
+                      )}
+                      {profile?.is_moderator && !profile?.is_admin && (
+                        <button className="nb-dd-item" style={{color:'var(--teal2)'}} onClick={() => { navigate('/moderator'); setShowDropdown(false) }}><FiShield size={15}/> Panneau Modérateur</button>
+                      )}
+                      <div className="nb-dd-sep" />
+                      <a className="nb-dd-item" href="https://paypal.me/saadga2003" target="_blank" rel="noopener noreferrer" onClick={() => setShowDropdown(false)} style={{ color:'#FBD34D', textDecoration:'none' }}><FiHeart size={15}/> Soutenir 9rawZid9ra</a>
+                      <div className="nb-dd-sep" />
+                      <button className="nb-dd-item danger" onClick={handleLogout}><FiLogOut size={15}/> Se déconnecter</button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           ) : (
@@ -440,54 +476,62 @@ export default function Navbar({ activePage = '' }) {
           )}
 
           {/* Hamburger — mobile only */}
-          <button className={`nb-burger ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(m => !m)} aria-label="Menu">
-            <span className="nb-burger-bar"/>
-            <span className="nb-burger-bar"/>
-            <span className="nb-burger-bar"/>
+          <button className="nb-burger" onClick={() => setMenuOpen(m => !m)} aria-label="Menu">
+            {menuOpen ? <FiX size={20}/> : <FiMenu size={20}/>}
           </button>
         </div>
       </nav>
 
       {/* Mobile drawer */}
-      <div className={`nb-drawer ${menuOpen ? 'open' : ''}`}>
-        {NAV_LINKS.map(l => (
-          <button key={l.k} className={`nb-drawer-link ${page === (l.k || 'home') ? 'active' : ''}`} onClick={() => navigate_(l.path)}>
-            {l.label}
-          </button>
-        ))}
+      <AnimatePresence>
+        {menuOpen && (
+          <motion.div
+            className="nb-drawer"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.18, ease: 'easeOut' }}
+          >
+            {NAV_LINKS.map(l => (
+              <button key={l.k} className={`nb-drawer-link ${page === (l.k || 'home') ? 'active' : ''}`} onClick={() => navigate_(l.path)}>
+                {l.label}
+              </button>
+            ))}
 
-        <div className="nb-drawer-sep"/>
-
-        {user ? (
-          <>
-            <div style={{ padding:'10px 14px', display:'flex', alignItems:'center', gap:12 }}>
-              <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#4F8EF7,#2DD4BF)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.72rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
-                {initials}
-              </div>
-              <div>
-                <div style={{ fontSize:'0.88rem', fontWeight:600, color:'#E2E8F0' }}>{profile?.name || 'Étudiant'}</div>
-                <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568' }}>{profile?.points || 0} pts</div>
-              </div>
-            </div>
-            <button className="nb-drawer-link" onClick={() => navigate_('/profile')}>Mon profil</button>
-            <button className="nb-drawer-link" onClick={() => navigate_('/my-modules')}>Mes modules</button>
-            <button className="nb-drawer-link" onClick={() => navigate_('/upload')} style={{ color:'#7BB3FF' }}>+ Uploader un doc</button>
-            {profile?.is_admin && (
-              <button className="nb-drawer-link" onClick={() => navigate_('/admin')} style={{ color:'#F87171' }}>Panneau Admin</button>
-            )}
-            {profile?.is_moderator && !profile?.is_admin && (
-              <button className="nb-drawer-link" onClick={() => navigate_('/moderator')} style={{ color:'var(--teal2,#5EEAD4)' }}>Panneau Modérateur</button>
-            )}
             <div className="nb-drawer-sep"/>
-            <button className="nb-drawer-link" onClick={handleLogout} style={{ color:'#F87171' }}>Se déconnecter</button>
-          </>
-        ) : (
-          <div className="nb-drawer-auth">
-            <button className="nb-drawer-btn-full" style={{ background:'none', border:'1px solid #1C2A45', color:'#94A3B8' }} onClick={() => navigate_('/login')}>Connexion</button>
-            <button className="nb-drawer-btn-full" style={{ background:'#4F8EF7', border:'none', color:'#fff' }} onClick={() => navigate_('/register')}>S'inscrire</button>
-          </div>
+
+            {user ? (
+              <>
+                <div style={{ padding:'10px 14px', display:'flex', alignItems:'center', gap:12 }}>
+                  <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#4F8EF7,#2DD4BF)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.72rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
+                    {initials}
+                  </div>
+                  <div>
+                    <div style={{ fontSize:'0.88rem', fontWeight:600, color:'#E2E8F0' }}>{profile?.name || 'Étudiant'}</div>
+                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568' }}>{profile?.points || 0} pts</div>
+                  </div>
+                </div>
+                <button className="nb-drawer-link" onClick={() => navigate_('/profile')}><FiUser size={16} style={{marginRight:10}}/> Mon profil</button>
+                <button className="nb-drawer-link" onClick={() => navigate_('/my-modules')}><FiBookmark size={16} style={{marginRight:10}}/> Mes modules</button>
+                <button className="nb-drawer-link" onClick={() => navigate_('/upload')} style={{ color:'#7BB3FF' }}><FiUpload size={16} style={{marginRight:10}}/> Uploader un doc</button>
+                {profile?.is_admin && (
+                  <button className="nb-drawer-link" onClick={() => navigate_('/admin')} style={{ color:'#F87171' }}><FiShield size={16} style={{marginRight:10}}/> Panneau Admin</button>
+                )}
+                {profile?.is_moderator && !profile?.is_admin && (
+                  <button className="nb-drawer-link" onClick={() => navigate_('/moderator')} style={{ color:'var(--teal2,#5EEAD4)' }}><FiShield size={16} style={{marginRight:10}}/> Panneau Modérateur</button>
+                )}
+                <div className="nb-drawer-sep"/>
+                <button className="nb-drawer-link" onClick={handleLogout} style={{ color:'#F87171' }}><FiLogOut size={16} style={{marginRight:10}}/> Se déconnecter</button>
+              </>
+            ) : (
+              <div className="nb-drawer-auth">
+                <button className="nb-drawer-btn-full" style={{ background:'none', border:'1px solid #1C2A45', color:'#94A3B8' }} onClick={() => navigate_('/login')}>Connexion</button>
+                <button className="nb-drawer-btn-full" style={{ background:'#4F8EF7', border:'none', color:'#fff' }} onClick={() => navigate_('/register')}>S'inscrire</button>
+              </div>
+            )}
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </>
   )
 }
