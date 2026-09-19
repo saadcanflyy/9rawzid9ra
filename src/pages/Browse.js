@@ -1,8 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { FiArrowRight, FiSliders } from 'react-icons/fi'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
+
+const cardReveal = {
+  hidden: { opacity: 0, y: 10 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } },
+}
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
@@ -126,7 +133,8 @@ const css = `
   .empty-title { font-size:1rem; font-weight:600; color:var(--text2); margin-bottom:6px; }
   .empty-sub { font-size:0.8rem; color:var(--text3); }
 
-  .skel { background:var(--surface); height:130px; animation:pulse 1.8s ease-in-out infinite; }
+  .skel { background:linear-gradient(90deg,#070C18,#0C1222,#070C18); background-size:200% 100%; height:130px; animation:shimmerB 1.5s infinite; }
+  @keyframes shimmerB { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   @keyframes pulse { 0%,100%{opacity:0.35} 50%{opacity:0.7} }
 
   @media(max-width:768px) {
@@ -966,8 +974,17 @@ export default function Browse() {
                     )}
                   </div>
                 )
-              ) : displayed.map(m => (
-                <div key={m.id} className="mod-card" onClick={() => navigate(`/module/${m.slug || m.id}`)}>
+              ) : displayed.map((m, i) => (
+                <motion.div
+                  key={m.id}
+                  className="mod-card"
+                  initial="hidden"
+                  animate="show"
+                  variants={cardReveal}
+                  transition={{ delay: Math.min(i, 12) * 0.02 }}
+                  whileHover={{ y: -2 }}
+                  onClick={() => navigate(`/module/${m.slug || m.id}`)}
+                >
                   <div className="mod-top">
                     <span className="mod-sem">{m.semester}</span>
                     <span className={`mod-type-tag ${m.type==='projet'?'tag-projet':'tag-cours'}`}>
@@ -982,9 +999,9 @@ export default function Browse() {
                   </div>
                   <div className="mod-footer">
                     <span className="mod-docs">{m.filieres?.faculties?.universities?.name || ''}</span>
-                    <span className="mod-arr">→</span>
+                    <span className="mod-arr"><FiArrowRight size={14} /></span>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -995,15 +1012,15 @@ export default function Browse() {
 
       {/* Mobile floating filter button */}
       <button className="mob-filter-btn" onClick={() => setShowDrawer(true)}>
-        ⚙ Filtres
+        <FiSliders size={14} style={{marginRight:6, verticalAlign:'-2px'}}/> Filtres
         {activeFilterCount > 0 && <span className="mob-badge">{activeFilterCount}</span>}
       </button>
 
       {/* Mobile filter drawer */}
       {showDrawer && (
         <>
-          <div className="mob-overlay" onClick={() => setShowDrawer(false)} />
-          <div className="mob-drawer">
+          <motion.div className="mob-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDrawer(false)} />
+          <motion.div className="mob-drawer" initial={{ y: '100%' }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 350, damping: 38 }}>
             <div className="mob-handle" />
             <div className="mob-drawer-head">
               <span className="mob-drawer-title">// Filtres</span>
@@ -1214,7 +1231,7 @@ export default function Browse() {
             }}>
               Appliquer{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
             </button>
-          </div>
+          </motion.div>
         </>
       )}
     </div>
