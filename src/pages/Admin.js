@@ -455,7 +455,18 @@ export default function Admin() {
 
   // Actions
   const verifyDoc = async (id) => {
+    // Points/uploads_count were withheld at upload time for held-for-review
+    // documents — award them now that a human has cleared it.
+    const { data: doc } = await supabase.from('documents').select('is_flagged, uploader_id').eq('id', id).single()
     await supabase.from('documents').update({ is_verified: true, is_flagged: false }).eq('id', id)
+    if (doc?.is_flagged && doc.uploader_id) {
+      const { data: prof } = await supabase.from('user_profiles').select('points, uploads_count').eq('id', doc.uploader_id).single()
+      await supabase.from('user_profiles').update({
+        points: (prof?.points || 0) + 50,
+        uploads_count: (prof?.uploads_count || 0) + 1,
+      }).eq('id', doc.uploader_id)
+      await supabase.from('points_log').insert({ user_id: doc.uploader_id, points: 50, reason: 'Upload approuvé après modération', document_id: id })
+    }
     setPendingDocs(d => d.filter(x => x.id !== id))
   }
 
@@ -1097,6 +1108,11 @@ export default function Admin() {
                             {d.report_count > 0 && (
                               <div style={{ display:'inline-flex', alignItems:'center', gap:4, marginTop:4, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:5, padding:'2px 8px', fontSize:'0.7rem', color:'#F87171', fontFamily:'DM Mono,monospace' }}>
                                 🚩 {d.report_count} signalement{d.report_count>1?'s':''}
+                              </div>
+                            )}
+                            {d.is_flagged && d.flag_reason && (
+                              <div style={{ display:'inline-flex', alignItems:'center', gap:4, marginTop:4, background:'rgba(251,211,77,0.1)', border:'1px solid rgba(251,211,77,0.3)', borderRadius:5, padding:'2px 8px', fontSize:'0.68rem', color:'#FBD34D', fontFamily:'DM Mono,monospace' }}>
+                                🔍 {d.flag_reason}
                               </div>
                             )}
                           </td>

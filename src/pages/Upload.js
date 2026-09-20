@@ -5,6 +5,17 @@ import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import ConfirmModal from '../components/ConfirmModal'
 
+// pdfjs-dist + pdf-lib are ~300KB gzipped combined — loaded on demand (dynamic
+// import) so every other page's bundle stays untouched. Only Upload pays for it.
+let _pdfjsLib = null
+const getPdfjs = async () => {
+  if (_pdfjsLib) return _pdfjsLib
+  const mod = await import('pdfjs-dist')
+  mod.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdfjs/pdf.worker.min.mjs`
+  _pdfjsLib = mod
+  return mod
+}
+
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
@@ -221,6 +232,78 @@ const YEARS = ['2027/2028','2026/2027','2025/2026','2024/2025','2023/2024','2022
 const SEMESTERS = ['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10']
 const fmt = (b) => b < 1024*1024 ? (b/1024).toFixed(1)+' KB' : (b/(1024*1024)).toFixed(1)+' MB'
 const stripHtml = (str) => str.replace(/<[^>]*>/g, '').trim()
+const fileKey = f => `${f.name}_${f.size}`
+
+// Free, client-side content check — extracts text from the PDF (no OCR on
+// images, no server call) and scans for a moderation-keyword blocklist.
+// Best-effort: any parsing error fails OPEN (doesn't block the upload) since
+// this is meant as a first pass, not a guarantee.
+const FLAG_TERMS = [
+  'pornograph', 'nsfw', 'nude', 'naked', 'xxx', 'escort',
+  'putain', 'pute', 'salope', 'enculé', 'enculer', 'connasse',
+  'nigger', 'nigga', 'faggot', 'chink',
+  'kahba', 'zebi', 'zob',
+  'fabriquer une bombe', 'fabriquer une arme', 'comment tuer',
+]
+const scanPdfForFlags = async (file) => {
+  try {
+    const pdfjsLib = await getPdfjs()
+    const buf = await file.arrayBuffer()
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise
+    const maxPages = Math.min(pdf.numPages, 15)
+    let text = ''
+    for (let i = 1; i <= maxPages && text.length < 50000; i++) {
+      const page = await pdf.getPage(i)
+      const content = await page.getTextContent()
+      text += ' ' + content.items.map(it => it.str).join(' ')
+    }
+    const lower = text.toLowerCase()
+    const hit = FLAG_TERMS.find(t => lower.includes(t))
+    return hit ? { flagged: true, reason: `Analyse automatique : terme signalé détecté dans le document.` } : { flagged: false, reason: null }
+  } catch (e) {
+    console.error('scanPdfForFlags:', e)
+    return { flagged: false, reason: null }
+  }
+}
+
+// Free, client-side PDF compression — rasterizes pages via pdf.js and rebuilds
+// a lighter PDF from recompressed JPEGs (same idea as the existing image
+// compression below, extended to PDFs). Skipped for small/short files, and
+// only kept if it actually comes out smaller — never makes a file bigger.
+const compressPdf = async (file) => {
+  if (file.size < 2 * 1024 * 1024) return file
+  try {
+    const pdfjsLib = await getPdfjs()
+    const { PDFDocument } = await import('pdf-lib')
+    const buf = await file.arrayBuffer()
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise
+    if (pdf.numPages > 40) return file // too many pages to rasterize client-side safely
+    const scale = file.size > 20 * 1024 * 1024 ? 1.1 : 1.4
+    const quality = file.size > 20 * 1024 * 1024 ? 0.62 : 0.72
+    const newPdf = await PDFDocument.create()
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i)
+      const viewport = page.getViewport({ scale })
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.round(viewport.width)
+      canvas.height = Math.round(viewport.height)
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
+      const jpegDataUrl = canvas.toDataURL('image/jpeg', quality)
+      const jpegBytes = await (await fetch(jpegDataUrl)).arrayBuffer()
+      const jpgImage = await newPdf.embedJpg(jpegBytes)
+      const newPage = newPdf.addPage([canvas.width, canvas.height])
+      newPage.drawImage(jpgImage, { x: 0, y: 0, width: canvas.width, height: canvas.height })
+    }
+    const newBytes = await newPdf.save()
+    if (newBytes.length < file.size * 0.9) {
+      return new File([newBytes], file.name, { type: 'application/pdf' })
+    }
+    return file
+  } catch (e) {
+    console.error('compressPdf failed, uploading original:', e)
+    return file
+  }
+}
 
 const ALLOWED_TYPES = new Set([
   'application/pdf',
@@ -254,6 +337,8 @@ export default function Upload() {
   const prefetchedForUniRef = useRef(null)
   const isSubmittingRef     = useRef(false)
   const isSubmittingFacRef  = useRef(false)
+  const fileFlagsRef        = useRef({})
+  const pendingScansRef     = useRef([])
 
   const [user,     setUser]     = useState(null)
   const [authLoad, setAuthLoad] = useState(true)
@@ -266,6 +351,7 @@ export default function Upload() {
   const [progress, setProgress] = useState(0)
   const [modal,    setModal]    = useState(null)
   const [success,  setSuccess]  = useState(false)
+  const [heldForReview, setHeldForReview] = useState(false)
   const [uploadedModuleId, setUploadedModuleId] = useState(null)
 
   // Cascading selects
@@ -471,6 +557,14 @@ export default function Upload() {
     if (tooLarge.length) { setError(`Fichier trop grand (max 50MB): ${tooLarge[0].name}`); return }
 
     if (files.length === 0 && valid.length > 0) detectFromFilename(valid[0].name)
+
+    // Kick off the free content scan for any PDF as soon as it's added —
+    // resolves in the background, awaited later at submit time.
+    valid.filter(f => f.type === 'application/pdf').forEach(f => {
+      const key = fileKey(f)
+      const p = scanPdfForFlags(f).then(res => { fileFlagsRef.current[key] = res })
+      pendingScansRef.current.push(p)
+    })
 
     const combined = [...files, ...valid].slice(0, 20)
     setFiles(combined)
@@ -721,9 +815,11 @@ export default function Upload() {
     reader.readAsDataURL(file)
   })
 
-  // For non-image docs: upload as-is (PDF/DOCX/PPTX are already internally compressed)
+  // Images get canvas-based recompression; PDFs get the rasterize+rebuild
+  // pipeline above; everything else (DOCX/PPTX/XLSX/ipynb) uploads as-is.
   const compressFile = (file) => {
     if (file.type.startsWith('image/')) return compressImage(file)
+    if (file.type === 'application/pdf') return compressPdf(file)
     return Promise.resolve(file)
   }
 
@@ -804,6 +900,12 @@ export default function Upload() {
       const firstExt = getExt(files[0])
       const allSameExt = files.every(f => getExt(f) === firstExt)
       const fileType = isPdf ? 'pdf' : isImages ? 'images' : allSameExt ? firstExt : 'mixed'
+
+      // Wait for any still-running content scans, then check every file in this upload
+      await Promise.all(pendingScansRef.current)
+      const flaggedResult = files.map(f => fileFlagsRef.current[fileKey(f)]).find(r => r?.flagged)
+      const isFlagged = !!flaggedResult
+
       const { data: docData, error: dbErr } = await supabase.from('documents').insert({
         module_id:     moduleId,
         uploader_id:   user.id,
@@ -815,26 +917,33 @@ export default function Upload() {
         files:         uploadedFiles.map(f => f.url),
         file_names:    uploadedFiles.map(f => f.name),
         pages_count:   files.length,
-        is_flagged:    false,
-        is_verified:   true,
+        is_flagged:    isFlagged,
+        flag_reason:   flaggedResult?.reason || null,
+        is_verified:   !isFlagged,
         downloads:     0,
         likes:         0,
       }).select('id').single()
       if (dbErr) throw new Error(dbErr.message)
+      setHeldForReview(isFlagged)
 
-      // Award 50 points and increment uploads_count
-      const { data: prof } = await supabase.from('user_profiles').select('points, uploads_count').eq('id', user.id).single()
-      const newPoints = (prof?.points || 0) + 50
-      await Promise.all([
-        supabase.from('user_profiles').update({
-          points:        newPoints,
-          uploads_count: (prof?.uploads_count || 0) + 1,
-        }).eq('id', user.id),
-        supabase.from('points_log').insert({
-          user_id: user.id, points: 50, reason: 'Upload de document', document_id: docData?.id,
-        }),
-      ])
-      setEarnedPoints(newPoints)
+      // Award 50 points and increment uploads_count — withheld until a moderator
+      // clears a held-for-review upload (awarded then, see Admin/ModeratorPanel verifyDoc)
+      if (!isFlagged) {
+        const { data: prof } = await supabase.from('user_profiles').select('points, uploads_count').eq('id', user.id).single()
+        const newPoints = (prof?.points || 0) + 50
+        await Promise.all([
+          supabase.from('user_profiles').update({
+            points:        newPoints,
+            uploads_count: (prof?.uploads_count || 0) + 1,
+          }).eq('id', user.id),
+          supabase.from('points_log').insert({
+            user_id: user.id, points: 50, reason: 'Upload de document', document_id: docData?.id,
+          }),
+        ])
+        setEarnedPoints(newPoints)
+      } else {
+        setEarnedPoints(profile?.points || 0)
+      }
 
       setProgress(100)
       setUploadedModuleId(moduleId)
@@ -849,8 +958,9 @@ export default function Upload() {
     setStep(1); setSuccess(false); setFiles([]); setPreviews([])
     setSelMod(null); setDocType(''); setYear(''); setDocNumber('')
     setProfessor(''); setProfSuggestions([]); setShowProfDD(false)
-    setProgress(0); setEarnedPoints(null)
+    setProgress(0); setEarnedPoints(null); setHeldForReview(false)
     setModSearch(''); setError('')
+    fileFlagsRef.current = {}; pendingScansRef.current = []; setDetected([])
     setShowSchoolForm(false); setSchoolSent(false); setSchoolCase('')
     setSchAName(''); setSchACity(''); setSchAType('public')
     setSchBParentUni(''); setSchBFaculties([{ name: '', type: 'Faculté' }])
@@ -882,11 +992,14 @@ export default function Upload() {
         {success ? (
           <div className="card">
             <div className="success-wrap">
-              <div className="success-icon">✓</div>
-              <h2 className="success-title">Document uploadé !</h2>
+              <div className="success-icon">{heldForReview ? '🕓' : '✓'}</div>
+              <h2 className="success-title">{heldForReview ? 'Document reçu — en cours de vérification' : 'Document uploadé !'}</h2>
               <p className="success-desc">
-                Ton document est maintenant visible sur la plateforme.<br />
-                <span style={{color:'var(--teal2)',fontWeight:600}}>+50 points</span> ajoutés à ton compte !
+                {heldForReview ? (
+                  <>Notre analyse automatique a signalé ce document pour vérification manuelle. Un modérateur va l'examiner avant publication — tu seras notifié, et tes <b>+50 points</b> seront crédités à l'approbation.</>
+                ) : (
+                  <>Ton document est maintenant visible sur la plateforme.<br /><span style={{color:'var(--teal2)',fontWeight:600}}>+50 points</span> ajoutés à ton compte !</>
+                )}
               </p>
 
               {/* Rank progress bar */}

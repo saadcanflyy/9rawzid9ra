@@ -343,7 +343,20 @@ export default function ModeratorPanel() {
   const getLevel = (pts) => pts >= 600 ? {l:'Légende',c:'rank-legende'} : pts >= 300 ? {l:'Senpai',c:'rank-senpai'} : pts >= 100 ? {l:'Contributeur',c:'rank-contrib'} : {l:'Étudiant',c:'rank-etudiant'}
 
   const verifyDoc = async (id) => {
-    await supabase.from('documents').update({ is_flagged: false, report_count: 0 }).eq('id', id)
+    // Only award points if this was a held-for-review upload that never got
+    // published/awarded (is_verified false) — a previously-published doc that
+    // got reported later already earned its points at upload time.
+    const { data: doc } = await supabase.from('documents').select('is_flagged, is_verified, uploader_id').eq('id', id).single()
+    const wasHeldForReview = doc?.is_flagged && !doc?.is_verified
+    await supabase.from('documents').update({ is_flagged: false, is_verified: true, report_count: 0 }).eq('id', id)
+    if (wasHeldForReview && doc.uploader_id) {
+      const { data: prof } = await supabase.from('user_profiles').select('points, uploads_count').eq('id', doc.uploader_id).single()
+      await supabase.from('user_profiles').update({
+        points: (prof?.points || 0) + 50,
+        uploads_count: (prof?.uploads_count || 0) + 1,
+      }).eq('id', doc.uploader_id)
+      await supabase.from('points_log').insert({ user_id: doc.uploader_id, points: 50, reason: 'Upload approuvé après modération', document_id: id })
+    }
     setFlaggedDocs(d => d.filter(x => x.id !== id))
   }
 
@@ -572,9 +585,15 @@ export default function ModeratorPanel() {
                           </td>
                           <td className="table-mono">{d.uploader_name || 'Anonyme'}</td>
                           <td>
-                            <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.68rem',background:'rgba(248,113,113,0.1)',color:'var(--red)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:4,padding:'2px 8px'}}>
-                              🚩 {d.report_count}
-                            </span>
+                            {d.report_count > 0 ? (
+                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.68rem',background:'rgba(248,113,113,0.1)',color:'var(--red)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:4,padding:'2px 8px'}}>
+                                🚩 {d.report_count} signalement{d.report_count>1?'s':''}
+                              </span>
+                            ) : d.flag_reason ? (
+                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.65rem',background:'rgba(251,211,77,0.1)',color:'var(--yellow)',border:'1px solid rgba(251,211,77,0.2)',borderRadius:4,padding:'2px 8px',display:'inline-block',maxWidth:220}}>
+                                🔍 {d.flag_reason}
+                              </span>
+                            ) : null}
                           </td>
                           <td>
                             <div className="actions">

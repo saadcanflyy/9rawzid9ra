@@ -485,6 +485,7 @@ export default function ModulePage() {
         .from('documents')
         .select(docSelect)
         .eq('module_id', parseInt(id))
+        .eq('is_flagged', false)
         .order('created_at', { ascending: false })
       setDocs(d || [])
       docsRef.current = d || []
@@ -562,14 +563,24 @@ export default function ModulePage() {
     const channel = supabase
       .channel(`module-docs-${id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'documents' }, async payload => {
-        if (String(payload.new.module_id) !== String(id)) return
+        if (String(payload.new.module_id) !== String(id) || payload.new.is_flagged) return
         const { data } = await supabase
           .from('documents').select('*, user_profiles!uploader_id(name, is_fondateur)').eq('id', payload.new.id).single()
         if (data) setDocs(prev => prev.some(d => d.id === data.id) ? prev : [data, ...prev])
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'documents' }, payload => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'documents' }, async payload => {
         if (String(payload.new.module_id) !== String(id)) return
-        setDocs(prev => prev.map(d => d.id === payload.new.id ? { ...d, ...payload.new } : d))
+        if (payload.new.is_flagged) { setDocs(prev => prev.filter(d => d.id !== payload.new.id)); return }
+        setDocs(prev => {
+          if (prev.some(d => d.id === payload.new.id)) return prev.map(d => d.id === payload.new.id ? { ...d, ...payload.new } : d)
+          return prev // newly-unflagged doc not yet in list — fetched below
+        })
+        const alreadyPresent = docsRef.current.some(d => d.id === payload.new.id)
+        if (!alreadyPresent && !payload.new.is_flagged) {
+          const { data } = await supabase
+            .from('documents').select('*, user_profiles!uploader_id(name, is_fondateur)').eq('id', payload.new.id).single()
+          if (data) setDocs(prev => prev.some(d => d.id === data.id) ? prev : [data, ...prev])
+        }
       })
       .subscribe()
     return () => supabase.removeChannel(channel)
