@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { FiCheck } from 'react-icons/fi'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import ConfirmModal from '../components/ConfirmModal'
@@ -32,7 +33,29 @@ const css = `
 
   html,body { background:var(--bg); font-family:'Outfit',sans-serif; min-height:100vh; }
   .page { min-height:100vh; display:flex; flex-direction:column; }
-  .layout { max-width:860px; margin:0 auto; padding:2.5rem 2rem; width:100%; flex:1; }
+  .layout { max-width:1040px; margin:0 auto; padding:2.5rem 2rem; width:100%; flex:1; display:grid; grid-template-columns:1fr 280px; gap:2rem; align-items:start; }
+  .layout.no-sidebar { grid-template-columns:1fr; max-width:860px; }
+  .layout-main { min-width:0; }
+  .layout-side { display:flex; flex-direction:column; gap:1rem; position:sticky; top:1.5rem; }
+  @media(max-width:1000px) { .layout { grid-template-columns:1fr; max-width:860px; } .layout-side { position:static; } }
+  .side-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.1rem 1.25rem; }
+  .side-card-label { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:0.75rem; }
+  .reward-card { background:rgba(251,211,77,0.04); border-color:rgba(251,211,77,0.18); }
+  .reward-card .side-card-label { color:var(--yellow); }
+  .reward-pts { font-family:'DM Mono',monospace; font-size:1.3rem; font-weight:700; color:var(--yellow); margin-bottom:6px; }
+  .reward-sub { font-size:0.76rem; color:var(--text2); line-height:1.5; margin-bottom:0.75rem; }
+  .reward-sub b { color:var(--yellow); }
+  .reward-bar-wrap { height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:4px; }
+  .reward-bar { height:100%; background:linear-gradient(90deg,var(--yellow),#F59E0B); border-radius:3px; transition:width 0.4s ease; }
+  .reward-bar-label { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); }
+  .checklist-row { display:flex; align-items:center; gap:8px; font-size:0.78rem; color:var(--text2); padding:5px 0; }
+  .checklist-row svg { color:var(--green); flex-shrink:0; }
+  .recent-upload-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-top:1px solid var(--border); }
+  .recent-upload-row:first-of-type { border-top:none; }
+  .recent-upload-name { font-size:0.78rem; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .recent-upload-status { font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:600; padding:2px 7px; border-radius:4px; flex-shrink:0; }
+  .recent-upload-status.ok { background:rgba(74,222,128,0.1); color:var(--green); }
+  .recent-upload-status.pending { background:rgba(251,211,77,0.1); color:var(--yellow); }
   .page-tag { font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:0.75rem; }
   .page-title { font-size:1.75rem; font-weight:700; color:var(--white); letter-spacing:-0.5px; margin-bottom:0.5rem; }
   .page-desc { font-size:0.875rem; color:var(--text2); margin-bottom:2.5rem; line-height:1.6; }
@@ -95,6 +118,9 @@ const css = `
   .upload-zone-title { font-size:0.95rem; font-weight:600; color:var(--text2); margin-bottom:6px; }
   .upload-zone-sub { font-size:0.78rem; color:var(--text3); }
   .upload-zone-sub b { color:var(--accent2); }
+  .detected-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .detected-label { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--text3); }
+  .detected-chip { font-family:'DM Mono',monospace; font-size:0.65rem; font-weight:600; color:var(--teal2); background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); border-radius:4px; padding:2px 8px; }
   .file-list { display:flex; flex-direction:column; gap:8px; margin-top:1rem; }
   .file-item { display:flex; align-items:center; gap:12px; background:var(--s2); border:1px solid var(--border); border-radius:9px; padding:10px 12px; }
   .file-preview { width:40px; height:40px; border-radius:7px; object-fit:cover; flex-shrink:0; }
@@ -231,6 +257,9 @@ export default function Upload() {
 
   const [user,     setUser]     = useState(null)
   const [authLoad, setAuthLoad] = useState(true)
+  const [profile,  setProfile]  = useState(null)
+  const [recentUploads, setRecentUploads] = useState([])
+  const [detected, setDetected] = useState([])
   const [step,     setStep]     = useState(1)
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
@@ -325,6 +354,14 @@ export default function Upload() {
         } else {
           setUser(session.user)
           setAuthLoad(false)
+          supabase.from('user_profiles').select('points, uploads_count').eq('id', session.user.id).single()
+            .then(({ data }) => setProfile(data))
+          supabase.from('documents')
+            .select('id, doc_type, is_verified, created_at, modules(name)')
+            .eq('uploader_id', session.user.id)
+            .order('created_at', { ascending: false })
+            .limit(3)
+            .then(({ data }) => setRecentUploads(data || []))
         }
       })
       .catch(() => { clearTimeout(timeout); loginRedirect() })
@@ -388,6 +425,41 @@ export default function Upload() {
   }, [selMod])
 
   // File handling
+  // Real filename-based detection (no OCR/AI — just parsing the filename text)
+  // for the two fields that live on this step: document type and academic year.
+  const detectFromFilename = (filename) => {
+    const chips = []
+    const yearMatch = filename.match(/20\d{2}[/-]20\d{2}/) || filename.match(/20\d{2}/)
+    if (yearMatch) {
+      let y = yearMatch[0].replace('-', '/')
+      if (/^\d{4}$/.test(y)) y = `${y}/${parseInt(y, 10) + 1}`
+      if (YEARS.includes(y)) {
+        setYear(prev => prev || y)
+        chips.push({ label: y })
+      }
+    }
+    const TYPE_HINTS = [
+      [/CORRIG.{0,3}EXAM|EXAM.{0,3}CORRIG/i, 'corrige_examen', 'Corrigé Examen'],
+      [/CORRIG.{0,3}TD|TD.{0,3}CORRIG/i,     'corrige_td',     'Corrigé TD'],
+      [/CORRIG.{0,3}TP|TP.{0,3}CORRIG/i,     'corrige_tp',     'Corrigé TP'],
+      [/FINAL|EXAMEN|EXAM\b/i,               'examen',         'Examen Final'],
+      [/\bCC\b|CONTROLE.?CONTINU/i,          'cc',             'Contrôle Continu'],
+      [/QUIZ|INTERRO/i,                      'quiz',           'Quiz / Interro'],
+      [/PROJET/i,                            'projet_final',   'Projet Final'],
+      [/\bTD\b/i,                            'td',             'Travail Dirigé'],
+      [/\bTP\b/i,                            'tp',             'Travail Pratique'],
+      [/COURS|CHAPITRE/i,                    'cours',          'Cours'],
+    ]
+    for (const [re, key, label] of TYPE_HINTS) {
+      if (re.test(filename)) {
+        setDocType(prev => prev || key)
+        chips.push({ label })
+        break
+      }
+    }
+    setDetected(chips)
+  }
+
   const handleFiles = (newFiles) => {
     const arr = Array.from(newFiles)
     const valid = arr.filter(isAllowed)
@@ -397,6 +469,8 @@ export default function Upload() {
     // Size check (50MB each)
     const tooLarge = valid.filter(f => f.size > 50 * 1024 * 1024)
     if (tooLarge.length) { setError(`Fichier trop grand (max 50MB): ${tooLarge[0].name}`); return }
+
+    if (files.length === 0 && valid.length > 0) detectFromFilename(valid[0].name)
 
     const combined = [...files, ...valid].slice(0, 20)
     setFiles(combined)
@@ -803,7 +877,8 @@ export default function Upload() {
       <style>{css}</style>
       <Navbar activePage="upload" />
 
-      <div className="layout">
+      <div className={`layout ${success ? 'no-sidebar' : ''}`}>
+        <div className="layout-main">
         {success ? (
           <div className="card">
             <div className="success-wrap">
@@ -1439,6 +1514,13 @@ export default function Upload() {
                     </div>
                   </div>
 
+                  {detected.length > 0 && (
+                    <div className="detected-row">
+                      <span className="detected-label">// détecté depuis le nom du fichier</span>
+                      {detected.map((d, i) => <span key={i} className="detected-chip">{d.label} ✓</span>)}
+                    </div>
+                  )}
+
                   {files.length > 0 && (
                     <>
                       <div className="file-list">
@@ -1518,6 +1600,55 @@ export default function Upload() {
               </div>
             )}
           </>
+        )}
+        </div>
+
+        {!success && (
+          <aside className="layout-side">
+            {(() => {
+              const pts = profile?.points || 0
+              const RANKS = [
+                { min:0,   max:99,  label:'Étudiant',     next:'Contributeur' },
+                { min:100, max:299, label:'Contributeur', next:'Senpai' },
+                { min:300, max:599, label:'Senpai',       next:'Légende' },
+                { min:600, max:Infinity, label:'Légende', next:null },
+              ]
+              const r = RANKS.find(r => pts >= r.min && pts <= r.max) || RANKS[0]
+              const pct = r.max === Infinity ? 100 : Math.round(((pts - r.min) / (r.max - r.min + 1)) * 100)
+              return (
+                <div className="side-card reward-card">
+                  <div className="side-card-label">// récompense</div>
+                  <div className="reward-pts">+50 points</div>
+                  {r.next ? (
+                    <div className="reward-sub">{r.max + 1 - pts} points de plus et tu débloques le rang <b>{r.next}</b>.</div>
+                  ) : (
+                    <div className="reward-sub">Tu es au rang maximum — <b>Légende</b>.</div>
+                  )}
+                  <div className="reward-bar-wrap"><div className="reward-bar" style={{ width:`${pct}%` }} /></div>
+                  <div className="reward-bar-label">{pts} / {r.max === Infinity ? pts : r.max + 1} pts</div>
+                </div>
+              )
+            })()}
+
+            <div className="side-card">
+              <div className="side-card-label">// checklist qualité</div>
+              {['Pages lisibles, pas floues', 'PDF, JPG ou PNG · max 50 Mo', 'Aucun nom d\'étudiant visible', 'Année universitaire indiquée'].map(c => (
+                <div key={c} className="checklist-row"><FiCheck size={13} /> {c}</div>
+              ))}
+            </div>
+
+            {recentUploads.length > 0 && (
+              <div className="side-card">
+                <div className="side-card-label">// tes derniers uploads</div>
+                {recentUploads.map(d => (
+                  <div key={d.id} className="recent-upload-row">
+                    <span className="recent-upload-name">{d.modules?.name || 'Module'}</span>
+                    <span className={`recent-upload-status ${d.is_verified ? 'ok' : 'pending'}`}>{d.is_verified ? 'publié' : 'en revue'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </aside>
         )}
       </div>
       {toast && <div className="toast">{toast}</div>}
