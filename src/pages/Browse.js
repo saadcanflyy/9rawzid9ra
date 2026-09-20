@@ -119,14 +119,37 @@ const css = `
   .bc-sep { font-size:0.68rem; color:var(--text3); }
   .bc-active { color:var(--accent2); }
 
-  .results-bar { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; }
+  .chip-row { display:flex; align-items:center; gap:6px; padding:0.6rem 1.5rem; border-bottom:1px solid var(--border); background:var(--surface); flex-wrap:wrap; }
+  .filter-chip { display:inline-flex; align-items:center; gap:6px; background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); color:var(--accent2); border-radius:20px; padding:3px 6px 3px 12px; font-size:0.74rem; font-family:'Outfit',sans-serif; }
+  .filter-chip button { background:rgba(255,255,255,0.06); border:none; color:var(--accent2); width:16px; height:16px; border-radius:50%; cursor:pointer; font-size:0.7rem; line-height:1; display:flex; align-items:center; justify-content:center; transition:background 0.15s; }
+  .filter-chip button:hover { background:rgba(255,255,255,0.14); }
+
+  .results-bar { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; flex-wrap:wrap; gap:10px; }
   .results-info { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text3); }
   .results-info b { color:var(--accent2); }
   .clear-btn { font-size:0.72rem; color:var(--text3); background:none; border:none; cursor:pointer; font-family:'DM Mono',monospace; transition:color 0.15s; }
   .clear-btn:hover { color:var(--accent2); }
+  .sort-select { background:none; border:1px solid var(--border); color:var(--text2); border-radius:7px; padding:5px 10px; font-size:0.75rem; font-family:'Outfit',sans-serif; cursor:pointer; outline:none; }
+  .view-toggle { display:flex; align-items:center; gap:2px; background:var(--s2); border:1px solid var(--border); border-radius:7px; padding:2px; }
+  .view-toggle button { background:none; border:none; color:var(--text3); padding:5px 7px; border-radius:5px; cursor:pointer; display:flex; align-items:center; transition:all 0.15s; }
+  .view-toggle button.on { background:var(--surface); color:var(--accent2); }
 
   .grid-wrap { padding:0 1.5rem 1.5rem; }
   .modules-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+  .modules-grid.list-mode { grid-template-columns:1fr; }
+  .nudge-card { align-items:center; justify-content:center; text-align:center; gap:8px; cursor:pointer; background:rgba(99,102,241,0.03); }
+  .nudge-label { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); }
+  .nudge-title { font-size:0.85rem; font-weight:600; color:var(--text2); }
+  .nudge-btn { display:inline-block; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25); color:var(--accent2); border-radius:20px; padding:4px 14px; font-size:0.72rem; font-weight:600; font-family:'DM Mono',monospace; }
+
+  .right-rail { width:220px; flex-shrink:0; border-left:1px solid var(--border); background:var(--surface); padding:1.25rem; overflow-y:auto; }
+  .rail-title { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:1rem; }
+  .rail-row { margin-bottom:0.9rem; }
+  .rail-name { font-size:0.76rem; color:var(--text2); margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .rail-bar-wrap { height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:3px; }
+  .rail-bar { height:100%; background:linear-gradient(90deg,var(--accent),var(--teal)); border-radius:3px; transition:width 0.4s ease; }
+  .rail-pct { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); }
+  @media(max-width:1300px) { .right-rail { display:none; } }
 
   .mod-card { background:var(--surface); padding:1.25rem; cursor:pointer; transition:background 0.15s; display:flex; flex-direction:column; gap:0.5rem; position:relative; overflow:hidden; }
   .mod-card::before { content:''; position:absolute; top:0; left:0; bottom:0; width:2px; background:linear-gradient(180deg,var(--accent),var(--teal)); transform:scaleY(0); transform-origin:top; transition:transform 0.25s cubic-bezier(0.4,0,0.2,1); }
@@ -142,6 +165,7 @@ const css = `
   .mod-footer { display:flex; align-items:center; justify-content:space-between; padding-top:0.75rem; margin-top:0.25rem; border-top:1px solid var(--border); }
   .mod-docs { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text3); }
   .mod-docs b { color:var(--accent2); }
+  .mod-corrige-tag { display:inline-block; align-self:flex-start; font-family:'DM Mono',monospace; font-size:0.58rem; font-weight:600; color:var(--green); background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.22); border-radius:4px; padding:2px 7px; }
   .mod-arr { font-size:0.7rem; color:var(--text3); transition:all 0.15s; font-family:'DM Mono',monospace; }
   .mod-card:hover .mod-arr { color:var(--accent2); transform:translateX(4px); }
 
@@ -254,6 +278,10 @@ export default function Browse() {
   const [selFil,  setSelFil]  = useState(sp.get('fil')  || '')
   const [selSem,  setSelSem]  = useState(sp.get('sem')  || '')
   const [selType, setSelType] = useState(sp.get('type') || '')
+  const [sortMode, setSortMode] = useState('recent')
+  const [viewMode, setViewMode] = useState('grid')
+  const [coverage, setCoverage] = useState([])
+  const [corrigeSet, setCorrigeSet] = useState(new Set())
   const [fetchErr, setFetchErr] = useState('')
   const [uniSearch,  setUniSearch]  = useState('')
   const [showUniDd,  setShowUniDd]  = useState(false)
@@ -520,7 +548,36 @@ export default function Browse() {
     setModReqSent(false); setModReqDup(null); setNewModId(null)
   }
 
-  const displayed = mods
+  const displayed = sortMode === 'az' ? [...mods].sort((a, b) => a.name.localeCompare(b.name)) : mods
+
+  // Real "coverage" widget — % of the 10 document types actually uploaded per module.
+  // Computed from real documents, not a fabricated stat.
+  useEffect(() => {
+    if (!selSem || mods.length === 0) { setCoverage([]); return }
+    const sample = mods.slice(0, 8)
+    const ids = sample.map(m => m.id)
+    supabase.from('documents').select('module_id, doc_type').in('module_id', ids).eq('is_verified', true)
+      .then(({ data }) => {
+        const byMod = {}
+        for (const d of (data || [])) {
+          if (!byMod[d.module_id]) byMod[d.module_id] = new Set()
+          byMod[d.module_id].add(d.doc_type)
+        }
+        const rows = sample
+          .map(m => ({ id: m.id, name: m.name, pct: Math.round(((byMod[m.id]?.size) || 0) / DOC_TYPES.length * 100) }))
+          .sort((a, b) => b.pct - a.pct)
+          .slice(0, 4)
+        setCoverage(rows)
+      })
+  }, [mods, selSem]) // eslint-disable-line
+
+  // Real "corrigé dispo" tag — module actually has a corrige_* document
+  useEffect(() => {
+    if (mods.length === 0) { setCorrigeSet(new Set()); return }
+    const ids = mods.slice(0, 30).map(m => m.id)
+    supabase.from('documents').select('module_id, doc_type').in('module_id', ids).eq('is_verified', true).like('doc_type', 'corrige%')
+      .then(({ data }) => setCorrigeSet(new Set((data || []).map(d => d.module_id))))
+  }, [mods])
   const uniName  = unis.find(u => u.id === parseInt(selUni))?.name
   const facNameRaw = facs.find(f => f.id === parseInt(selFac))?.name
   const facName  = facNameRaw === '__root__' ? null : facNameRaw
@@ -808,16 +865,15 @@ export default function Browse() {
             <button className="search-btn" onClick={flushSearch}>Rechercher</button>
           </div>
 
-          {/* Breadcrumb */}
+          {/* Active filter chips */}
           {hasFilters && (
-            <div className="breadcrumb">
-              <span className="bc-item">modules</span>
-              {uniName && <><span className="bc-sep">/</span><span className="bc-item">{uniName}</span></>}
-              {facName && <><span className="bc-sep">/</span><span className="bc-item">{facName}</span></>}
-              {filName && <><span className="bc-sep">/</span><span className="bc-item bc-active">{filName}</span></>}
-              {selSem   && <><span className="bc-sep">/</span><span className="bc-item bc-active">{selSem}</span></>}
-              {typeName && <><span className="bc-sep">/</span><span className="bc-item bc-active">{typeName}</span></>}
-              {query    && <><span className="bc-sep">/</span><span className="bc-item bc-active">"{query}"</span></>}
+            <div className="chip-row">
+              {uniName && <span className="filter-chip">{uniName}<button onClick={() => setSelUni('')}>×</button></span>}
+              {facName && <span className="filter-chip">{facName}<button onClick={() => setSelFac('')}>×</button></span>}
+              {filName && <span className="filter-chip">{filName}<button onClick={() => setSelFil('')}>×</button></span>}
+              {selSem && <span className="filter-chip">{selSem}<button onClick={() => setSelSem('')}>×</button></span>}
+              {typeName && <span className="filter-chip">{typeName}<button onClick={() => setSelType('')}>×</button></span>}
+              {debouncedQuery && <span className="filter-chip">"{debouncedQuery}"<button onClick={() => { setQuery(''); setDebouncedQuery('') }}>×</button></span>}
             </div>
           )}
 
@@ -831,14 +887,30 @@ export default function Browse() {
               <span className="results-info">
                 <b>{displayed.length}</b> module{displayed.length!==1?'s':''} trouvé{displayed.length!==1?'s':''}
               </span>
-              {hasFilters && (
-                <button className="clear-btn" onClick={reset}>effacer les filtres</button>
-              )}
+              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                {hasFilters && (
+                  <button className="clear-btn" onClick={reset}>effacer les filtres</button>
+                )}
+                <div className="sort-wrap">
+                  <select className="sort-select" value={sortMode} onChange={e => setSortMode(e.target.value)}>
+                    <option value="recent">Trier : Plus récents</option>
+                    <option value="az">Trier : A → Z</option>
+                  </select>
+                </div>
+                <div className="view-toggle">
+                  <button className={viewMode==='grid'?'on':''} onClick={() => setViewMode('grid')} title="Vue grille" aria-label="Vue grille">
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                  </button>
+                  <button className={viewMode==='list'?'on':''} onClick={() => setViewMode('list')} title="Vue liste" aria-label="Vue liste">
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
           <div className="grid-wrap" id="browse-results">
-            <div className="modules-grid">
+            <div className={`modules-grid ${viewMode === 'list' ? 'list-mode' : ''}`}>
               {!hasActiveFilter ? (
                 <div className="empty">
                   <div className="empty-code">// no filter selected</div>
@@ -1014,15 +1086,38 @@ export default function Browse() {
                       ? `${m.filieres?.name} · ${m.filieres.faculties.name}`
                       : m.filieres?.name}
                   </div>
+                  {corrigeSet.has(m.id) && <span className="mod-corrige-tag">corrigé dispo</span>}
                   <div className="mod-footer">
                     <span className="mod-docs">{m.filieres?.faculties?.universities?.name || ''}</span>
                     <span className="mod-arr"><FiArrowRight size={14} /></span>
                   </div>
                 </motion.div>
               ))}
+              {hasActiveFilter && !loading && displayed.length > 0 && (
+                <div className="mod-card nudge-card" onClick={() => navigate('/upload')}>
+                  <div className="nudge-label">// il manque un doc ?</div>
+                  <div className="nudge-title">Uploade-le pour ta promo</div>
+                  <span className="nudge-btn">+50 points</span>
+                </div>
+              )}
             </div>
           </div>
         </main>
+
+        {selSem && coverage.length > 0 && (
+          <aside className="right-rail">
+            <div className="rail-title">Couverture{uniName ? ` — ${filName || uniName}` : ''} · {selSem}</div>
+            {coverage.map(c => (
+              <div key={c.id} className="rail-row">
+                <div className="rail-name">{c.name}</div>
+                <div className="rail-bar-wrap">
+                  <div className="rail-bar" style={{ width:`${c.pct}%` }} />
+                </div>
+                <div className="rail-pct">{c.pct}%</div>
+              </div>
+            ))}
+          </aside>
+        )}
       </div>
 
       {showScrollHint && <div className="scroll-hint">👇 Voir les résultats</div>}
