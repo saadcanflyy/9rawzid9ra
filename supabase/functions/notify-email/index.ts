@@ -52,7 +52,7 @@ function buildTemplate(type: string, record: Record<string, unknown>): EmailTemp
     },
     new_document: {
       subject: `📄 ${escHtml(content)}`,
-      html: `Un nouveau document a été ajouté dans un module que tu suis.<br><br><a href="${SITE_URL}${escHtml(link)}" style="color:#6366F1;text-decoration:none;font-weight:600">Voir le module →</a>`,
+      html: `Un nouveau document a été ajouté dans un module que tu suis.<br><br><a href="${SITE_URL}${escHtml(link)}" style="color:#4F8EF7;text-decoration:none;font-weight:600">Voir le module →</a>`,
     },
     welcome: {
       subject: `🎉 Bienvenue sur 9rawZid9ra !`,
@@ -60,21 +60,21 @@ function buildTemplate(type: string, record: Record<string, unknown>): EmailTemp
 Ton compte est prêt. Voici ce que tu peux faire dès maintenant :<br><br>
 <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
   <tr>
-    <td style="padding:12px 0;border-bottom:1px solid #2C2A42">
-      <span style="color:#6366F1;font-weight:700;font-size:0.9rem">📚 Explorer les modules</span><br>
-      <span style="color:#A4A0C8;font-size:0.85rem;line-height:1.6">Trouve les examens, contrôles continus, TDs et TPs de ton université — organisés par filière et semestre.</span>
+    <td style="padding:12px 0;border-bottom:1px solid #1C2A45">
+      <span style="color:#4F8EF7;font-weight:700;font-size:0.9rem">📚 Explorer les modules</span><br>
+      <span style="color:#94A3B8;font-size:0.85rem;line-height:1.6">Trouve les examens, contrôles continus, TDs et TPs de ton université — organisés par filière et semestre.</span>
     </td>
   </tr>
   <tr>
-    <td style="padding:12px 0;border-bottom:1px solid #2C2A42">
-      <span style="color:#6366F1;font-weight:700;font-size:0.9rem">⬆️ Uploader des documents</span><br>
-      <span style="color:#A4A0C8;font-size:0.85rem;line-height:1.6">Partage tes annales et aide les étudiants de ta filière. Chaque document uploadé fait avancer toute la communauté.</span>
+    <td style="padding:12px 0;border-bottom:1px solid #1C2A45">
+      <span style="color:#2DD4BF;font-weight:700;font-size:0.9rem">⬆️ Uploader des documents</span><br>
+      <span style="color:#94A3B8;font-size:0.85rem;line-height:1.6">Partage tes annales et aide les étudiants de ta filière. Chaque document uploadé fait avancer toute la communauté.</span>
     </td>
   </tr>
   <tr>
     <td style="padding:12px 0">
-      <span style="color:#818CF8;font-weight:700;font-size:0.9rem">🧠 Senpai Zone</span><br>
-      <span style="color:#A4A0C8;font-size:0.85rem;line-height:1.6">Pose tes questions, réponds à celles des autres, et construis ta réputation dans la communauté marocaine.</span>
+      <span style="color:#7BB3FF;font-weight:700;font-size:0.9rem">🧠 Senpai Zone</span><br>
+      <span style="color:#94A3B8;font-size:0.85rem;line-height:1.6">Pose tes questions, réponds à celles des autres, et construis ta réputation dans la communauté marocaine.</span>
     </td>
   </tr>
 </table>`,
@@ -88,20 +88,20 @@ Ton compte est prêt. Voici ce que tu peux faire dès maintenant :<br><br>
 function emailHtml(body: string, ctaLabel = "Ouvrir 9rawZid9ra →", ctaUrl = SITE_URL): string {
   return `<!DOCTYPE html>
 <html>
-<body style="margin:0;padding:0;background:#0F0E17;font-family:sans-serif">
-  <div style="max-width:520px;margin:40px auto;background:#191826;border:1px solid #2C2A42;border-radius:14px;overflow:hidden">
-    <div style="padding:24px 28px;border-bottom:1px solid #2C2A42">
-      <span style="font-size:1.15rem;font-weight:800;color:#fff">9raw</span><span style="font-size:1.15rem;font-weight:800;color:#6366F1">Zid</span><span style="font-size:1.15rem;font-weight:800;color:#fff">9ra</span>
+<body style="margin:0;padding:0;background:#0A0F1E;font-family:sans-serif">
+  <div style="max-width:520px;margin:40px auto;background:#070C18;border:1px solid #1C2A45;border-radius:14px;overflow:hidden">
+    <div style="padding:24px 28px;border-bottom:1px solid #1C2A45">
+      <span style="font-size:1.15rem;font-weight:800;color:#fff">9raw</span><span style="font-size:1.15rem;font-weight:800;color:#4F8EF7">Zid</span><span style="font-size:1.15rem;font-weight:800;color:#fff">9ra</span>
     </div>
     <div style="padding:28px">
-      <p style="color:#A4A0C8;font-size:0.95rem;line-height:1.7;margin:0 0 24px">${body}</p>
-      <a href="${ctaUrl}" style="display:inline-block;background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:0.9rem">
+      <p style="color:#94A3B8;font-size:0.95rem;line-height:1.7;margin:0 0 24px">${body}</p>
+      <a href="${ctaUrl}" style="display:inline-block;background:linear-gradient(135deg,#4F8EF7,#2DD4BF);color:#fff;padding:11px 24px;border-radius:8px;text-decoration:none;font-weight:700;font-size:0.9rem">
         ${ctaLabel}
       </a>
     </div>
-    <div style="padding:18px 28px;border-top:1px solid #2C2A42;font-size:0.72rem;color:#666287">
+    <div style="padding:18px 28px;border-top:1px solid #1C2A45;font-size:0.72rem;color:#4A5568">
       Tu reçois cet email parce que tu es inscrit sur
-      <a href="${SITE_URL}" style="color:#666287">9rawzid9ra.space</a>.
+      <a href="${SITE_URL}" style="color:#4A5568">9rawzid9ra.space</a>.
     </div>
   </div>
 </body>

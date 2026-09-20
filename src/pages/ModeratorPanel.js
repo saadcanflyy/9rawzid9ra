@@ -7,27 +7,11 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
   :root {
-    --bg:#0F0E17; --surface:#191826; --s2:#232232; --s3:#2C2A42;
-    --border:#2C2A42; --borderhi:#3D3B5C;
-    --accent:#6366F1; --accent2:#818CF8; --teal:#6366F1; --teal2:#A5B4FC;
+    --bg:#02040A; --surface:#070C18; --s2:#0C1222; --s3:#111827;
+    --border:#1C2A45; --borderhi:#2D4A7A;
+    --accent:#4F8EF7; --accent2:#7BB3FF; --teal:#2DD4BF; --teal2:#5EEAD4;
     --red:#F87171; --yellow:#FBD34D; --green:#4ADE80;
-    --text:#EAE7FF; --text2:#A4A0C8; --text3:#666287; --white:#FFFFFF;
-  }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg:#F5F4FB;
-      --surface:#FFFFFF;
-      --s2:#F0EEF9;
-      --s3:#E9E6F5;
-      --border:#E3E0F0;
-      --borderhi:#C9C4E3;
-      --accent2:#4F46E5;
-      --teal2:#4F46E5;
-      --text:#1E1B2E;
-      --text2:#5B5775;
-      --text3:#8B87A3;
-      --white:#17152B;
-    }
+    --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
   }
 
   html,body { background:var(--bg); font-family:'Outfit',sans-serif; min-height:100vh; }
@@ -37,7 +21,7 @@ const css = `
   .nav {
     position:sticky; top:0; z-index:100; height:58px;
     display:flex; align-items:center; justify-content:space-between; padding:0 2rem;
-    background:rgba(15,14,23,0.95); backdrop-filter:blur(32px); border-bottom:1px solid var(--border);
+    background:rgba(2,4,10,0.95); backdrop-filter:blur(32px); border-bottom:1px solid var(--border);
   }
   .nav-left { display:flex; align-items:center; gap:1.5rem; }
   .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
@@ -47,7 +31,7 @@ const css = `
   .nav-divider { width:1px; height:20px; background:var(--border); }
   .mod-badge {
     font-family:'DM Mono',monospace; font-size:0.62rem;
-    background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.25);
+    background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.25);
     color:var(--teal2); padding:3px 10px; border-radius:4px; letter-spacing:1px;
   }
   .nav-right { display:flex; gap:8px; align-items:center; }
@@ -67,7 +51,7 @@ const css = `
     margin-bottom:3px; border:1px solid transparent;
   }
   .nav-item:hover { background:var(--s2); }
-  .nav-item.active { background:rgba(99,102,241,0.06); border-color:rgba(99,102,241,0.15); }
+  .nav-item.active { background:rgba(79,142,247,0.06); border-color:rgba(79,142,247,0.15); }
   .nav-item-left { display:flex; align-items:center; gap:8px; }
   .nav-item-icon { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); width:16px; }
   .nav-item.active .nav-item-icon { color:var(--teal2); }
@@ -88,7 +72,7 @@ const css = `
   .table-wrap { overflow-x:auto; border-radius:10px; border:1px solid var(--border); }
   .table { width:100%; border-collapse:collapse; }
   .table th { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); text-transform:uppercase; letter-spacing:1px; padding:10px 14px; text-align:left; background:var(--s2); border-bottom:1px solid var(--border); }
-  .table td { padding:11px 14px; border-bottom:1px solid rgba(44,42,66,0.5); vertical-align:middle; }
+  .table td { padding:11px 14px; border-bottom:1px solid rgba(28,42,69,0.5); vertical-align:middle; }
   .table tr:last-child td { border-bottom:none; }
   .table tr:hover td { background:rgba(255,255,255,0.012); }
   .table-name { font-size:0.82rem; font-weight:600; color:var(--text); }
@@ -97,8 +81,8 @@ const css = `
   /* ACTIONS */
   .actions { display:flex; gap:6px; flex-wrap:wrap; }
   .act-btn { border:none; border-radius:6px; padding:4px 10px; font-size:0.72rem; font-weight:600; cursor:pointer; font-family:'DM Mono',monospace; transition:all 0.15s; }
-  .act-view    { background:rgba(99,102,241,0.08); color:var(--accent2); border:1px solid rgba(99,102,241,0.2); }
-  .act-view:hover { background:rgba(99,102,241,0.15); }
+  .act-view    { background:rgba(79,142,247,0.08); color:var(--accent2); border:1px solid rgba(79,142,247,0.2); }
+  .act-view:hover { background:rgba(79,142,247,0.15); }
   .act-approve { background:rgba(74,222,128,0.08); color:var(--green); border:1px solid rgba(74,222,128,0.2); }
   .act-approve:hover { background:rgba(74,222,128,0.15); }
   .act-reject  { background:rgba(248,113,113,0.08); color:var(--red); border:1px solid rgba(248,113,113,0.2); }
@@ -111,7 +95,7 @@ const css = `
   .badge-pending  { background:rgba(251,211,77,0.1); color:var(--yellow); border:1px solid rgba(251,211,77,0.2); }
   .badge-approved { background:rgba(74,222,128,0.1); color:var(--green); border:1px solid rgba(74,222,128,0.2); }
   .badge-rejected { background:rgba(248,113,113,0.1); color:var(--red); border:1px solid rgba(248,113,113,0.2); }
-  .badge-verified { background:rgba(99,102,241,0.1); color:var(--accent2); border:1px solid rgba(99,102,241,0.2); }
+  .badge-verified { background:rgba(79,142,247,0.1); color:var(--accent2); border:1px solid rgba(79,142,247,0.2); }
   .badge-flagged  { background:rgba(248,113,113,0.1); color:var(--red); border:1px solid rgba(248,113,113,0.2); }
 
   /* STAT CARDS */
@@ -187,7 +171,7 @@ export default function ModeratorPanel() {
   const [newModSem,    setNewModSem]    = useState('')
 
   const [modal, setModal] = useState(null)
-  const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#6366F1', onCancel: null, onConfirm: () => setModal(null) })
+  const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#4F8EF7', onCancel: null, onConfirm: () => setModal(null) })
 
   // Ban state
   const [banningId,  setBanningId]  = useState(null)
@@ -473,7 +457,7 @@ export default function ModeratorPanel() {
     setModules(data || [])
   }
 
-  const TYPE_COLORS = { survival_guide:'#6366F1', cheat_code:'#FBD34D', timeline:'#4ADE80', red_flag:'#F87171', path_review:'#C4B5FD' }
+  const TYPE_COLORS = { survival_guide:'#4F8EF7', cheat_code:'#FBD34D', timeline:'#4ADE80', red_flag:'#F87171', path_review:'#C4B5FD' }
   const TYPE_LABELS = { survival_guide:'Guide de survie', cheat_code:'Cheat Code', timeline:'Timeline', red_flag:'Red Flag', path_review:'Bilan de parcours' }
 
   if (authLoading) return (
@@ -619,7 +603,7 @@ export default function ModeratorPanel() {
                flaggedPosts.length === 0 ? <div className="empty">// aucun post signalé</div> : (
                 <div style={{display:'flex',flexDirection:'column',gap:10}}>
                   {flaggedPosts.map(post => {
-                    const color = TYPE_COLORS[post.post_type] || '#A4A0C8'
+                    const color = TYPE_COLORS[post.post_type] || '#94A3B8'
                     return (
                       <div key={post.id} style={{background:'var(--surface)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:10,padding:'1rem 1.25rem'}}>
                         <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,marginBottom:10}}>
@@ -629,14 +613,14 @@ export default function ModeratorPanel() {
                                 {TYPE_LABELS[post.post_type] || post.post_type}
                               </span>
                               {post.is_anonymous && (
-                                <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'#A4A0C8',background:'rgba(164,160,200,0.08)',padding:'2px 8px',borderRadius:4,border:'1px solid rgba(164,160,200,0.15)'}}>🎭 Anonyme</span>
+                                <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'#94A3B8',background:'rgba(148,163,184,0.08)',padding:'2px 8px',borderRadius:4,border:'1px solid rgba(148,163,184,0.15)'}}>🎭 Anonyme</span>
                               )}
                             </div>
                             <div style={{fontSize:'0.92rem',fontWeight:700,color:'#fff',marginBottom:4}}>{post.title}</div>
-                            <div style={{fontSize:'0.78rem',color:'#A4A0C8',lineHeight:1.5,display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden',marginBottom:8}}>
+                            <div style={{fontSize:'0.78rem',color:'#94A3B8',lineHeight:1.5,display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden',marginBottom:8}}>
                               {post.content}
                             </div>
-                            <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'#666287'}}>
+                            <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'#4A5568'}}>
                               Par : {post.user_profiles?.name || '—'} · {fmt(post.created_at)}
                             </div>
                           </div>
@@ -669,8 +653,8 @@ export default function ModeratorPanel() {
                       {schoolReqs.map(s => {
                         const rt = s.request_type || 'independent'
                         const RT_LABEL = { independent:'École indép.', faculty:'Faculté', university_with_faculties:'Université' }
-                        const RT_COLOR = { independent:'rgba(99,102,241,0.1)', faculty:'rgba(99,102,241,0.08)', university_with_faculties:'rgba(245,158,11,0.08)' }
-                        const RT_BORDER = { independent:'rgba(99,102,241,0.2)', faculty:'rgba(99,102,241,0.18)', university_with_faculties:'rgba(245,158,11,0.22)' }
+                        const RT_COLOR = { independent:'rgba(79,142,247,0.1)', faculty:'rgba(79,142,247,0.08)', university_with_faculties:'rgba(245,158,11,0.08)' }
+                        const RT_BORDER = { independent:'rgba(79,142,247,0.2)', faculty:'rgba(79,142,247,0.18)', university_with_faculties:'rgba(245,158,11,0.22)' }
                         const RT_TEXT = { independent:'var(--accent2)', faculty:'var(--teal2)', university_with_faculties:'#F59E0B' }
                         return (
                           <tr key={s.id}>
@@ -895,13 +879,13 @@ export default function ModeratorPanel() {
                     {msgConvos.map(c => {
                       const initial = (c.name || '?')[0].toUpperCase()
                       const isSelected = selectedConvo?.id === c.id
-                      const colors = ['#6366F1','#6366F1','#F59E0B','#C4B5FD','#4ADE80','#F87171']
+                      const colors = ['#4F8EF7','#4F8EF7','#F59E0B','#C4B5FD','#4ADE80','#F87171']
                       const color = colors[c.id.charCodeAt(0) % colors.length]
                       return (
                         <div key={c.id} onClick={() => loadThread(c)}
                           style={{
                             display:'flex', alignItems:'center', gap:10, padding:'12px 14px', cursor:'pointer',
-                            background: isSelected ? 'rgba(99,102,241,0.06)' : 'transparent',
+                            background: isSelected ? 'rgba(79,142,247,0.06)' : 'transparent',
                             borderLeft: isSelected ? '3px solid var(--teal)' : '3px solid transparent',
                             transition:'all 0.15s',
                           }}
@@ -951,8 +935,8 @@ export default function ModeratorPanel() {
                                 <div style={{
                                   maxWidth:'72%', padding:'8px 12px',
                                   borderRadius: fromAdmin ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
-                                  background: fromAdmin ? 'rgba(99,102,241,0.15)' : 'var(--s2)',
-                                  border: `1px solid ${fromAdmin ? 'rgba(99,102,241,0.3)' : 'var(--border)'}`,
+                                  background: fromAdmin ? 'rgba(79,142,247,0.15)' : 'var(--s2)',
+                                  border: `1px solid ${fromAdmin ? 'rgba(79,142,247,0.3)' : 'var(--border)'}`,
                                 }}>
                                   {fromAdmin && (
                                     <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.56rem', color:'var(--teal2)', marginBottom:4 }}>Support 9rawZid9ra</div>
@@ -971,7 +955,7 @@ export default function ModeratorPanel() {
                             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
                             placeholder="Répondre (envoyé en tant que Support)..."
                             style={{ flex:1, background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 12px', color:'var(--text)', fontSize:'0.82rem', fontFamily:'Outfit,sans-serif', outline:'none', transition:'border-color 0.15s' }}
-                            onFocus={e => e.target.style.borderColor='rgba(99,102,241,0.4)'}
+                            onFocus={e => e.target.style.borderColor='rgba(79,142,247,0.4)'}
                             onBlur={e => e.target.style.borderColor='var(--border)'}
                           />
                           <button onClick={sendReply} disabled={!replyText.trim() || replySending}

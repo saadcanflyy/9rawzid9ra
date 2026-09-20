@@ -7,28 +7,12 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
   :root {
-    --bg:#0F0E17; --surface:#191826; --s2:#232232; --s3:#2C2A42;
-    --border:#2C2A42; --borderhi:#3D3B5C;
-    --accent:#6366F1; --accent2:#818CF8; --teal:#6366F1; --teal2:#A5B4FC;
+    --bg:#02040A; --surface:#070C18; --s2:#0C1222; --s3:#111827;
+    --border:#1C2A45; --borderhi:#2D4A7A;
+    --accent:#4F8EF7; --accent2:#7BB3FF; --teal:#2DD4BF; --teal2:#5EEAD4;
     --red:#F87171; --yellow:#FBD34D; --green:#4ADE80;
     --gold:#F59E0B; --gold2:#FCD34D;
-    --text:#EAE7FF; --text2:#A4A0C8; --text3:#666287; --white:#FFFFFF;
-  }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg:#F5F4FB;
-      --surface:#FFFFFF;
-      --s2:#F0EEF9;
-      --s3:#E9E6F5;
-      --border:#E3E0F0;
-      --borderhi:#C9C4E3;
-      --accent2:#4F46E5;
-      --teal2:#4F46E5;
-      --text:#1E1B2E;
-      --text2:#5B5775;
-      --text3:#8B87A3;
-      --white:#17152B;
-    }
+    --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
   }
 
   html, body { background:var(--bg); color:var(--text); font-family:'Outfit',sans-serif; }
@@ -47,7 +31,7 @@ const css = `
   }
   .profile-header::after {
     content:''; position:absolute; inset:0;
-    background:radial-gradient(ellipse 60% 100% at 0% 50%,rgba(99,102,241,0.04) 0%,transparent 60%);
+    background:radial-gradient(ellipse 60% 100% at 0% 50%,rgba(79,142,247,0.04) 0%,transparent 60%);
     pointer-events:none;
   }
   .avatar {
@@ -55,7 +39,7 @@ const css = `
     background:linear-gradient(135deg,var(--accent),var(--teal));
     display:flex; align-items:center; justify-content:center;
     font-family:'DM Mono',monospace; font-size:1.5rem; font-weight:700; color:var(--white);
-    border:3px solid rgba(99,102,241,0.25); position:relative; z-index:1;
+    border:3px solid rgba(79,142,247,0.25); position:relative; z-index:1;
   }
   .profile-info { flex:1; min-width:0; position:relative; z-index:1; }
   .profile-name { font-size:1.35rem; font-weight:700; color:var(--white); letter-spacing:-0.3px; margin-bottom:4px; }
@@ -76,9 +60,9 @@ const css = `
     font-family:'DM Mono',monospace; font-size:0.62rem; font-weight:600;
     padding:4px 14px; border-radius:6px; letter-spacing:0.8px;
   }
-  .rank-etudiant  { background:rgba(164,160,200,0.07); color:var(--text2); border:1px solid var(--border); }
-  .rank-contrib   { background:rgba(99,102,241,0.07); color:var(--teal2); border:1px solid rgba(99,102,241,0.2); }
-  .rank-senpai    { background:rgba(99,102,241,0.08); color:var(--accent2); border:1px solid rgba(99,102,241,0.22); }
+  .rank-etudiant  { background:rgba(148,163,184,0.07); color:var(--text2); border:1px solid var(--border); }
+  .rank-contrib   { background:rgba(79,142,247,0.07); color:var(--teal2); border:1px solid rgba(79,142,247,0.2); }
+  .rank-senpai    { background:rgba(79,142,247,0.08); color:var(--accent2); border:1px solid rgba(79,142,247,0.22); }
   .rank-legende   { background:rgba(245,158,11,0.08); color:var(--gold); border:1px solid rgba(245,158,11,0.28); }
 
   /* ── SOCIAL ROW ── */
@@ -98,7 +82,7 @@ const css = `
     font-family:'Outfit',sans-serif; transition:all 0.15s;
   }
   .follow-btn.off { background:var(--accent); color:#fff; border:none; }
-  .follow-btn.off:hover { background:#4F46E5; }
+  .follow-btn.off:hover { background:#3A6ED4; }
   .follow-btn.on { background:rgba(74,222,128,0.1); color:var(--green); border:1px solid rgba(74,222,128,0.22); }
   .follow-btn.on:hover { background:rgba(248,113,113,0.08); color:var(--red); border-color:rgba(248,113,113,0.22); }
 
@@ -162,10 +146,10 @@ const css = `
   }
   .icon-examen { background:rgba(248,113,113,0.08); color:var(--red); border:1px solid rgba(248,113,113,0.15); }
   .icon-cc     { background:rgba(251,211,77,0.08); color:var(--yellow); border:1px solid rgba(251,211,77,0.15); }
-  .icon-td     { background:rgba(99,102,241,0.08); color:var(--accent2); border:1px solid rgba(99,102,241,0.15); }
-  .icon-tp     { background:rgba(99,102,241,0.08); color:var(--teal2); border:1px solid rgba(99,102,241,0.15); }
+  .icon-td     { background:rgba(79,142,247,0.08); color:var(--accent2); border:1px solid rgba(79,142,247,0.15); }
+  .icon-tp     { background:rgba(79,142,247,0.08); color:var(--teal2); border:1px solid rgba(79,142,247,0.15); }
   .icon-quiz   { background:rgba(167,139,250,0.08); color:#C4B5FD; border:1px solid rgba(167,139,250,0.15); }
-  .icon-cours  { background:rgba(165,180,252,0.08); color:var(--teal2); border:1px solid rgba(165,180,252,0.15); }
+  .icon-cours  { background:rgba(94,234,212,0.08); color:var(--teal2); border:1px solid rgba(94,234,212,0.15); }
   .upload-info { flex:1; min-width:0; }
   .upload-title { font-size:0.875rem; font-weight:600; color:var(--white); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .upload-sub { font-family:'DM Mono',monospace; font-size:0.63rem; color:var(--text3); display:flex; gap:8px; flex-wrap:wrap; }
@@ -210,7 +194,7 @@ const css = `
     padding:3px 8px; border-radius:4px; flex-shrink:0; letter-spacing:0.5px;
   }
   .badge-pts  { background:rgba(74,222,128,0.08); color:var(--green); border:1px solid rgba(74,222,128,0.2); }
-  .badge-dl   { background:rgba(99,102,241,0.08); color:var(--accent2); border:1px solid rgba(99,102,241,0.15); }
+  .badge-dl   { background:rgba(79,142,247,0.08); color:var(--accent2); border:1px solid rgba(79,142,247,0.15); }
   .activity-desc { flex:1; font-size:0.82rem; color:var(--text2); line-height:1.4; }
   .activity-desc b { color:var(--text); }
   .activity-points { font-family:'DM Mono',monospace; font-size:0.75rem; color:var(--green); font-weight:700; flex-shrink:0; }
@@ -239,14 +223,14 @@ const css = `
   .select { width:100%; background:var(--s2); border:1px solid var(--border); border-radius:9px; padding:10px 12px; color:var(--text); font-size:0.875rem; font-family:'Outfit',sans-serif; outline:none; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234A5568' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:30px; transition:border-color 0.15s; }
   .select:focus { border-color:var(--accent); outline:none; }
   .select option { background:var(--s2); }
-  .btn-save { background:linear-gradient(135deg,var(--accent),#4F46E5); color:var(--white); border:none; border-radius:8px; padding:9px 24px; font-size:0.85rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; margin-top:1rem; position:relative; overflow:hidden; }
+  .btn-save { background:linear-gradient(135deg,var(--accent),#3A6ED4); color:var(--white); border:none; border-radius:8px; padding:9px 24px; font-size:0.85rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; margin-top:1rem; position:relative; overflow:hidden; }
   .btn-save::before { content:''; position:absolute; inset:0; background:linear-gradient(to bottom,rgba(255,255,255,0.1),transparent); }
-  .btn-save:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 4px 16px rgba(99,102,241,0.4); }
+  .btn-save:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 4px 16px rgba(79,142,247,0.4); }
   .btn-save:disabled { opacity:0.5; cursor:not-allowed; }
   .btn-outline { background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:9px 24px; font-size:0.85rem; font-weight:500; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; }
   .btn-outline:hover { border-color:var(--accent); color:var(--accent2); }
   .save-msg { font-family:'DM Mono',monospace; font-size:0.75rem; margin-top:0.75rem; padding:8px 12px; border-radius:7px; }
-  .save-ok  { background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); color:var(--teal2); }
+  .save-ok  { background:rgba(79,142,247,0.08); border:1px solid rgba(79,142,247,0.2); color:var(--teal2); }
   .save-err { background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.2); color:var(--red); }
   .char-count { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); text-align:right; margin-top:3px; }
 
@@ -255,13 +239,13 @@ const css = `
   .empty-code { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text3); margin-bottom:0.75rem; }
   .empty-title { font-size:0.95rem; font-weight:600; color:var(--text2); margin-bottom:6px; }
   .empty-sub { font-size:0.78rem; color:var(--text3); margin-bottom:1.25rem; }
-  .btn-primary { background:linear-gradient(135deg,var(--accent),#4F46E5); color:var(--white); border:none; border-radius:8px; padding:9px 22px; font-size:0.85rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; }
-  .btn-primary:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(99,102,241,0.4); }
+  .btn-primary { background:linear-gradient(135deg,var(--accent),#3A6ED4); color:var(--white); border:none; border-radius:8px; padding:9px 22px; font-size:0.85rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; }
+  .btn-primary:hover { transform:translateY(-1px); box-shadow:0 4px 16px rgba(79,142,247,0.4); }
 
   /* ── SKELETON ── */
   @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   .skel {
-    background:linear-gradient(90deg,#191826,#232232,#191826);
+    background:linear-gradient(90deg,#070C18,#0C1222,#070C18);
     background-size:200% 100%; animation:shimmer 1.5s infinite;
     border-radius:8px;
   }
@@ -288,7 +272,7 @@ const css = `
 
   /* ── FOLLOW LIST MODAL ── */
   .fl-overlay {
-    position:fixed; inset:0; background:rgba(15,14,23,0.82); z-index:1000;
+    position:fixed; inset:0; background:rgba(2,4,10,0.82); z-index:1000;
     display:flex; align-items:center; justify-content:center; padding:1rem;
   }
   .fl-modal {
@@ -325,7 +309,7 @@ const css = `
 `
 
 const PT_COLORS = {
-  survival_guide: { color:'#6366F1', bg:'rgba(99,102,241,0.1)',  border:'rgba(99,102,241,0.22)',  label:'Guide' },
+  survival_guide: { color:'#4F8EF7', bg:'rgba(79,142,247,0.1)',  border:'rgba(79,142,247,0.22)',  label:'Guide' },
   cheat_code:     { color:'#FBD34D', bg:'rgba(251,211,77,0.1)',  border:'rgba(251,211,77,0.22)',  label:'Cheat Code' },
   timeline:       { color:'#4ADE80', bg:'rgba(74,222,128,0.1)',  border:'rgba(74,222,128,0.22)',  label:'Timeline' },
   red_flag:       { color:'#F87171', bg:'rgba(248,113,113,0.1)', border:'rgba(248,113,113,0.22)', label:'Red Flag' },
@@ -701,7 +685,7 @@ export default function Profile() {
         </div>
         {/* Upload card skeletons */}
         {[...Array(3)].map((_, i) => (
-          <div key={i} style={{ marginBottom:8, border:'1px solid #2C2A42', borderRadius:12, padding:'14px 18px', display:'flex', alignItems:'center', gap:14 }}>
+          <div key={i} style={{ marginBottom:8, border:'1px solid #1C2A45', borderRadius:12, padding:'14px 18px', display:'flex', alignItems:'center', gap:14 }}>
             <div className="skel" style={{ width:44, height:44, borderRadius:9, flexShrink:0 }} />
             <div style={{ flex:1, display:'flex', flexDirection:'column', gap:7 }}>
               <div className="skel" style={{ height:14, width:'55%', borderRadius:4 }} />
@@ -748,7 +732,7 @@ export default function Profile() {
               {profile?.is_fondateur && (
                 <span style={{
                   display:'inline-flex', alignItems:'center', gap:4,
-                  background:'#FBD34D', color:'#0F0E17',
+                  background:'#FBD34D', color:'#02040A',
                   borderRadius:6, padding:'2px 8px',
                   fontFamily:'DM Mono,monospace', fontSize:'11px', fontWeight:700,
                   letterSpacing:'0.5px',
@@ -759,8 +743,8 @@ export default function Profile() {
               {profile?.is_moderator && !profile?.is_admin && (
                 <span style={{
                   display:'inline-flex', alignItems:'center', gap:4,
-                  background:'rgba(99,102,241,0.12)', color:'#6366F1',
-                  border:'1px solid rgba(99,102,241,0.3)',
+                  background:'rgba(79,142,247,0.12)', color:'#4F8EF7',
+                  border:'1px solid rgba(79,142,247,0.3)',
                   borderRadius:6, padding:'2px 8px',
                   fontFamily:'DM Mono,monospace', fontSize:'11px', fontWeight:700,
                   letterSpacing:'0.5px',
@@ -790,7 +774,7 @@ export default function Profile() {
                 </span>
                 <button
                   onClick={() => { setUniModalSel(''); setShowUniModal(true) }}
-                  style={{ background:'none', border:'1px solid rgba(99,102,241,0.25)', color:'var(--accent2)', borderRadius:6, padding:'2px 10px', fontSize:'0.72rem', cursor:'pointer', fontFamily:'DM Mono,monospace', whiteSpace:'nowrap', transition:'border-color 0.15s' }}>
+                  style={{ background:'none', border:'1px solid rgba(79,142,247,0.25)', color:'var(--accent2)', borderRadius:6, padding:'2px 10px', fontSize:'0.72rem', cursor:'pointer', fontFamily:'DM Mono,monospace', whiteSpace:'nowrap', transition:'border-color 0.15s' }}>
                   Ajouter →
                 </button>
               </div>
@@ -842,7 +826,7 @@ export default function Profile() {
               {canSendMessage && (
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('open-dm', { detail: { userId: targetId, name: profile?.name || 'Étudiant' } }))}
-                  style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', borderRadius:8, background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.25)', color:'var(--accent2)', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
+                  style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 16px', borderRadius:8, background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.25)', color:'var(--accent2)', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
                 >
                   ✉ Message
                 </button>
@@ -875,7 +859,7 @@ export default function Profile() {
 
         {/* ── UPLOAD NUDGE (own profile, 0 uploads) ── */}
         {isOwnProfile && !loading && uploads.length === 0 && !uploadNudgeDismissed && (
-          <div style={{ background:'linear-gradient(135deg,rgba(99,102,241,0.07),rgba(99,102,241,0.05))', border:'1px solid rgba(99,102,241,0.18)', borderRadius:12, padding:'14px 18px', marginBottom:'1.25rem', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', position:'relative' }}>
+          <div style={{ background:'linear-gradient(135deg,rgba(79,142,247,0.07),rgba(79,142,247,0.05))', border:'1px solid rgba(79,142,247,0.18)', borderRadius:12, padding:'14px 18px', marginBottom:'1.25rem', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', position:'relative' }}>
             <span style={{ fontSize:'1.1rem' }}>📤</span>
             <span style={{ flex:1, fontSize:'0.85rem', color:'var(--text2)', lineHeight:1.4 }}>
               Upload ton premier document et gagne <b style={{ color:'var(--accent2)' }}>50 points</b> !
@@ -937,7 +921,7 @@ export default function Profile() {
                         {isOwnProfile && !isEditing && (
                           <div style={{ display:'flex', gap:5, marginTop:5, flexWrap:'wrap' }}>
                             <button
-                              style={{ background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.18)', color:'var(--accent2)', borderRadius:5, padding:'2px 9px', fontSize:'0.68rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif' }}
+                              style={{ background:'rgba(79,142,247,0.07)', border:'1px solid rgba(79,142,247,0.18)', color:'var(--accent2)', borderRadius:5, padding:'2px 9px', fontSize:'0.68rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif' }}
                               onClick={e => { e.stopPropagation(); startEditDoc(doc) }}>
                               Modifier
                             </button>
@@ -1013,7 +997,7 @@ export default function Profile() {
                     )}
 
                     {isOwnProfile && isEditing && (
-                      <div style={{ background:'rgba(99,102,241,0.03)', border:'1px solid rgba(99,102,241,0.15)', borderTop:'none', borderRadius:'0 0 12px 12px', padding:'1rem 1.25rem' }}>
+                      <div style={{ background:'rgba(79,142,247,0.03)', border:'1px solid rgba(79,142,247,0.15)', borderTop:'none', borderRadius:'0 0 12px 12px', padding:'1rem 1.25rem' }}>
                         <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--accent2)', letterSpacing:'1px', textTransform:'uppercase', marginBottom:'0.75rem' }}>// modifier le document</div>
                         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'0.75rem', marginBottom:'0.75rem' }}>
                           <div>
@@ -1036,7 +1020,7 @@ export default function Profile() {
                         </div>
                         <div style={{ display:'flex', gap:8 }}>
                           <button
-                            style={{ background:'linear-gradient(135deg,var(--accent),#4F46E5)', color:'#fff', border:'none', borderRadius:7, padding:'7px 18px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', opacity: editDocSaving ? 0.6 : 1 }}
+                            style={{ background:'linear-gradient(135deg,var(--accent),#3A6ED4)', color:'#fff', border:'none', borderRadius:7, padding:'7px 18px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', opacity: editDocSaving ? 0.6 : 1 }}
                             disabled={editDocSaving}
                             onClick={() => handleSaveDoc(doc.id)}>
                             {editDocSaving ? 'Sauvegarde...' : 'Sauvegarder'}
@@ -1236,7 +1220,7 @@ export default function Profile() {
               <div className="settings-head" style={{ color:'#FBD34D', borderColor:'rgba(251,211,77,0.12)' }}>// soutenir 9rawZid9ra</div>
               <div className="settings-body" style={{ textAlign:'center' }}>
                 <div style={{ fontSize:'0.85rem', fontWeight:600, color:'#FBD34D', marginBottom:6 }}>☕ La plateforme t'a aidé ?</div>
-                <div style={{ fontSize:'0.78rem', color:'#A4A0C8', lineHeight:1.6, marginBottom:'0.75rem' }}>
+                <div style={{ fontSize:'0.78rem', color:'#94A3B8', lineHeight:1.6, marginBottom:'0.75rem' }}>
                   9rawZid9ra est 100% gratuit. Si tu veux soutenir le projet et nous aider à grandir, un petit pourboire fait toute la différence.
                 </div>
                 <a
@@ -1362,7 +1346,7 @@ export default function Profile() {
                 <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.72rem', color:'var(--text3)' }}>{r.range}</span>
               </div>
             ))}
-            <div style={{ marginTop:'1rem', fontFamily:'Outfit,sans-serif', fontSize:'0.8rem', color:'var(--text2)', textAlign:'center', background:'rgba(99,102,241,0.05)', border:'1px solid rgba(99,102,241,0.12)', borderRadius:8, padding:'8px 12px' }}>
+            <div style={{ marginTop:'1rem', fontFamily:'Outfit,sans-serif', fontSize:'0.8rem', color:'var(--text2)', textAlign:'center', background:'rgba(79,142,247,0.05)', border:'1px solid rgba(79,142,247,0.12)', borderRadius:8, padding:'8px 12px' }}>
               Plus tu contribues, plus tu montes en grade !
             </div>
             <button
@@ -1409,15 +1393,15 @@ export default function Profile() {
     )}
 
       {showUniModal && (
-        <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(15,14,23,0.85)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }}
+        <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(2,4,10,0.85)', backdropFilter:'blur(6px)', display:'flex', alignItems:'center', justifyContent:'center', padding:'1rem' }}
           onClick={() => setShowUniModal(false)}>
-          <div style={{ background:'#191826', border:'1px solid #2C2A42', borderRadius:14, padding:'1.75rem', maxWidth:400, width:'100%', boxShadow:'0 24px 60px rgba(0,0,0,0.6)' }}
+          <div style={{ background:'#070C18', border:'1px solid #1C2A45', borderRadius:14, padding:'1.75rem', maxWidth:400, width:'100%', boxShadow:'0 24px 60px rgba(0,0,0,0.6)' }}
             onClick={e => e.stopPropagation()}>
             <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'var(--accent)', letterSpacing:'1.5px', textTransform:'uppercase', marginBottom:8 }}>// ton université</div>
             <h3 style={{ fontSize:'1.1rem', fontWeight:700, color:'#FFFFFF', marginBottom:6 }}>Quelle est ton université ?</h3>
             <p style={{ fontSize:'0.82rem', color:'var(--text2)', marginBottom:'1.25rem', lineHeight:1.5 }}>Personnalise ton expérience pour voir directement les modules de ton université.</p>
             <select
-              style={{ width:'100%', background:'#232232', border:'1px solid #2C2A42', borderRadius:9, padding:'10px 12px', color:'#EAE7FF', fontSize:'0.875rem', fontFamily:'Outfit,sans-serif', outline:'none', marginBottom:'1.25rem', cursor:'pointer' }}
+              style={{ width:'100%', background:'#0C1222', border:'1px solid #1C2A45', borderRadius:9, padding:'10px 12px', color:'#E2E8F0', fontSize:'0.875rem', fontFamily:'Outfit,sans-serif', outline:'none', marginBottom:'1.25rem', cursor:'pointer' }}
               value={uniModalSel}
               onChange={e => setUniModalSel(e.target.value)}>
               <option value="">Sélectionner ton université...</option>
@@ -1425,13 +1409,13 @@ export default function Profile() {
             </select>
             <div style={{ display:'flex', gap:8, justifyContent:'flex-end' }}>
               <button
-                style={{ background:'none', border:'1px solid #2C2A42', color:'#A4A0C8', borderRadius:8, padding:'8px 18px', fontSize:'0.85rem', fontFamily:'Outfit,sans-serif', cursor:'pointer' }}
+                style={{ background:'none', border:'1px solid #1C2A45', color:'#94A3B8', borderRadius:8, padding:'8px 18px', fontSize:'0.85rem', fontFamily:'Outfit,sans-serif', cursor:'pointer' }}
                 onClick={() => setShowUniModal(false)}>
                 Annuler
               </button>
               <button
                 disabled={!uniModalSel || uniModalSaving}
-                style={{ background:'#6366F1', color:'#fff', border:'none', borderRadius:8, padding:'8px 18px', fontSize:'0.85rem', fontWeight:600, fontFamily:'Outfit,sans-serif', cursor: !uniModalSel ? 'not-allowed' : 'pointer', opacity: !uniModalSel || uniModalSaving ? 0.5 : 1 }}
+                style={{ background:'#4F8EF7', color:'#fff', border:'none', borderRadius:8, padding:'8px 18px', fontSize:'0.85rem', fontWeight:600, fontFamily:'Outfit,sans-serif', cursor: !uniModalSel ? 'not-allowed' : 'pointer', opacity: !uniModalSel || uniModalSaving ? 0.5 : 1 }}
                 onClick={saveUniFromModal}>
                 {uniModalSaving ? 'Enregistrement...' : 'Enregistrer'}
               </button>

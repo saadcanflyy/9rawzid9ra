@@ -6,21 +6,21 @@ import Navbar from '../components/Navbar'
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  html, body { background:#0F0E17; color:#EAE7FF; font-family:'Outfit',sans-serif; min-height:100vh; }
+  html, body { background:#02040A; color:#E2E8F0; font-family:'Outfit',sans-serif; min-height:100vh; }
 
-  .mm-page { min-height:100vh; background:#0F0E17; }
+  .mm-page { min-height:100vh; background:#02040A; }
 
   .mm-header {
     max-width:860px; margin:0 auto; padding:2rem 1.25rem 1rem;
   }
   .mm-label {
-    font-family:'DM Mono',monospace; font-size:0.6rem; color:#666287;
+    font-family:'DM Mono',monospace; font-size:0.6rem; color:#4A5568;
     letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;
   }
   .mm-title {
     font-size:1.6rem; font-weight:700; color:#FFFFFF; margin-bottom:6px;
   }
-  .mm-sub { font-size:0.85rem; color:#666287; }
+  .mm-sub { font-size:0.85rem; color:#4A5568; }
 
   .mm-grid {
     max-width:860px; margin:0 auto; padding:0 1.25rem 3rem;
@@ -28,17 +28,17 @@ const css = `
   }
 
   .mm-card {
-    background:#191826; border:1px solid #2C2A42; border-radius:12px;
+    background:#070C18; border:1px solid #1C2A45; border-radius:12px;
     padding:16px 18px; display:flex; flex-direction:column; gap:10px;
     transition:border-color 0.15s;
     cursor:pointer;
   }
-  .mm-card:hover { border-color:#3D3B5C; }
+  .mm-card:hover { border-color:#2D4A7A; }
 
   .mm-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
   .mm-card-name { font-size:0.95rem; font-weight:600; color:#FFFFFF; line-height:1.35; }
   .mm-card-remove {
-    flex-shrink:0; background:none; border:none; color:#666287; cursor:pointer;
+    flex-shrink:0; background:none; border:none; color:#4A5568; cursor:pointer;
     padding:2px; border-radius:4px; display:flex; align-items:center;
     transition:color 0.15s;
   }
@@ -49,14 +49,14 @@ const css = `
     font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:500;
     padding:3px 8px; border-radius:4px; letter-spacing:0.5px;
   }
-  .mm-tag-sem { background:rgba(99,102,241,0.1); color:#818CF8; border:1px solid rgba(99,102,241,0.2); }
-  .mm-tag-fil { background:rgba(99,102,241,0.08); color:#6366F1; border:1px solid rgba(99,102,241,0.15); }
-  .mm-tag-uni { background:rgba(164,160,200,0.08); color:#A4A0C8; border:1px solid rgba(164,160,200,0.12); }
+  .mm-tag-sem { background:rgba(79,142,247,0.1); color:#7BB3FF; border:1px solid rgba(79,142,247,0.2); }
+  .mm-tag-fil { background:rgba(79,142,247,0.08); color:#4F8EF7; border:1px solid rgba(79,142,247,0.15); }
+  .mm-tag-uni { background:rgba(148,163,184,0.08); color:#94A3B8; border:1px solid rgba(148,163,184,0.12); }
 
   .mm-card-footer {
     display:flex; align-items:center; justify-content:space-between;
-    border-top:1px solid #2C2A42; padding-top:10px;
-    font-family:'DM Mono',monospace; font-size:0.65rem; color:#666287;
+    border-top:1px solid #1C2A45; padding-top:10px;
+    font-family:'DM Mono',monospace; font-size:0.65rem; color:#4A5568;
   }
 
   .mm-empty {
@@ -64,10 +64,10 @@ const css = `
     text-align:center; display:flex; flex-direction:column; align-items:center; gap:12px;
   }
   .mm-empty-icon { font-size:2.5rem; opacity:0.3; }
-  .mm-empty-title { font-size:1.1rem; font-weight:600; color:#EAE7FF; }
-  .mm-empty-sub { font-size:0.82rem; color:#666287; line-height:1.6; }
+  .mm-empty-title { font-size:1.1rem; font-weight:600; color:#E2E8F0; }
+  .mm-empty-sub { font-size:0.82rem; color:#4A5568; line-height:1.6; }
   .mm-empty-btn {
-    margin-top:8px; background:linear-gradient(135deg,#6366F1,#4F46E5);
+    margin-top:8px; background:linear-gradient(135deg,#4F8EF7,#3A6ED4);
     color:#fff; border:none; border-radius:9px; padding:'10px 24px';
     font-size:0.875rem; font-weight:600; cursor:pointer;
     font-family:'Outfit',sans-serif; padding:10px 24px;
@@ -84,7 +84,7 @@ const css = `
   }
   @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   .skel {
-    background:linear-gradient(90deg,#191826,#232232,#191826);
+    background:linear-gradient(90deg,#070C18,#0C1222,#070C18);
     background-size:200% 100%; animation:shimmer 1.5s infinite;
     border-radius:6px;
   }
@@ -170,7 +170,7 @@ export default function MyModules() {
                 <div className="skel" style={{ height:20, width:60, borderRadius:4 }} />
                 <div className="skel" style={{ height:20, width:72, borderRadius:4 }} />
               </div>
-              <div style={{ display:'flex', justifyContent:'space-between', paddingTop:10, borderTop:'1px solid #2C2A42' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', paddingTop:10, borderTop:'1px solid #1C2A45' }}>
                 <div className="skel" style={{ height:12, width:'38%', borderRadius:4 }} />
                 <div className="skel" style={{ height:12, width:'18%', borderRadius:4 }} />
               </div>
@@ -216,7 +216,7 @@ export default function MyModules() {
                 </div>
                 <div className="mm-card-footer">
                   <span>{b.docCount} document{b.docCount !== 1 ? 's' : ''}</span>
-                  <span style={{ color:'#2C2A42' }}>→</span>
+                  <span style={{ color:'#1C2A45' }}>→</span>
                 </div>
               </div>
             )

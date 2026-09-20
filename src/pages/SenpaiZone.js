@@ -51,7 +51,7 @@ const Ico = ({ n, size = 16, sw = 1.8, fill = 'none', color = 'currentColor' }) 
 
 // ─── POST TYPE CONFIG ─────────────────────────────────────────────────────────
 const PT = {
-  survival_guide: { label: 'Guide de survie', icon: 'map',   color: '#818CF8', bg: 'rgba(99,102,241,0.15)',  border: 'rgba(99,102,241,0.3)' },
+  survival_guide: { label: 'Guide de survie', icon: 'map',   color: '#7BB3FF', bg: 'rgba(79,142,247,0.15)',  border: 'rgba(79,142,247,0.3)' },
   cheat_code:     { label: 'Cheat Code',       icon: 'bolt',  color: '#FBD34D', bg: 'rgba(251,211,77,0.15)', border: 'rgba(251,211,77,0.3)' },
   timeline:       { label: 'Timeline',          icon: 'clock', color: '#4ADE80', bg: 'rgba(74,222,128,0.15)', border: 'rgba(74,222,128,0.3)' },
   red_flag:       { label: 'Red Flag',          icon: 'warn',  color: '#F87171', bg: 'rgba(248,113,113,0.15)',border: 'rgba(248,113,113,0.3)' },
@@ -66,9 +66,9 @@ const isFlagged = t => BAD.some(w => new RegExp(`\\b${w}\\b`, 'i').test(t || '')
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 const GRADS = [
-  'linear-gradient(135deg,#6366F1,#818CF8)',
-  'linear-gradient(135deg,#C4B5FD,#6366F1)',
-  'linear-gradient(135deg,#4ADE80,#6366F1)',
+  'linear-gradient(135deg,#4F8EF7,#2DD4BF)',
+  'linear-gradient(135deg,#C4B5FD,#4F8EF7)',
+  'linear-gradient(135deg,#4ADE80,#4F8EF7)',
   'linear-gradient(135deg,#FBD34D,#F87171)',
   'linear-gradient(135deg,#F87171,#C4B5FD)',
 ]
@@ -89,27 +89,12 @@ const css = `
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --bg:#0F0E17;--surface:#191826;--s2:#232232;--s3:#2C2A42;
-  --border:#2C2A42;--bhi:#3D3B5C;
-  --accent:#6366F1;--a2:#818CF8;--teal:#6366F1;--t2:#A5B4FC;
+  --bg:#02040A;--surface:#070C18;--s2:#0C1222;--s3:#111827;
+  --border:#1C2A45;--bhi:#2D4A7A;
+  --accent:#4F8EF7;--a2:#7BB3FF;--teal:#2DD4BF;--t2:#5EEAD4;
   --red:#F87171;--yellow:#FBD34D;--green:#4ADE80;
-  --text:#EAE7FF;--text2:#A4A0C8;--text3:#666287;
+  --text:#E2E8F0;--text2:#94A3B8;--text3:#4A5568;
 }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg:#F5F4FB;
-      --surface:#FFFFFF;
-      --s2:#F0EEF9;
-      --s3:#E9E6F5;
-      --border:#E3E0F0;
-      --bhi:#C9C4E3;
-      --a2:#4F46E5;
-      --t2:#4F46E5;
-      --text:#1E1B2E;
-      --text2:#5B5775;
-      --text3:#8B87A3;
-    }
-  }
 
 html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif}
 .sz-page{min-height:100vh;background:var(--bg)}
@@ -175,12 +160,12 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
   font-size:0.76rem;cursor:pointer;font-family:'Outfit',sans-serif;transition:all 0.15s;
   white-space:nowrap;position:relative}
 .sz-chip-btn:hover{border-color:var(--bhi);color:var(--text)}
-.sz-chip-btn.selected{background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.3);color:var(--a2)}
+.sz-chip-btn.selected{background:rgba(79,142,247,0.1);border-color:rgba(79,142,247,0.3);color:var(--a2)}
 .sz-chip-btn.anon-on{background:rgba(74,222,128,0.08);border-color:rgba(74,222,128,0.25);color:var(--green)}
-.sz-publish-btn{background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;border:none;
+.sz-publish-btn{background:linear-gradient(135deg,#4F8EF7,#3A6ED4);color:#fff;border:none;
   border-radius:20px;padding:7px 20px;font-size:0.84rem;font-weight:700;cursor:pointer;
   font-family:'Outfit',sans-serif;transition:all 0.15s;white-space:nowrap}
-.sz-publish-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 14px rgba(99,102,241,0.35)}
+.sz-publish-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 14px rgba(79,142,247,0.35)}
 .sz-publish-btn:disabled{opacity:0.45;cursor:not-allowed}
 
 /* floating dropdowns inside compose */
@@ -191,7 +176,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
   font-size:0.82rem;color:var(--text2);cursor:pointer;transition:background 0.1s;
   background:none;border:none;width:100%;text-align:left;font-family:'Outfit',sans-serif}
 .sz-float-dd-item:hover{background:var(--s3);color:var(--text)}
-.sz-float-dd-item.on{color:#fff;font-weight:600;background:rgba(99,102,241,0.08)}
+.sz-float-dd-item.on{color:#fff;font-weight:600;background:rgba(79,142,247,0.08)}
 .sz-float-dd-sub{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--text3);margin-top:1px}
 .sz-float-search{padding:8px 12px;border-bottom:1px solid var(--border)}
 .sz-float-search-input{width:100%;background:none;border:none;color:var(--text);
@@ -203,7 +188,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
 .sz-login-btn{background:var(--accent);color:#fff;border:none;border-radius:20px;
   padding:7px 18px;font-size:0.82rem;font-weight:700;cursor:pointer;
   font-family:'Outfit',sans-serif;transition:background 0.15s}
-.sz-login-btn:hover{background:#4F46E5}
+.sz-login-btn:hover{background:#3A6ED4}
 
 /* ── FEED TABS ── */
 .sz-feed-tabs{display:flex;border-bottom:1px solid var(--border)}
@@ -223,7 +208,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
 .sz-post-author-line{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
 .sz-post-name{font-size:0.85rem;font-weight:700;color:#fff;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.sz-post-name:hover{color:var(--accent2);text-decoration:underline;text-decoration-color:rgba(99,102,241,0.4)}
+.sz-post-name:hover{color:var(--accent2);text-decoration:underline;text-decoration-color:rgba(79,142,247,0.4)}
 .sz-post-sub{font-size:0.72rem;color:var(--text3);white-space:nowrap;font-family:'DM Mono',monospace}
 .sz-post-sep{color:var(--text3);font-size:0.6rem}
 .sz-post-ago{font-size:0.72rem;color:var(--text3);white-space:nowrap;font-family:'DM Mono',monospace;margin-left:2px}
@@ -236,7 +221,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
   font-size:0.64rem;font-weight:600;border:1px solid;white-space:nowrap;flex-shrink:0;
   font-family:'DM Mono',monospace}
 .sz-anon-badge{font-family:'DM Mono',monospace;font-size:0.58rem;color:var(--text3);
-  background:rgba(164,160,200,0.06);border:1px solid var(--border);border-radius:3px;
+  background:rgba(148,163,184,0.06);border:1px solid var(--border);border-radius:3px;
   padding:1px 5px;flex-shrink:0}
 .sz-post-title{font-size:0.93rem;font-weight:700;color:#fff;line-height:1.3;margin-bottom:4px;
   word-break:break-word;overflow-wrap:break-word}
@@ -248,8 +233,8 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
   font-family:'Outfit',sans-serif;padding:2px 0;margin-top:3px;display:block}
 .sz-post-chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
 .sz-post-chip{padding:2px 7px;border-radius:5px;font-size:0.62rem;font-family:'DM Mono',monospace;
-  background:rgba(99,102,241,0.07);color:var(--a2);border:1px solid rgba(99,102,241,0.14);white-space:nowrap}
-.sz-post-chip.uni{background:rgba(99,102,241,0.07);color:var(--t2);border-color:rgba(99,102,241,0.14)}
+  background:rgba(79,142,247,0.07);color:var(--a2);border:1px solid rgba(79,142,247,0.14);white-space:nowrap}
+.sz-post-chip.uni{background:rgba(79,142,247,0.07);color:var(--t2);border-color:rgba(79,142,247,0.14)}
 .sz-post-actions{display:flex;align-items:center;gap:2px;margin-top:10px}
 .sz-act{display:flex;align-items:center;gap:5px;padding:5px 9px;border-radius:20px;
   border:none;background:none;font-size:0.76rem;color:var(--text3);cursor:pointer;
@@ -269,7 +254,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
 .sz-skel{animation:szpulse 1.8s ease-in-out infinite}
 
 /* ── THREAD MODAL ── */
-.sz-overlay{position:fixed;inset:0;z-index:600;background:rgba(15,14,23,0.85);
+.sz-overlay{position:fixed;inset:0;z-index:600;background:rgba(2,4,10,0.85);
   backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:1rem}
 .sz-thread{background:var(--surface);border:1px solid var(--bhi);border-radius:16px;
   width:100%;max-width:600px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden}
@@ -305,7 +290,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
 .sz-reply-send{background:var(--accent);color:#fff;border:none;border-radius:8px;
   padding:9px 12px;cursor:pointer;transition:all 0.15s;flex-shrink:0;
   display:flex;align-items:center;justify-content:center}
-.sz-reply-send:hover{background:#4F46E5}
+.sz-reply-send:hover{background:#3A6ED4}
 .sz-reply-send:disabled{opacity:0.4;cursor:not-allowed}
 .sz-anon-row{display:flex;align-items:center;gap:7px;margin-top:5px}
 .sz-toggle{width:30px;height:17px;border-radius:9px;background:var(--border);position:relative;
@@ -341,7 +326,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
 .sz-cta-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;
   padding:9px;font-size:0.84rem;font-weight:700;cursor:pointer;font-family:'Outfit',sans-serif;
   transition:background 0.15s}
-.sz-cta-btn:hover{background:#4F46E5}
+.sz-cta-btn:hover{background:#3A6ED4}
 
 /* ── MOBILE FILTER BAR (shown at ≤768px) ── */
 .sz-mobile-bar{display:none;padding:8px 12px;border-bottom:1px solid var(--border);
@@ -350,7 +335,7 @@ html,body{background:var(--bg);color:var(--text);font-family:'Outfit',sans-serif
 .sz-mobile-pill{flex-shrink:0;padding:5px 12px;border-radius:20px;font-size:0.76rem;
   background:var(--s2);border:1px solid var(--border);color:var(--text2);
   cursor:pointer;white-space:nowrap;font-family:'Outfit',sans-serif;transition:all 0.15s}
-.sz-mobile-pill.on{border-color:var(--accent);color:var(--a2);background:rgba(99,102,241,0.1)}
+.sz-mobile-pill.on{border-color:var(--accent);color:var(--a2);background:rgba(79,142,247,0.1)}
 
 /* ── RESPONSIVE ── */
 @media(max-width:1100px){
@@ -387,7 +372,7 @@ export default function SenpaiZone() {
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [modal, setModal] = useState(null)
-  const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#6366F1', onCancel: null, onConfirm: () => setModal(null) })
+  const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#4F8EF7', onCancel: null, onConfirm: () => setModal(null) })
 
   const [posts,   setPosts]   = useState([])
   const [unis,    setUnis]    = useState([])
@@ -884,9 +869,9 @@ export default function SenpaiZone() {
       <div key={post.id} className="sz-post" onClick={() => openThread(post)}>
         <div className="sz-post-row">
           <div className="sz-av"
-            style={{ width: 38, height: 38, background: anon ? '#2C2A42' : aGrad(post.author_id), fontSize: '0.62rem', flexShrink: 0, cursor: anon ? 'default' : 'pointer' }}
+            style={{ width: 38, height: 38, background: anon ? '#1C2A45' : aGrad(post.author_id), fontSize: '0.62rem', flexShrink: 0, cursor: anon ? 'default' : 'pointer' }}
             onClick={!anon ? e => { e.stopPropagation(); navigate(`/user/${post.author_id}`) } : undefined}>
-            {anon ? <Ico n="user" size={14} color="#666287" /> : inits(name)}
+            {anon ? <Ico n="user" size={14} color="#4A5568" /> : inits(name)}
           </div>
           <div className="sz-post-body-wrap">
             <div className="sz-post-header">
@@ -895,7 +880,7 @@ export default function SenpaiZone() {
                   {name}
                 </span>
                 {!anon && post.user_profiles?.is_fondateur && (
-                  <span style={{ background:'#FBD34D', color:'#0F0E17', borderRadius:4, padding:'1px 6px', fontSize:'0.6rem', fontWeight:700, fontFamily:'DM Mono,monospace', flexShrink:0 }}>🏆</span>
+                  <span style={{ background:'#FBD34D', color:'#02040A', borderRadius:4, padding:'1px 6px', fontSize:'0.6rem', fontWeight:700, fontFamily:'DM Mono,monospace', flexShrink:0 }}>🏆</span>
                 )}
                 {uni && <><span className="sz-post-sep">·</span><span className="sz-post-sub">{uni}</span></>}
                 {anon && <span className="sz-anon-badge">Anonyme</span>}
@@ -911,9 +896,9 @@ export default function SenpaiZone() {
                   <button
                     title="Envoyer un message"
                     onClick={e => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('open-dm', { detail: { userId: post.author_id, name } })) }}
-                    style={{ background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.18)', color:'#818CF8', cursor:'pointer', padding:'6px 8px', borderRadius:8, display:'inline-flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', flexShrink:0 }}
-                    onMouseEnter={e => { e.currentTarget.style.background='rgba(99,102,241,0.16)'; e.currentTarget.style.borderColor='rgba(99,102,241,0.4)'; e.currentTarget.style.color='#fff' }}
-                    onMouseLeave={e => { e.currentTarget.style.background='rgba(99,102,241,0.07)'; e.currentTarget.style.borderColor='rgba(99,102,241,0.18)'; e.currentTarget.style.color='#818CF8' }}
+                    style={{ background:'rgba(79,142,247,0.07)', border:'1px solid rgba(79,142,247,0.18)', color:'#7BB3FF', cursor:'pointer', padding:'6px 8px', borderRadius:8, display:'inline-flex', alignItems:'center', justifyContent:'center', transition:'all 0.15s', flexShrink:0 }}
+                    onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.16)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.4)'; e.currentTarget.style.color='#fff' }}
+                    onMouseLeave={e => { e.currentTarget.style.background='rgba(79,142,247,0.07)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.18)'; e.currentTarget.style.color='#7BB3FF' }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
@@ -967,11 +952,11 @@ export default function SenpaiZone() {
                     <Ico n="more" size={13} sw={2.5} />
                   </button>
                   {menuPostId === post.id && (
-                    <div data-post-menu style={{ position:'absolute', bottom:'calc(100% + 4px)', right:0, background:'#232232', border:'1px solid #2C2A42', borderRadius:10, minWidth:140, boxShadow:'0 8px 24px rgba(0,0,0,0.5)', zIndex:300, overflow:'hidden' }}>
+                    <div data-post-menu style={{ position:'absolute', bottom:'calc(100% + 4px)', right:0, background:'#0C1222', border:'1px solid #1C2A45', borderRadius:10, minWidth:140, boxShadow:'0 8px 24px rgba(0,0,0,0.5)', zIndex:300, overflow:'hidden' }}>
                       {isOwn && (
                         <button
-                          style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 14px', fontSize:'0.8rem', color:'#A4A0C8', background:'none', border:'none', width:'100%', textAlign:'left', cursor:'pointer', fontFamily:'Outfit,sans-serif', borderBottom:'1px solid #2C2A42' }}
-                          onMouseEnter={e => e.currentTarget.style.background='#2C2A42'}
+                          style={{ display:'flex', alignItems:'center', gap:8, padding:'9px 14px', fontSize:'0.8rem', color:'#94A3B8', background:'none', border:'none', width:'100%', textAlign:'left', cursor:'pointer', fontFamily:'Outfit,sans-serif', borderBottom:'1px solid #1C2A45' }}
+                          onMouseEnter={e => e.currentTarget.style.background='#1C2A45'}
                           onMouseLeave={e => e.currentTarget.style.background='none'}
                           onClick={e => { e.stopPropagation(); setEditingPost(post); setEditText(post.content); setMenuPostId(null) }}>
                           <Ico n="edit" size={13} sw={1.8} /> Modifier
@@ -1023,9 +1008,9 @@ export default function SenpaiZone() {
             <div className="sz-thread-post">
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <div className="sz-av"
-                  style={{ background: anon ? '#2C2A42' : aGrad(viewPost.author_id), fontSize: '0.62rem', flexShrink: 0, cursor: anon ? 'default' : 'pointer' }}
+                  style={{ background: anon ? '#1C2A45' : aGrad(viewPost.author_id), fontSize: '0.62rem', flexShrink: 0, cursor: anon ? 'default' : 'pointer' }}
                   onClick={!anon ? () => { navigate(`/user/${viewPost.author_id}`); setViewPost(null) } : undefined}>
-                  {anon ? <Ico n="user" size={14} color="#666287" /> : inits(name)}
+                  {anon ? <Ico n="user" size={14} color="#4A5568" /> : inits(name)}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1034,7 +1019,7 @@ export default function SenpaiZone() {
                       {name}
                     </span>
                     {!anon && viewPost.user_profiles?.is_fondateur && (
-                      <span style={{ background:'#FBD34D', color:'#0F0E17', borderRadius:4, padding:'1px 6px', fontSize:'0.6rem', fontWeight:700, fontFamily:'DM Mono,monospace' }}>🏆</span>
+                      <span style={{ background:'#FBD34D', color:'#02040A', borderRadius:4, padding:'1px 6px', fontSize:'0.6rem', fontWeight:700, fontFamily:'DM Mono,monospace' }}>🏆</span>
                     )}
                     {!isOwn(viewPost) && user && (
                       <button className={`sz-follow-inline ${isF ? 'on' : ''}`} style={{ marginLeft: 0 }}
@@ -1087,8 +1072,8 @@ export default function SenpaiZone() {
                 return (
                   <div key={r.id} className="sz-reply-item">
                     <div className="sz-av"
-                      style={{ width: 30, height: 30, fontSize: '0.55rem', background: r.is_anonymous ? '#2C2A42' : aGrad(r.author_id), flexShrink: 0 }}>
-                      {r.is_anonymous ? <Ico n="user" size={12} color="#666287" /> : inits(rn)}
+                      style={{ width: 30, height: 30, fontSize: '0.55rem', background: r.is_anonymous ? '#1C2A45' : aGrad(r.author_id), flexShrink: 0 }}>
+                      {r.is_anonymous ? <Ico n="user" size={12} color="#4A5568" /> : inits(rn)}
                     </div>
                     <div style={{ flex: 1 }}>
                       <textarea className="sz-reply-ta" autoFocus
@@ -1118,9 +1103,9 @@ export default function SenpaiZone() {
               return (
                 <div key={r.id} className="sz-reply-item">
                   <div className="sz-av"
-                    style={{ width: 30, height: 30, fontSize: '0.55rem', background: r.is_anonymous ? '#2C2A42' : aGrad(r.author_id), flexShrink: 0, cursor: r.is_anonymous ? 'default' : 'pointer' }}
+                    style={{ width: 30, height: 30, fontSize: '0.55rem', background: r.is_anonymous ? '#1C2A45' : aGrad(r.author_id), flexShrink: 0, cursor: r.is_anonymous ? 'default' : 'pointer' }}
                     onClick={!r.is_anonymous ? () => { navigate(`/user/${r.author_id}`); setViewPost(null) } : undefined}>
-                    {r.is_anonymous ? <Ico n="user" size={12} color="#666287" /> : inits(rn)}
+                    {r.is_anonymous ? <Ico n="user" size={12} color="#4A5568" /> : inits(rn)}
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 3 }}>
@@ -1142,11 +1127,11 @@ export default function SenpaiZone() {
                             <Ico n="more" size={13} sw={2.5} />
                           </button>
                           {menuReplyId === r.id && (
-                            <div data-reply-menu style={{ position: 'absolute', bottom: 'calc(100% + 4px)', right: 0, background: '#232232', border: '1px solid #2C2A42', borderRadius: 10, minWidth: 130, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', zIndex: 400, overflow: 'hidden' }}>
+                            <div data-reply-menu style={{ position: 'absolute', bottom: 'calc(100% + 4px)', right: 0, background: '#0C1222', border: '1px solid #1C2A45', borderRadius: 10, minWidth: 130, boxShadow: '0 8px 24px rgba(0,0,0,0.5)', zIndex: 400, overflow: 'hidden' }}>
                               {isReplyOwn && (
                                 <button
-                                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', fontSize: '0.8rem', color: '#A4A0C8', background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'Outfit,sans-serif', borderBottom: '1px solid #2C2A42' }}
-                                  onMouseEnter={e => e.currentTarget.style.background = '#2C2A42'}
+                                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', fontSize: '0.8rem', color: '#94A3B8', background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: 'Outfit,sans-serif', borderBottom: '1px solid #1C2A45' }}
+                                  onMouseEnter={e => e.currentTarget.style.background = '#1C2A45'}
                                   onMouseLeave={e => e.currentTarget.style.background = 'none'}
                                   onClick={() => { setEditingReply(r); setEditReplyText(r.content); setMenuReplyId(null) }}>
                                   <Ico n="edit" size={13} sw={1.8} /> Modifier
@@ -1171,8 +1156,8 @@ export default function SenpaiZone() {
             })}
           </div>
           <div className="sz-reply-compose">
-            <div className="sz-av" style={{ width: 30, height: 30, fontSize: '0.55rem', background: user ? aGrad(user.id) : '#2C2A42', flexShrink: 0 }}>
-              {user ? inits(profile?.name || user.email) : <Ico n="user" size={12} color="#666287" />}
+            <div className="sz-av" style={{ width: 30, height: 30, fontSize: '0.55rem', background: user ? aGrad(user.id) : '#1C2A45', flexShrink: 0 }}>
+              {user ? inits(profile?.name || user.email) : <Ico n="user" size={12} color="#4A5568" />}
             </div>
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
               <textarea className="sz-reply-ta"
@@ -1207,8 +1192,8 @@ export default function SenpaiZone() {
   const renderCompose = () => (
     <div className="sz-compose" ref={composeRef}>
       <div className="sz-compose-row">
-        <div className="sz-av" style={{ background: user ? aGrad(user.id) : '#2C2A42', flexShrink: 0 }}>
-          {user ? inits(profile?.name || user.email) : <Ico n="user" size={14} color="#666287" />}
+        <div className="sz-av" style={{ background: user ? aGrad(user.id) : '#1C2A45', flexShrink: 0 }}>
+          {user ? inits(profile?.name || user.email) : <Ico n="user" size={14} color="#4A5568" />}
         </div>
         <div className="sz-compose-right">
           {!user ? (
@@ -1327,7 +1312,7 @@ export default function SenpaiZone() {
             { path: '/upload', icon: 'upload',  label: 'Uploader' },
           ].map(l => (
             <button key={l.path} className={`sz-nav ${l.active ? 'on' : ''}`} onClick={() => navigate(l.path)}>
-              <div className="sz-nav-icon" style={l.active ? { background: 'rgba(99,102,241,0.12)' } : {}}>
+              <div className="sz-nav-icon" style={l.active ? { background: 'rgba(79,142,247,0.12)' } : {}}>
                 <Ico n={l.icon} size={15} sw={1.8} color={l.active ? 'var(--accent)' : 'var(--text2)'} />
               </div>
               {l.label}
@@ -1394,7 +1379,7 @@ export default function SenpaiZone() {
 
           {/* Module filter banner */}
           {filterMod && filterModName && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', background: 'rgba(99,102,241,0.05)', borderBottom: '1px solid var(--border)', fontSize: '0.8rem', color: 'var(--a2)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', background: 'rgba(79,142,247,0.05)', borderBottom: '1px solid var(--border)', fontSize: '0.8rem', color: 'var(--a2)' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Ico n="book" size={13} sw={2} />Module : <b>{filterModName}</b></span>
               <button style={{ background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', display: 'flex' }} onClick={() => { setFilterMod(''); setFilterModName(''); setSP({}) }}>
                 <Ico n="close" size={13} sw={2} />
@@ -1480,7 +1465,7 @@ export default function SenpaiZone() {
                 <div style={{ display:'flex', alignItems:'flex-end', gap:5, height:44, marginBottom:10 }}>
                   {weekStats.days.map((n, i) => {
                     const max = Math.max(...weekStats.days, 1)
-                    return <div key={i} style={{ flex:1, background: i === 6 ? 'var(--accent)' : 'rgba(99,102,241,0.35)', borderRadius:'2px 2px 0 0', minHeight:2, height:`${Math.round((n / max) * 44)}px`, transition:'height 0.3s' }} title={`${n} post${n !== 1 ? 's' : ''}`} />
+                    return <div key={i} style={{ flex:1, background: i === 6 ? 'var(--accent)' : 'rgba(79,142,247,0.35)', borderRadius:'2px 2px 0 0', minHeight:2, height:`${Math.round((n / max) * 44)}px`, transition:'height 0.3s' }} title={`${n} post${n !== 1 ? 's' : ''}`} />
                   })}
                 </div>
                 <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.72rem', color:'var(--text2)' }}>

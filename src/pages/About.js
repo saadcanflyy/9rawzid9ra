@@ -7,24 +7,10 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
   :root {
-    --bg:#0F0E17; --surface:#191826; --s2:#232232;
-    --border:#2C2A42;
-    --accent:#6366F1; --accent2:#818CF8; --teal:#6366F1; --teal2:#A5B4FC;
-    --text:#EAE7FF; --text2:#A4A0C8; --text3:#666287; --white:#FFFFFF;
-  }
-  @media (prefers-color-scheme: light) {
-    :root {
-      --bg:#F5F4FB;
-      --surface:#FFFFFF;
-      --s2:#F0EEF9;
-      --border:#E3E0F0;
-      --accent2:#4F46E5;
-      --teal2:#4F46E5;
-      --text:#1E1B2E;
-      --text2:#5B5775;
-      --text3:#8B87A3;
-      --white:#17152B;
-    }
+    --bg:#02040A; --surface:#070C18; --s2:#0C1222;
+    --border:#1C2A45;
+    --accent:#4F8EF7; --accent2:#7BB3FF; --teal:#2DD4BF; --teal2:#5EEAD4;
+    --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
   }
 
   body { background:var(--bg); color:var(--text); font-family:'Outfit',sans-serif; }
@@ -41,7 +27,7 @@ const css = `
     position: absolute;
     width: 500px; height: 500px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(79,142,247,0.08) 0%, transparent 70%);
     top: -150px; left: 50%; transform: translateX(-50%);
     pointer-events: none;
   }
@@ -134,8 +120,8 @@ const css = `
     font-family: 'DM Mono', monospace;
     font-size: 0.6rem;
     color: var(--accent);
-    background: rgba(99,102,241,0.08);
-    border: 1px solid rgba(99,102,241,0.15);
+    background: rgba(79,142,247,0.08);
+    border: 1px solid rgba(79,142,247,0.15);
     padding: 2px 8px;
     border-radius: 4px;
     letter-spacing: 1px;
@@ -168,10 +154,10 @@ const css = `
     border: none;
   }
   .about-btn-primary {
-    background: linear-gradient(135deg, var(--accent), #4F46E5);
+    background: linear-gradient(135deg, var(--accent), #3A6ED4);
     color: #fff;
   }
-  .about-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(99,102,241,0.35); }
+  .about-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 24px rgba(79,142,247,0.35); }
   .about-btn-ghost {
     background: none;
     border: 1px solid var(--border);

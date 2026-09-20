@@ -10,36 +10,36 @@ const isExpired  = (ts) => Date.now() - new Date(ts).getTime() > EXPIRY_MS
 const css = `
   @keyframes mw-slide { from { opacity:0; transform:translateY(14px) scale(0.97); } to { opacity:1; transform:translateY(0) scale(1); } }
   @keyframes mw-spin  { to { transform:rotate(360deg); } }
-  @keyframes mw-pulse { 0%,100% { box-shadow:0 8px 28px rgba(99,102,241,0.45); } 50% { box-shadow:0 8px 36px rgba(99,102,241,0.75), 0 0 0 6px rgba(99,102,241,0.12); } }
+  @keyframes mw-pulse { 0%,100% { box-shadow:0 8px 28px rgba(79,142,247,0.45); } 50% { box-shadow:0 8px 36px rgba(79,142,247,0.75), 0 0 0 6px rgba(79,142,247,0.12); } }
   .mw-panel {
     position:fixed; bottom:152px; right:24px; z-index:9998;
     width:360px; height:500px;
-    background:#191826; border:1px solid #2C2A42; border-radius:16px;
-    box-shadow:0 24px 64px rgba(0,0,0,0.75), 0 0 0 1px rgba(99,102,241,0.06);
+    background:#070C18; border:1px solid #1C2A45; border-radius:16px;
+    box-shadow:0 24px 64px rgba(0,0,0,0.75), 0 0 0 1px rgba(79,142,247,0.06);
     display:flex; flex-direction:column; overflow:hidden;
     animation:mw-slide 0.2s cubic-bezier(.34,1.2,.64,1);
     font-family:'Outfit',sans-serif;
   }
   .mw-thread { flex:1; overflow-y:auto; padding:12px 14px; display:flex; flex-direction:column; gap:8px; }
   .mw-thread::-webkit-scrollbar { width:3px; }
-  .mw-thread::-webkit-scrollbar-thumb { background:#2C2A42; border-radius:2px; }
+  .mw-thread::-webkit-scrollbar-thumb { background:#1C2A45; border-radius:2px; }
   .mw-inbox { flex:1; overflow-y:auto; }
   .mw-inbox::-webkit-scrollbar { width:3px; }
-  .mw-inbox::-webkit-scrollbar-thumb { background:#2C2A42; border-radius:2px; }
+  .mw-inbox::-webkit-scrollbar-thumb { background:#1C2A45; border-radius:2px; }
   .mw-contact-row {
     padding:12px 16px; display:flex; align-items:center; gap:12px;
-    cursor:pointer; border-bottom:1px solid rgba(44,42,66,0.5);
+    cursor:pointer; border-bottom:1px solid rgba(28,42,69,0.5);
     transition:background 0.12s;
   }
   .mw-contact-row:hover { background:rgba(255,255,255,0.03); }
   .mw-textarea {
-    flex:1; background:#232232; border:1px solid #2C2A42; border-radius:8px;
-    padding:9px 12px; color:#EAE7FF; font-size:0.82rem; font-family:'Outfit',sans-serif;
+    flex:1; background:#0C1222; border:1px solid #1C2A45; border-radius:8px;
+    padding:9px 12px; color:#E2E8F0; font-size:0.82rem; font-family:'Outfit',sans-serif;
     outline:none; resize:none; line-height:1.45; max-height:80px; overflow-y:auto;
     transition:border-color 0.15s;
   }
-  .mw-textarea:focus { border-color:rgba(99,102,241,0.4); }
-  .mw-textarea::placeholder { color:#666287; }
+  .mw-textarea:focus { border-color:rgba(79,142,247,0.4); }
+  .mw-textarea::placeholder { color:#4A5568; }
   @media(max-width:480px) {
     .mw-panel { width:calc(100vw - 32px); right:16px; bottom:148px; }
   }
@@ -346,32 +346,32 @@ export default function MessengerWidget() {
       {isOpen && (
         <div className="mw-panel">
           {/* Header */}
-          <div style={{ padding:'12px 16px', borderBottom:'1px solid #2C2A42', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, background:'#191826' }}>
+          <div style={{ padding:'12px 16px', borderBottom:'1px solid #1C2A45', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0, background:'#070C18' }}>
             <div style={{ display:'flex', alignItems:'center', gap:10 }}>
               {view === 'chat' && (
                 <button onClick={backToInbox}
-                  style={{ background:'none', border:'none', color:'#A4A0C8', cursor:'pointer', padding:'2px 6px 2px 0', display:'flex', alignItems:'center' }}>
+                  style={{ background:'none', border:'none', color:'#94A3B8', cursor:'pointer', padding:'2px 6px 2px 0', display:'flex', alignItems:'center' }}>
                   <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                   </svg>
                 </button>
               )}
-              <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#6366F1,#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.68rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
+              <div style={{ width:36, height:36, borderRadius:'50%', background:'linear-gradient(135deg,#4F8EF7,#2DD4BF)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.68rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
                 {view === 'chat' && activeContact ? avatarInitials(activeContact.name) : '💬'}
               </div>
               <div>
-                <div style={{ fontSize:'0.86rem', fontWeight:700, color:'#EAE7FF', letterSpacing:'-0.3px' }}>
+                <div style={{ fontSize:'0.86rem', fontWeight:700, color:'#E2E8F0', letterSpacing:'-0.3px' }}>
                   {view === 'chat' && activeContact ? activeContact.name : 'Messages'}
                 </div>
                 {view === 'inbox' && (
-                  <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'#666287', marginTop:1 }}>
+                  <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'#4A5568', marginTop:1 }}>
                     // {contacts.length} conversation{contacts.length !== 1 ? 's' : ''}
                   </div>
                 )}
               </div>
             </div>
             <button onClick={() => setIsOpen(false)}
-              style={{ background:'none', border:'none', color:'#666287', cursor:'pointer', padding:6, borderRadius:7, transition:'background 0.15s', display:'flex', alignItems:'center', justifyContent:'center' }}
+              style={{ background:'none', border:'none', color:'#4A5568', cursor:'pointer', padding:6, borderRadius:7, transition:'background 0.15s', display:'flex', alignItems:'center', justifyContent:'center' }}
               onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.05)'}
               onMouseLeave={e => e.currentTarget.style.background='none'}>
               <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
@@ -384,42 +384,42 @@ export default function MessengerWidget() {
           {view === 'inbox' && (
             <div className="mw-inbox">
               {loading && (
-                <div style={{ textAlign:'center', fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#666287', padding:'2rem 0' }}>
+                <div style={{ textAlign:'center', fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4A5568', padding:'2rem 0' }}>
                   chargement...
                 </div>
               )}
               {!loading && contacts.map(c => (
                 <div key={c.id} className="mw-contact-row" onClick={() => openContact(c)}>
-                  <div style={{ width:40, height:40, borderRadius:'50%', background: c.id === ADMIN_ID ? 'linear-gradient(135deg,#6366F1,#818CF8)' : 'linear-gradient(135deg,#6366F1,#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.7rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
+                  <div style={{ width:40, height:40, borderRadius:'50%', background: c.id === ADMIN_ID ? 'linear-gradient(135deg,#4F8EF7,#2DD4BF)' : 'linear-gradient(135deg,#4F8EF7,#2DD4BF)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.7rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
                     {avatarInitials(c.name)}
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                       <span
-                        style={{ fontSize:'0.85rem', fontWeight:600, color:'#EAE7FF', cursor: c.id !== ADMIN_ID ? 'pointer' : 'default', transition:'color 0.12s' }}
+                        style={{ fontSize:'0.85rem', fontWeight:600, color:'#E2E8F0', cursor: c.id !== ADMIN_ID ? 'pointer' : 'default', transition:'color 0.12s' }}
                         onClick={c.id !== ADMIN_ID ? e => { e.stopPropagation(); setIsOpen(false); navigate(`/user/${c.id}`) } : undefined}
-                        onMouseEnter={c.id !== ADMIN_ID ? e => e.currentTarget.style.color='#818CF8' : undefined}
-                        onMouseLeave={c.id !== ADMIN_ID ? e => e.currentTarget.style.color='#EAE7FF' : undefined}
+                        onMouseEnter={c.id !== ADMIN_ID ? e => e.currentTarget.style.color='#7BB3FF' : undefined}
+                        onMouseLeave={c.id !== ADMIN_ID ? e => e.currentTarget.style.color='#E2E8F0' : undefined}
                       >{c.name}</span>
-                      {c.lastAt && <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'#666287' }}>{fmtAgo(c.lastAt)}</span>}
+                      {c.lastAt && <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'#4A5568' }}>{fmtAgo(c.lastAt)}</span>}
                     </div>
-                    <div style={{ fontSize:'0.76rem', color: c.allExpired ? '#3D3B5C' : '#666287', marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontStyle: c.allExpired ? 'italic' : 'normal' }}>
+                    <div style={{ fontSize:'0.76rem', color: c.allExpired ? '#2D4A7A' : '#4A5568', marginTop:2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontStyle: c.allExpired ? 'italic' : 'normal' }}>
                       {c.allExpired ? '🔒 Messages supprimés' : (c.lastMsg || 'Démarrer une conversation')}
                     </div>
                   </div>
                   {c.unread > 0 && (
-                    <span style={{ background:'#6366F1', color:'#fff', borderRadius:'50%', minWidth:20, height:20, padding:'0 4px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.6rem', fontWeight:700, fontFamily:'DM Mono,monospace', flexShrink:0 }}>
+                    <span style={{ background:'#4F8EF7', color:'#fff', borderRadius:'50%', minWidth:20, height:20, padding:'0 4px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.6rem', fontWeight:700, fontFamily:'DM Mono,monospace', flexShrink:0 }}>
                       {c.unread > 9 ? '9+' : c.unread}
                     </span>
                   )}
                 </div>
               ))}
               {!loading && contacts.length <= 1 && (
-                <div style={{ padding:'16px', margin:'8px 12px', background:'rgba(99,102,241,0.04)', border:'1px dashed rgba(99,102,241,0.2)', borderRadius:10, textAlign:'center' }}>
-                  <div style={{ fontSize:'0.75rem', color:'#666287', lineHeight:1.6 }}>
+                <div style={{ padding:'16px', margin:'8px 12px', background:'rgba(79,142,247,0.04)', border:'1px dashed rgba(79,142,247,0.2)', borderRadius:10, textAlign:'center' }}>
+                  <div style={{ fontSize:'0.75rem', color:'#4A5568', lineHeight:1.6 }}>
                     Pour envoyer un message à un étudiant,<br/>
-                    visite son <span style={{ color:'#818CF8' }}>profil</span> ou un post <span style={{ color:'#818CF8' }}>Senpai</span><br/>
-                    et clique sur <b style={{ color:'#A4A0C8' }}>✉ Message</b>
+                    visite son <span style={{ color:'#7BB3FF' }}>profil</span> ou un post <span style={{ color:'#7BB3FF' }}>Senpai</span><br/>
+                    et clique sur <b style={{ color:'#94A3B8' }}>✉ Message</b>
                   </div>
                 </div>
               )}
@@ -431,7 +431,7 @@ export default function MessengerWidget() {
             <>
               <div className="mw-thread">
                 {loading && (
-                  <div style={{ textAlign:'center', fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#666287', padding:'2rem 0' }}>
+                  <div style={{ textAlign:'center', fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4A5568', padding:'2rem 0' }}>
                     chargement...
                   </div>
                 )}
@@ -443,8 +443,8 @@ export default function MessengerWidget() {
                     return (
                       <div style={{ margin:'auto', textAlign:'center', padding:'1.5rem 1rem' }}>
                         <div style={{ fontSize:'1.6rem', marginBottom:8 }}>🔒</div>
-                        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#666287' }}>// Messages supprimés</div>
-                        <div style={{ fontSize:'0.74rem', color:'#666287', marginTop:6, lineHeight:1.5 }}>
+                        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4A5568' }}>// Messages supprimés</div>
+                        <div style={{ fontSize:'0.74rem', color:'#4A5568', marginTop:6, lineHeight:1.5 }}>
                           Les messages sont supprimés après 48h.
                         </div>
                       </div>
@@ -454,7 +454,7 @@ export default function MessengerWidget() {
                     return (
                       <div style={{ margin:'auto', textAlign:'center', padding:'1.5rem 1rem' }}>
                         <div style={{ fontSize:'2rem', marginBottom:10 }}>👋</div>
-                        <div style={{ fontSize:'0.76rem', color:'#666287', marginTop:8, lineHeight:1.55 }}>
+                        <div style={{ fontSize:'0.76rem', color:'#4A5568', marginTop:8, lineHeight:1.55 }}>
                           Envoie ton premier message à {activeContact?.name}
                         </div>
                       </div>
@@ -464,11 +464,11 @@ export default function MessengerWidget() {
                     const isMe = m.sender_id === user.id
                     return (
                       <div key={m.id} style={{ display:'flex', justifyContent: isMe ? 'flex-end' : 'flex-start' }}>
-                        <div style={{ maxWidth:'80%', padding:'8px 12px', borderRadius: isMe ? '12px 4px 12px 12px' : '4px 12px 12px 12px', background: isMe ? 'rgba(99,102,241,0.18)' : '#232232', border: `1px solid ${isMe ? 'rgba(99,102,241,0.35)' : '#2C2A42'}` }}>
-                          <div style={{ fontSize:'0.82rem', color:'#EAE7FF', lineHeight:1.52, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
+                        <div style={{ maxWidth:'80%', padding:'8px 12px', borderRadius: isMe ? '12px 4px 12px 12px' : '4px 12px 12px 12px', background: isMe ? 'rgba(79,142,247,0.18)' : '#0C1222', border: `1px solid ${isMe ? 'rgba(79,142,247,0.35)' : '#1C2A45'}` }}>
+                          <div style={{ fontSize:'0.82rem', color:'#E2E8F0', lineHeight:1.52, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
                             {m.content}
                           </div>
-                          <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.55rem', color:'#666287', marginTop:4, textAlign: isMe ? 'right' : 'left' }}>
+                          <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.55rem', color:'#4A5568', marginTop:4, textAlign: isMe ? 'right' : 'left' }}>
                             {fmtDate(m.created_at)}
                           </div>
                         </div>
@@ -480,7 +480,7 @@ export default function MessengerWidget() {
               </div>
 
               {/* Input */}
-              <div style={{ padding:'10px 12px', borderTop:'1px solid #2C2A42', display:'flex', gap:8, flexShrink:0, background:'#191826' }}>
+              <div style={{ padding:'10px 12px', borderTop:'1px solid #1C2A45', display:'flex', gap:8, flexShrink:0, background:'#070C18' }}>
                 <textarea
                   ref={inputRef}
                   value={text}
@@ -494,7 +494,7 @@ export default function MessengerWidget() {
                 <button
                   onClick={sendMessage}
                   disabled={!text.trim() || sending}
-                  style={{ background: text.trim() && !sending ? 'linear-gradient(135deg,#6366F1,#4F46E5)' : '#2C2A42', color: text.trim() ? '#fff' : '#666287', border:'none', borderRadius:8, padding:'9px 13px', cursor: text.trim() && !sending ? 'pointer' : 'not-allowed', flexShrink:0, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  style={{ background: text.trim() && !sending ? 'linear-gradient(135deg,#4F8EF7,#3A6ED4)' : '#1C2A45', color: text.trim() ? '#fff' : '#4A5568', border:'none', borderRadius:8, padding:'9px 13px', cursor: text.trim() && !sending ? 'pointer' : 'not-allowed', flexShrink:0, transition:'all 0.15s', display:'flex', alignItems:'center', justifyContent:'center' }}>
                   {sending ? (
                     <svg style={{ animation:'mw-spin 0.8s linear infinite' }} width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round">
                       <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
@@ -520,14 +520,14 @@ export default function MessengerWidget() {
       {showTooltip && !isOpen && (
         <div style={{
           position:'fixed', bottom:152, right:20, zIndex:9999,
-          background:'#232232', border:'1px solid #3D3B5C', borderRadius:10,
-          padding:'10px 14px', fontSize:'0.8rem', color:'#A4A0C8',
+          background:'#0C1222', border:'1px solid #2D4A7A', borderRadius:10,
+          padding:'10px 14px', fontSize:'0.8rem', color:'#94A3B8',
           fontFamily:'Outfit,sans-serif', maxWidth:220, lineHeight:1.5,
           boxShadow:'0 8px 24px rgba(0,0,0,0.5)',
           animation:'mw-slide 0.3s cubic-bezier(.34,1.2,.64,1)',
         }}>
           💬 Tu peux contacter l'admin ou tes camarades ici
-          <div style={{ position:'absolute', bottom:-7, right:26, width:13, height:13, background:'#232232', border:'1px solid #3D3B5C', borderTop:'none', borderLeft:'none', transform:'rotate(45deg)' }} />
+          <div style={{ position:'absolute', bottom:-7, right:26, width:13, height:13, background:'#0C1222', border:'1px solid #2D4A7A', borderTop:'none', borderLeft:'none', transform:'rotate(45deg)' }} />
         </div>
       )}
 
@@ -538,7 +538,7 @@ export default function MessengerWidget() {
           setIsOpen(o => !o)
         }}
         title="Messages"
-        style={{ position:'fixed', bottom:88, right:24, zIndex:9999, width:56, height:56, borderRadius:'50%', background: isOpen ? '#232232' : 'linear-gradient(135deg,#6366F1,#818CF8)', border: isOpen ? '1px solid #3D3B5C' : 'none', color:'#fff', cursor:'pointer', boxShadow: isOpen ? 'none' : '0 8px 28px rgba(99,102,241,0.45)', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s', animation: hasPulse ? 'mw-pulse 2s ease-in-out infinite' : 'none' }}>
+        style={{ position:'fixed', bottom:88, right:24, zIndex:9999, width:56, height:56, borderRadius:'50%', background: isOpen ? '#0C1222' : 'linear-gradient(135deg,#4F8EF7,#2DD4BF)', border: isOpen ? '1px solid #2D4A7A' : 'none', color:'#fff', cursor:'pointer', boxShadow: isOpen ? 'none' : '0 8px 28px rgba(79,142,247,0.45)', display:'flex', alignItems:'center', justifyContent:'center', transition:'all 0.2s', animation: hasPulse ? 'mw-pulse 2s ease-in-out infinite' : 'none' }}>
         {isOpen ? (
           <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
             <path d="M18 6 6 18M6 6l12 12"/>
@@ -549,7 +549,7 @@ export default function MessengerWidget() {
           </svg>
         )}
         {!isOpen && unread > 0 && (
-          <span style={{ position:'absolute', top:-3, right:-3, background:'#F87171', color:'#fff', borderRadius:'50%', width:20, height:20, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.6rem', fontWeight:700, fontFamily:'DM Mono,monospace', border:'2px solid #0F0E17' }}>
+          <span style={{ position:'absolute', top:-3, right:-3, background:'#F87171', color:'#fff', borderRadius:'50%', width:20, height:20, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.6rem', fontWeight:700, fontFamily:'DM Mono,monospace', border:'2px solid #02040A' }}>
             {unread > 9 ? '9+' : unread}
           </span>
         )}

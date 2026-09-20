@@ -28,7 +28,7 @@ import Footer from './components/Footer'
 const notFoundCss = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  html, body { background:#0F0E17; color:#EAE7FF; font-family:'Outfit',sans-serif; min-height:100vh; }
+  html, body { background:#02040A; color:#E2E8F0; font-family:'Outfit',sans-serif; min-height:100vh; }
 `
 
 function NotFound() {
@@ -39,21 +39,21 @@ function NotFound() {
       <div style={{
         minHeight:'100vh', display:'flex', flexDirection:'column',
         alignItems:'center', justifyContent:'center', gap:'1rem',
-        background:'#0F0E17',
+        background:'#02040A',
       }}>
-        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.72rem', color:'#666287', letterSpacing:'2px' }}>
+        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.72rem', color:'#4A5568', letterSpacing:'2px' }}>
           // 404 — page not found
         </div>
         <div style={{ fontSize:'1.3rem', fontWeight:700, color:'#FFFFFF' }}>
           Cette page n'existe pas.
         </div>
-        <div style={{ fontSize:'0.85rem', color:'#A4A0C8', marginBottom:'0.5rem' }}>
+        <div style={{ fontSize:'0.85rem', color:'#94A3B8', marginBottom:'0.5rem' }}>
           Le lien est peut-être cassé ou la page a été déplacée.
         </div>
         <button
           onClick={() => navigate('/')}
           style={{
-            background:'linear-gradient(135deg,#6366F1,#4F46E5)',
+            background:'linear-gradient(135deg,#4F8EF7,#3A6ED4)',
             color:'#fff', border:'none', borderRadius:'9px',
             padding:'10px 24px', fontSize:'0.875rem', fontWeight:600,
             cursor:'pointer', fontFamily:'Outfit,sans-serif',
@@ -69,13 +69,13 @@ function NotFound() {
 function BanScreen({ banInfo }) {
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-MA', { day:'2-digit', month:'long', year:'numeric' }) : 'Permanent'
   return (
-    <div style={{ minHeight:'100vh', background:'#0F0E17', display:'flex', alignItems:'center', justifyContent:'center', padding:'2rem', fontFamily:'Outfit,sans-serif' }}>
+    <div style={{ minHeight:'100vh', background:'#02040A', display:'flex', alignItems:'center', justifyContent:'center', padding:'2rem', fontFamily:'Outfit,sans-serif' }}>
       <div style={{ maxWidth:440, textAlign:'center' }}>
-        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#666287', letterSpacing:'2px', marginBottom:'1rem' }}>// compte suspendu</div>
+        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568', letterSpacing:'2px', marginBottom:'1rem' }}>// compte suspendu</div>
         <div style={{ fontSize:'1.5rem', fontWeight:700, color:'#fff', marginBottom:'0.5rem' }}>Ton compte a été suspendu.</div>
-        {banInfo.ban_reason && <div style={{ fontSize:'0.88rem', color:'#A4A0C8', marginBottom:'0.5rem' }}>Raison : <span style={{color:'#EAE7FF'}}>{banInfo.ban_reason}</span></div>}
-        <div style={{ fontSize:'0.85rem', color:'#A4A0C8', marginBottom:'1.5rem' }}>Jusqu'au : <span style={{color:'#F87171'}}>{fmtDate(banInfo.banned_until)}</span></div>
-        <div style={{ fontSize:'0.78rem', color:'#666287', fontFamily:'DM Mono,monospace' }}>Contact : saadga2003@gmail.com</div>
+        {banInfo.ban_reason && <div style={{ fontSize:'0.88rem', color:'#94A3B8', marginBottom:'0.5rem' }}>Raison : <span style={{color:'#E2E8F0'}}>{banInfo.ban_reason}</span></div>}
+        <div style={{ fontSize:'0.85rem', color:'#94A3B8', marginBottom:'1.5rem' }}>Jusqu'au : <span style={{color:'#F87171'}}>{fmtDate(banInfo.banned_until)}</span></div>
+        <div style={{ fontSize:'0.78rem', color:'#4A5568', fontFamily:'DM Mono,monospace' }}>Contact : saadga2003@gmail.com</div>
       </div>
     </div>
   )
@@ -149,16 +149,16 @@ function App() {
         toastOptions={{
           duration: 3200,
           style: {
-            background: '#232232',
-            color: '#EAE7FF',
-            border: '1px solid #2C2A42',
+            background: '#0C1222',
+            color: '#E2E8F0',
+            border: '1px solid #1C2A45',
             borderRadius: '10px',
             fontFamily: "'Outfit', sans-serif",
             fontSize: '0.85rem',
             boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
           },
-          success: { iconTheme: { primary: '#6366F1', secondary: '#232232' } },
-          error: { iconTheme: { primary: '#F87171', secondary: '#232232' } },
+          success: { iconTheme: { primary: '#4F8EF7', secondary: '#0C1222' } },
+          error: { iconTheme: { primary: '#F87171', secondary: '#0C1222' } },
         }}
       />
     </BrowserRouter>

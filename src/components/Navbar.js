@@ -12,8 +12,8 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
   .mobile-banner {
-    background: linear-gradient(135deg,rgba(99,102,241,0.15),rgba(99,102,241,0.1));
-    border-bottom: 1px solid rgba(99,102,241,0.2);
+    background: linear-gradient(135deg,rgba(79,142,247,0.15),rgba(79,142,247,0.1));
+    border-bottom: 1px solid rgba(79,142,247,0.2);
     padding: 8px 1rem;
     display: flex; align-items: center; justify-content: space-between;
     font-size: 0.72rem;
@@ -25,113 +25,113 @@ const css = `
     display: grid; grid-template-columns: 1fr auto 1fr;
     align-items: center;
     padding: 0 2rem;
-    background: rgba(15,14,23,0.82);
+    background: rgba(2,4,10,0.82);
     backdrop-filter: blur(32px) saturate(180%);
     -webkit-backdrop-filter: blur(32px) saturate(180%);
-    border-bottom: 1px solid #2C2A42;
+    border-bottom: 1px solid #1C2A45;
     font-family: 'Outfit', sans-serif;
   }
   .nb-left { display: flex; align-items: center; gap: 10px; }
   .nb-logo { display: flex; align-items: center; gap: 9px; cursor: pointer; flex-shrink: 0; }
   .nb-logo-mark {
     width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
-    background: linear-gradient(135deg, #6366F1, #818CF8);
+    background: linear-gradient(135deg, #4F8EF7, #2DD4BF);
     display: flex; align-items: center; justify-content: center;
-    font-family: 'DM Mono', monospace; font-weight: 700; font-size: 0.72rem; color: #0F0E17;
+    font-family: 'DM Mono', monospace; font-weight: 700; font-size: 0.72rem; color: #02040A;
     transition: transform 0.2s ease;
   }
   .nb-logo:hover .nb-logo-mark { transform: rotate(-8deg) scale(1.05); }
   .nb-logo-text { font-family: 'DM Mono', monospace; font-size: 0.88rem; font-weight: 500; color: #FFFFFF; letter-spacing: -0.3px; }
-  .nb-logo-text b { color: #818CF8; font-weight: 700; }
+  .nb-logo-text b { color: #7BB3FF; font-weight: 700; }
   .nb-links { position: relative; display: flex; align-items: center; gap: 2px; justify-content: center; }
-  .nb-link { position: relative; background: none; border: none; padding: 7px 14px; font-size: 0.82rem; color: #8B87A3; cursor: pointer; border-radius: 7px; font-family: 'Outfit', sans-serif; transition: color 0.15s; white-space: nowrap; z-index: 1; }
-  .nb-link:hover { color: #EAE7FF; }
-  .nb-link.active { color: #EAE7FF; font-weight: 600; }
+  .nb-link { position: relative; background: none; border: none; padding: 7px 14px; font-size: 0.82rem; color: #64748B; cursor: pointer; border-radius: 7px; font-family: 'Outfit', sans-serif; transition: color 0.15s; white-space: nowrap; z-index: 1; }
+  .nb-link:hover { color: #E2E8F0; }
+  .nb-link.active { color: #E2E8F0; font-weight: 600; }
   .nb-link:focus-visible, .nb-ghost:focus-visible, .nb-accent:focus-visible, .nb-upload-btn:focus-visible, .nb-bell:focus-visible, .nb-burger:focus-visible {
-    outline: 2px solid #6366F1; outline-offset: 2px;
+    outline: 2px solid #4F8EF7; outline-offset: 2px;
   }
   .nb-link-pill { position: absolute; inset: 0; background: rgba(255,255,255,0.06); border-radius: 7px; z-index: 0; }
   .nb-right { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
-  .nb-online { display: flex; align-items: center; gap: 6px; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: #A4A0C8; margin-right: 4px; }
+  .nb-online { display: flex; align-items: center; gap: 6px; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: #94A3B8; margin-right: 4px; }
   .nb-online-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ADE80; box-shadow: 0 0 0 3px rgba(74,222,128,0.18); flex-shrink: 0; }
   @media(max-width: 1024px) { .nb-online { display: none; } }
-  .nb-ghost { background: none; border: 1px solid #2C2A42; color: #A4A0C8; padding: 6px 15px; border-radius: 7px; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: 'Outfit', sans-serif; }
-  .nb-ghost:hover { border-color: #3D3B5C; color: #EAE7FF; }
-  .nb-accent { background: linear-gradient(135deg,#6366F1,#4F46E5); color: #fff; border: none; padding: 6px 17px; border-radius: 7px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: 'Outfit', sans-serif; transition: transform 0.15s, box-shadow 0.15s; box-shadow: 0 2px 12px rgba(99,102,241,0.25); }
-  .nb-accent:hover { transform: translateY(-1px); box-shadow: 0 4px 18px rgba(99,102,241,0.4); }
+  .nb-ghost { background: none; border: 1px solid #1C2A45; color: #94A3B8; padding: 6px 15px; border-radius: 7px; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: 'Outfit', sans-serif; }
+  .nb-ghost:hover { border-color: #2D4A7A; color: #E2E8F0; }
+  .nb-accent { background: linear-gradient(135deg,#4F8EF7,#3A6ED4); color: #fff; border: none; padding: 6px 17px; border-radius: 7px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: 'Outfit', sans-serif; transition: transform 0.15s, box-shadow 0.15s; box-shadow: 0 2px 12px rgba(79,142,247,0.25); }
+  .nb-accent:hover { transform: translateY(-1px); box-shadow: 0 4px 18px rgba(79,142,247,0.4); }
   .nb-user { display: flex; align-items: center; gap: 6px; }
-  .nb-upload-btn { display: flex; align-items: center; gap: 6px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); color: #818CF8; padding: 6px 14px; border-radius: 7px; font-size: 0.8rem; font-weight: 500; cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.15s; white-space: nowrap; }
-  .nb-upload-btn:hover { background: rgba(99,102,241,0.18); }
+  .nb-upload-btn { display: flex; align-items: center; gap: 6px; background: rgba(79,142,247,0.1); border: 1px solid rgba(79,142,247,0.2); color: #7BB3FF; padding: 6px 14px; border-radius: 7px; font-size: 0.8rem; font-weight: 500; cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.15s; white-space: nowrap; }
+  .nb-upload-btn:hover { background: rgba(79,142,247,0.18); }
   .nb-avatar-wrap { position: relative; }
-  .nb-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #818CF8); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 700; color: white; cursor: pointer; border: 2px solid rgba(99,102,241,0.3); transition: border-color 0.15s, transform 0.15s; flex-shrink: 0; }
-  .nb-avatar:hover { border-color: #6366F1; transform: scale(1.04); }
-  .nb-dropdown { position: absolute; top: calc(100% + 10px); right: 0; background: #232232; border: 1px solid #2C2A42; border-radius: 16px; padding: 8px; min-width: 240px; box-shadow: 0 16px 40px rgba(0,0,0,0.55); z-index: 600; transform-origin: top right; }
-  .nb-dd-header { padding: 14px 10px 14px; border-bottom: 1px solid #2C2A42; margin-bottom: 4px; display: flex; flex-direction: column; align-items: center; text-align: center; }
-  .nb-dd-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #818CF8); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
-  .nb-dd-name { font-size: 0.9rem; font-weight: 600; color: #EAE7FF; display: flex; align-items: center; justify-content: center; gap: 6px; }
-  .nb-dd-email { font-size: 0.68rem; color: #666287; font-family: 'DM Mono', monospace; margin-top: 3px; }
+  .nb-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #4F8EF7, #2DD4BF); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 700; color: white; cursor: pointer; border: 2px solid rgba(79,142,247,0.3); transition: border-color 0.15s, transform 0.15s; flex-shrink: 0; }
+  .nb-avatar:hover { border-color: #4F8EF7; transform: scale(1.04); }
+  .nb-dropdown { position: absolute; top: calc(100% + 10px); right: 0; background: #0C1222; border: 1px solid #1C2A45; border-radius: 16px; padding: 8px; min-width: 240px; box-shadow: 0 16px 40px rgba(0,0,0,0.55); z-index: 600; transform-origin: top right; }
+  .nb-dd-header { padding: 14px 10px 14px; border-bottom: 1px solid #1C2A45; margin-bottom: 4px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .nb-dd-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #4F8EF7, #2DD4BF); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .nb-dd-name { font-size: 0.9rem; font-weight: 600; color: #E2E8F0; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .nb-dd-email { font-size: 0.68rem; color: #4A5568; font-family: 'DM Mono', monospace; margin-top: 3px; }
   .nb-dd-pills { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 9px; }
   .nb-dd-pill { font-family: 'DM Mono', monospace; font-size: 0.65rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
-  .nb-dd-pill.points { color: #818CF8; background: rgba(99,102,241,0.15); }
-  .nb-dd-pill.uploads { color: #A4A0C8; background: rgba(164,160,200,0.1); }
-  .nb-dd-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 0.82rem; color: #A4A0C8; width: 100%; background: none; border: none; font-family: 'Outfit', sans-serif; text-align: left; }
+  .nb-dd-pill.points { color: #7BB3FF; background: rgba(79,142,247,0.15); }
+  .nb-dd-pill.uploads { color: #94A3B8; background: rgba(148,163,184,0.1); }
+  .nb-dd-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 0.82rem; color: #94A3B8; width: 100%; background: none; border: none; font-family: 'Outfit', sans-serif; text-align: left; }
   .nb-dd-item svg { flex-shrink: 0; opacity: 0.8; }
-  .nb-dd-item:hover { background: rgba(255,255,255,0.05); color: #EAE7FF; }
+  .nb-dd-item:hover { background: rgba(255,255,255,0.05); color: #E2E8F0; }
   .nb-dd-item.admin { color: #F87171; }
   .nb-dd-item.admin:hover { background: rgba(248,113,113,0.08); }
   .nb-dd-item.danger:hover { background: rgba(248,113,113,0.08); color: #F87171; }
   .nb-dd-item.gold { background: rgba(251,211,77,0.08); color: #FBD34D; }
   .nb-dd-item.gold:hover { background: rgba(251,211,77,0.14); }
-  .nb-dd-kbd { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 0.62rem; color: #666287; background: rgba(255,255,255,0.04); border: 1px solid #2C2A42; border-radius: 4px; padding: 1px 6px; flex-shrink: 0; }
-  .nb-dd-sep { height: 1px; background: #2C2A42; margin: 4px 0; }
+  .nb-dd-kbd { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 0.62rem; color: #4A5568; background: rgba(255,255,255,0.04); border: 1px solid #1C2A45; border-radius: 4px; padding: 1px 6px; flex-shrink: 0; }
+  .nb-dd-sep { height: 1px; background: #1C2A45; margin: 4px 0; }
   .nb-admin-tag { font-family: 'DM Mono', monospace; font-size: 0.55rem; background: rgba(248,113,113,0.1); color: #F87171; border: 1px solid rgba(248,113,113,0.2); padding: 1px 5px; border-radius: 3px; }
 
   /* ── NOTIFICATIONS ── */
   .nb-bell-wrap { position: relative; }
-  .nb-bell { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: none; border: none; cursor: pointer; color: #8B87A3; transition: all 0.15s; flex-shrink: 0; }
-  .nb-bell:hover { background: rgba(255,255,255,0.05); color: #EAE7FF; }
-  .nb-bell-badge { position: absolute; top: 2px; right: 2px; min-width: 15px; height: 15px; border-radius: 8px; background: #F87171; color: #fff; font-size: 0.58rem; font-weight: 700; font-family: 'DM Mono', monospace; display: flex; align-items: center; justify-content: center; padding: 0 3px; pointer-events: none; border: 2px solid #0F0E17; }
-  .nb-notifs-dd { position: absolute; top: calc(100% + 10px); right: -60px; background: #232232; border: 1px solid #2C2A42; border-radius: 14px; width: 320px; max-height: 420px; overflow-y: auto; box-shadow: 0 16px 40px rgba(0,0,0,0.55); z-index: 600; scrollbar-width: thin; scrollbar-color: #2C2A42 transparent; transform-origin: top right; }
-  .nb-notifs-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #2C2A42; position: sticky; top: 0; background: #232232; }
-  .nb-notifs-title { font-size: 0.85rem; font-weight: 700; color: #EAE7FF; }
-  .nb-mark-read { font-size: 0.72rem; color: #666287; background: none; border: none; cursor: pointer; font-family: 'Outfit', sans-serif; transition: color 0.15s; }
-  .nb-mark-read:hover { color: #A4A0C8; }
-  .nb-notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #2C2A42; cursor: pointer; transition: background 0.1s; }
+  .nb-bell { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; background: none; border: none; cursor: pointer; color: #64748B; transition: all 0.15s; flex-shrink: 0; }
+  .nb-bell:hover { background: rgba(255,255,255,0.05); color: #E2E8F0; }
+  .nb-bell-badge { position: absolute; top: 2px; right: 2px; min-width: 15px; height: 15px; border-radius: 8px; background: #F87171; color: #fff; font-size: 0.58rem; font-weight: 700; font-family: 'DM Mono', monospace; display: flex; align-items: center; justify-content: center; padding: 0 3px; pointer-events: none; border: 2px solid #02040A; }
+  .nb-notifs-dd { position: absolute; top: calc(100% + 10px); right: -60px; background: #0C1222; border: 1px solid #1C2A45; border-radius: 14px; width: 320px; max-height: 420px; overflow-y: auto; box-shadow: 0 16px 40px rgba(0,0,0,0.55); z-index: 600; scrollbar-width: thin; scrollbar-color: #1C2A45 transparent; transform-origin: top right; }
+  .nb-notifs-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid #1C2A45; position: sticky; top: 0; background: #0C1222; }
+  .nb-notifs-title { font-size: 0.85rem; font-weight: 700; color: #E2E8F0; }
+  .nb-mark-read { font-size: 0.72rem; color: #4A5568; background: none; border: none; cursor: pointer; font-family: 'Outfit', sans-serif; transition: color 0.15s; }
+  .nb-mark-read:hover { color: #94A3B8; }
+  .nb-notif-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #1C2A45; cursor: pointer; transition: background 0.1s; }
   .nb-notif-item:last-child { border-bottom: none; }
   .nb-notif-item:hover { background: rgba(255,255,255,0.03); }
-  .nb-notif-item.unread { background: rgba(99,102,241,0.04); }
-  .nb-notif-item.unread:hover { background: rgba(99,102,241,0.08); }
+  .nb-notif-item.unread { background: rgba(79,142,247,0.04); }
+  .nb-notif-item.unread:hover { background: rgba(79,142,247,0.08); }
   .nb-notif-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
   .nb-notif-body { flex: 1; min-width: 0; }
-  .nb-notif-text { font-size: 0.79rem; color: #A4A0C8; line-height: 1.4; }
-  .nb-notif-text b { color: #EAE7FF; font-weight: 600; }
-  .nb-notif-meta { font-family: 'DM Mono', monospace; font-size: 0.61rem; color: #666287; margin-top: 3px; }
-  .nb-notif-sub { font-size: 0.72rem; color: #666287; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .nb-notifs-empty { padding: 2.5rem 1rem; text-align: center; font-size: 0.8rem; color: #666287; }
+  .nb-notif-text { font-size: 0.79rem; color: #94A3B8; line-height: 1.4; }
+  .nb-notif-text b { color: #E2E8F0; font-weight: 600; }
+  .nb-notif-meta { font-family: 'DM Mono', monospace; font-size: 0.61rem; color: #4A5568; margin-top: 3px; }
+  .nb-notif-sub { font-size: 0.72rem; color: #4A5568; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nb-notifs-empty { padding: 2.5rem 1rem; text-align: center; font-size: 0.8rem; color: #4A5568; }
   @media(max-width: 768px) { .nb-notifs-dd { right: -20px; width: 290px; } }
 
   /* ── HAMBURGER ── */
   .nb-burger {
     display: none; align-items: center; justify-content: center; background: none; border: none; cursor: pointer;
-    width: 36px; height: 36px; border-radius: 8px; transition: background 0.15s; flex-shrink: 0; color: #A4A0C8;
+    width: 36px; height: 36px; border-radius: 8px; transition: background 0.15s; flex-shrink: 0; color: #94A3B8;
   }
-  .nb-burger:hover { background: rgba(255,255,255,0.05); color: #EAE7FF; }
+  .nb-burger:hover { background: rgba(255,255,255,0.05); color: #E2E8F0; }
 
   /* ── MOBILE MENU DRAWER ── */
   .nb-drawer {
     position: fixed; top: 58px; left: 0; right: 0; bottom: 0; z-index: 490;
-    background: rgba(15,14,23,0.98); backdrop-filter: blur(24px);
+    background: rgba(2,4,10,0.98); backdrop-filter: blur(24px);
     display: flex; flex-direction: column; padding: 1.25rem;
-    border-top: 1px solid #2C2A42; overflow-y: auto;
+    border-top: 1px solid #1C2A45; overflow-y: auto;
   }
   .nb-drawer-link {
     display: flex; align-items: center; padding: 13px 14px; border-radius: 10px;
-    font-size: 0.94rem; color: #A4A0C8; cursor: pointer; transition: all 0.15s;
+    font-size: 0.94rem; color: #94A3B8; cursor: pointer; transition: all 0.15s;
     background: none; border: none; font-family: 'Outfit', sans-serif; text-align: left; width: 100%;
   }
   .nb-drawer-link:active { transform: scale(0.98); }
-  .nb-drawer-link.active { color: #EAE7FF; background: rgba(99,102,241,0.08); font-weight: 600; }
-  .nb-drawer-sep { height: 1px; background: #2C2A42; margin: 8px 0; }
+  .nb-drawer-link.active { color: #E2E8F0; background: rgba(79,142,247,0.08); font-weight: 600; }
+  .nb-drawer-sep { height: 1px; background: #1C2A45; margin: 8px 0; }
   .nb-drawer-auth { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
   .nb-drawer-btn-full { width: 100%; padding: 12px; border-radius: 10px; font-size: 0.9rem; font-weight: 600; cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.15s; }
 
@@ -325,10 +325,10 @@ export default function Navbar({ activePage = '' }) {
     <>
       <style>{css}</style>
       <div className="mobile-banner">
-        <span style={{color:'#A4A0C8', fontFamily:'Outfit'}}>📱 App mobile bientôt disponible</span>
+        <span style={{color:'#94A3B8', fontFamily:'Outfit'}}>📱 App mobile bientôt disponible</span>
         <button
           onClick={() => window.open("https://wa.me/212677246703?text=Je veux être notifié quand l'app 9rawZid9ra sera disponible", '_blank')}
-          style={{ background:'rgba(99,102,241,0.15)', border:'1px solid rgba(99,102,241,0.3)', color:'#818CF8', borderRadius:5, padding:'3px 10px', fontSize:'0.68rem', cursor:'pointer', fontFamily:'Outfit', fontWeight:600 }}
+          style={{ background:'rgba(79,142,247,0.15)', border:'1px solid rgba(79,142,247,0.3)', color:'#7BB3FF', borderRadius:5, padding:'3px 10px', fontSize:'0.68rem', cursor:'pointer', fontFamily:'Outfit', fontWeight:600 }}
         >Me notifier</button>
       </div>
       <nav className="navbar">
@@ -429,14 +429,14 @@ export default function Navbar({ activePage = '' }) {
                         const count = n.groupCount
                         const sender = n.groupSender
                         textNode = count > 0
-                          ? <><b>{sender}</b> · <span style={{background:'rgba(99,102,241,0.15)',color:'var(--accent2)',borderRadius:4,padding:'1px 6px',fontSize:'0.72rem',fontWeight:700}}>{count} nouveau{count > 1 ? 'x' : ''} message{count > 1 ? 's' : ''}</span></>
+                          ? <><b>{sender}</b> · <span style={{background:'rgba(79,142,247,0.15)',color:'var(--accent2)',borderRadius:4,padding:'1px 6px',fontSize:'0.72rem',fontWeight:700}}>{count} nouveau{count > 1 ? 'x' : ''} message{count > 1 ? 's' : ''}</span></>
                           : <><b>{sender}</b>: {(n.content || '').split(' : ').slice(1).join(' : ') || 'message'}</>
                       } else {
                         textNode = renderText ? renderText(actorName, n) : (n.content || actorName)
                       }
                       return (
                         <div key={n.id} className={`nb-notif-item ${isUnread ? 'unread' : ''}`} onClick={handleClick} style={{ cursor:'pointer' }}>
-                          <div className="nb-notif-dot" style={{ background: isUnread ? '#6366F1' : 'transparent', border: isUnread ? 'none' : '1px solid #2C2A42' }} />
+                          <div className="nb-notif-dot" style={{ background: isUnread ? '#4F8EF7' : 'transparent', border: isUnread ? 'none' : '1px solid #1C2A45' }} />
                           <div className="nb-notif-body">
                             <div className="nb-notif-text">{textNode}</div>
                             {!isGroupedMsg && n.post_title && <div className="nb-notif-sub">"{n.post_title}"</div>}
@@ -467,7 +467,7 @@ export default function Navbar({ activePage = '' }) {
                           {profile?.name || 'Étudiant'}
                           {profile?.is_admin && <span className="nb-admin-tag">ADMIN</span>}
                           {profile?.is_fondateur && (
-                            <span style={{ display:'inline-flex', alignItems:'center', background:'#FBD34D', color:'#0F0E17', borderRadius:5, padding:'1px 7px', fontFamily:'DM Mono,monospace', fontSize:'0.58rem', fontWeight:700, marginLeft:4 }}>
+                            <span style={{ display:'inline-flex', alignItems:'center', background:'#FBD34D', color:'#02040A', borderRadius:5, padding:'1px 7px', fontFamily:'DM Mono,monospace', fontSize:'0.58rem', fontWeight:700, marginLeft:4 }}>
                               <FiAward size={9} style={{marginRight:3}}/> Fondateur
                             </span>
                           )}
@@ -529,30 +529,30 @@ export default function Navbar({ activePage = '' }) {
             {user ? (
               <>
                 <div style={{ padding:'10px 14px', display:'flex', alignItems:'center', gap:12 }}>
-                  <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#6366F1,#818CF8)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.72rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
+                  <div style={{ width:38, height:38, borderRadius:'50%', background:'linear-gradient(135deg,#4F8EF7,#2DD4BF)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.72rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
                     {initials}
                   </div>
                   <div>
-                    <div style={{ fontSize:'0.88rem', fontWeight:600, color:'#EAE7FF' }}>{profile?.name || 'Étudiant'}</div>
-                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#666287' }}>{profile?.points || 0} pts</div>
+                    <div style={{ fontSize:'0.88rem', fontWeight:600, color:'#E2E8F0' }}>{profile?.name || 'Étudiant'}</div>
+                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568' }}>{profile?.points || 0} pts</div>
                   </div>
                 </div>
                 <button className="nb-drawer-link" onClick={() => navigate_('/profile')}><FiUser size={16} style={{marginRight:10}}/> Mon profil</button>
                 <button className="nb-drawer-link" onClick={() => navigate_('/my-modules')}><FiBookmark size={16} style={{marginRight:10}}/> Mes modules</button>
-                <button className="nb-drawer-link" onClick={() => navigate_('/upload')} style={{ color:'#818CF8' }}><FiUpload size={16} style={{marginRight:10}}/> Uploader un doc</button>
+                <button className="nb-drawer-link" onClick={() => navigate_('/upload')} style={{ color:'#7BB3FF' }}><FiUpload size={16} style={{marginRight:10}}/> Uploader un doc</button>
                 {profile?.is_admin && (
                   <button className="nb-drawer-link" onClick={() => navigate_('/admin')} style={{ color:'#F87171' }}><FiShield size={16} style={{marginRight:10}}/> Panneau Admin</button>
                 )}
                 {profile?.is_moderator && !profile?.is_admin && (
-                  <button className="nb-drawer-link" onClick={() => navigate_('/moderator')} style={{ color:'var(--teal2,#A5B4FC)' }}><FiShield size={16} style={{marginRight:10}}/> Panneau Modérateur</button>
+                  <button className="nb-drawer-link" onClick={() => navigate_('/moderator')} style={{ color:'var(--teal2,#5EEAD4)' }}><FiShield size={16} style={{marginRight:10}}/> Panneau Modérateur</button>
                 )}
                 <div className="nb-drawer-sep"/>
                 <button className="nb-drawer-link" onClick={handleLogout} style={{ color:'#F87171' }}><FiLogOut size={16} style={{marginRight:10}}/> Se déconnecter</button>
               </>
             ) : (
               <div className="nb-drawer-auth">
-                <button className="nb-drawer-btn-full" style={{ background:'none', border:'1px solid #2C2A42', color:'#A4A0C8' }} onClick={() => navigate_('/login')}>Connexion</button>
-                <button className="nb-drawer-btn-full" style={{ background:'#6366F1', border:'none', color:'#fff' }} onClick={() => navigate_('/register')}>S'inscrire</button>
+                <button className="nb-drawer-btn-full" style={{ background:'none', border:'1px solid #1C2A45', color:'#94A3B8' }} onClick={() => navigate_('/login')}>Connexion</button>
+                <button className="nb-drawer-btn-full" style={{ background:'#4F8EF7', border:'none', color:'#fff' }} onClick={() => navigate_('/register')}>S'inscrire</button>
               </div>
             )}
           </motion.div>

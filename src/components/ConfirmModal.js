@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 const css = `
   .cm-overlay {
     position: fixed; inset: 0; z-index: 9999;
-    background: rgba(15,14,23,0.85);
+    background: rgba(2,4,10,0.85);
     backdrop-filter: blur(6px);
     display: flex; align-items: center; justify-content: center;
     padding: 1rem;
@@ -11,8 +11,8 @@ const css = `
   }
   @keyframes cm-fade { from { opacity:0 } to { opacity:1 } }
   .cm-card {
-    background: #191826;
-    border: 1px solid #2C2A42;
+    background: #070C18;
+    border: 1px solid #1C2A45;
     border-radius: 14px;
     padding: 1.75rem;
     max-width: 380px;
@@ -26,19 +26,19 @@ const css = `
     font-size: 1rem; font-weight: 700; color: #FFFFFF; margin-bottom: 0.4rem;
   }
   .cm-msg {
-    font-size: 0.85rem; color: #A4A0C8; line-height: 1.6; margin-bottom: 1.5rem;
+    font-size: 0.85rem; color: #94A3B8; line-height: 1.6; margin-bottom: 1.5rem;
   }
   .cm-title:last-child, .cm-title + .cm-actions { margin-bottom: 0; }
   .cm-actions {
     display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.5rem;
   }
   .cm-cancel {
-    background: none; border: 1px solid #2C2A42; color: #A4A0C8;
+    background: none; border: 1px solid #1C2A45; color: #94A3B8;
     border-radius: 8px; padding: 8px 18px; font-size: 0.85rem;
     font-family: 'Outfit', sans-serif; cursor: pointer;
     transition: all 0.15s;
   }
-  .cm-cancel:hover { border-color: #3D3B5C; color: #EAE7FF; }
+  .cm-cancel:hover { border-color: #2D4A7A; color: #E2E8F0; }
   .cm-confirm {
     border: none; border-radius: 8px; padding: 8px 18px;
     font-size: 0.85rem; font-weight: 600;
@@ -52,7 +52,7 @@ export default function ConfirmModal({
   title,
   message,
   confirmText = 'Confirmer',
-  confirmColor = '#6366F1',
+  confirmColor = '#4F8EF7',
   onConfirm,
   onCancel,
 }) {
