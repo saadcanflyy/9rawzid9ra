@@ -19,6 +19,7 @@ function getInitialUser() {
 export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(getInitialUser)
   const [profile, setProfile] = useState(null)
+  const [onlineCount, setOnlineCount] = useState(1)
   const userRef = useRef(user)
 
   const loadProfile = async (uid) => {
@@ -61,8 +62,22 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe()
   }, [])
 
+  // Real "online now" presence — mounted once for the whole app, so it
+  // doesn't flicker/rejoin on every page navigation.
+  useEffect(() => {
+    const key = Math.random().toString(36).slice(2)
+    const channel = supabase.channel('site-presence', { config: { presence: { key } } })
+    channel.on('presence', { event: 'sync' }, () => {
+      setOnlineCount(Object.keys(channel.presenceState()).length || 1)
+    })
+    channel.subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') await channel.track({ online_at: new Date().toISOString() })
+    })
+    return () => supabase.removeChannel(channel)
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, profile, userRef, setUser, setProfile }}>
+    <AuthContext.Provider value={{ user, profile, userRef, setUser, setProfile, onlineCount }}>
       {children}
     </AuthContext.Provider>
   )

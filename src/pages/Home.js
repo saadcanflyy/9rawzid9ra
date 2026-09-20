@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
@@ -84,14 +84,37 @@ const css = `
   .search-tags { display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; animation:fadeUp 0.5s 0.3s ease both; }
   .search-tag-label { font-size:0.78rem; color:var(--text3); font-family:'DM Mono',monospace; }
   .search-tag { background:none; border:1px solid var(--border); border-radius:6px; padding:4px 12px; font-size:0.75rem; color:var(--text2); cursor:pointer; transition:all 0.15s; font-family:'DM Mono',monospace; }
-  .search-tag:hover { border-color:var(--accent); color:var(--accent2); background:rgba(99,102,241,0.06); }
+  .search-tag:hover, .search-tag.on { border-color:var(--accent); color:var(--accent2); background:rgba(99,102,241,0.1); }
+  .search-tag-hint { font-size:0.68rem; color:var(--text3); font-family:'DM Mono',monospace; margin-left:6px; opacity:0.75; }
+  .search-kbd { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text3); background:var(--s2); border:1px solid var(--border); border-radius:5px; padding:2px 7px; margin-right:6px; flex-shrink:0; }
 
   /* STATS */
-  .stats-row { display:flex; background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; max-width:520px; margin:3rem auto 0; animation:fadeUp 0.5s 0.4s ease both; }
-  .stat { flex:1; padding:1.2rem 0.5rem; text-align:center; position:relative; }
+  .stats-row { display:flex; background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; max-width:640px; margin:3rem auto 0; animation:fadeUp 0.5s 0.4s ease both; }
+  .stat { flex:1; padding:1.2rem 0.75rem; text-align:center; position:relative; }
   .stat+.stat::before { content:''; position:absolute; left:0; top:18%; bottom:18%; width:1px; background:var(--border); }
   .stat-n { font-family:'DM Mono',monospace; font-size:1.5rem; font-weight:500; background:linear-gradient(135deg,var(--accent2),var(--teal2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:3px; }
   .stat-l { font-size:0.7rem; color:var(--text3); font-weight:500; letter-spacing:0.5px; text-transform:uppercase; }
+  .stat.free { background:rgba(99,102,241,0.06); }
+  .stat.free .stat-n { -webkit-text-fill-color:var(--accent2); background:none; }
+  .stat-sub-free { font-size:0.62rem; color:var(--text3); margin-top:4px; line-height:1.3; }
+  .stat-spark { display:flex; align-items:flex-end; justify-content:center; gap:2px; margin-top:6px; height:22px; }
+  .stat-spark span { display:block; width:4px; background:rgba(99,102,241,0.35); border-radius:1px 1px 0 0; }
+  .stat-spark span.today { background:var(--accent); }
+  .stat-delta { font-family:'DM Mono',monospace; font-size:0.6rem; margin-top:4px; }
+  .stat-delta.up { color:var(--green); }
+  .stat-delta.down { color:var(--red); }
+  .stat-pills { display:flex; align-items:center; justify-content:center; gap:3px; margin-top:5px; flex-wrap:wrap; }
+  .stat-pill { font-family:'DM Mono',monospace; font-size:0.55rem; color:var(--text3); background:var(--s2); border:1px solid var(--border); border-radius:3px; padding:1px 5px; }
+
+  /* RECENT ACTIVITY */
+  .recent-row { display:flex; gap:10px; max-width:900px; margin:1.5rem auto 0; flex-wrap:wrap; justify-content:center; animation:fadeUp 0.5s 0.45s ease both; }
+  .recent-card { flex:1; min-width:220px; max-width:280px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:0.75rem 1rem; text-align:left; cursor:pointer; transition:border-color 0.15s; }
+  .recent-card:hover { border-color:var(--borderhi); }
+  .recent-top { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:5px; }
+  .recent-ago { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--text3); }
+  .recent-badge { font-family:'DM Mono',monospace; font-size:0.55rem; font-weight:700; padding:1px 6px; border-radius:3px; background:rgba(99,102,241,0.1); color:var(--accent2); border:1px solid rgba(99,102,241,0.2); white-space:nowrap; }
+  .recent-badge.corrige { background:rgba(74,222,128,0.1); color:var(--green); border-color:rgba(74,222,128,0.2); }
+  .recent-name { font-size:0.8rem; font-weight:600; color:var(--text); line-height:1.35; }
 
   /* SCHOOLS */
   .section { max-width:1200px; margin:0 auto; padding:5rem 2.5rem; }
@@ -246,12 +269,28 @@ const STEPS = [
 
 const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
 
+const DOC_LABEL = { examen:'EXAMEN', cc:'CC', td:'TD', tp:'TP', quiz:'QUIZ', cours:'COURS', corrige_examen:'CORRIGÉ', corrige_td:'CORRIGÉ', corrige_tp:'CORRIGÉ', projet_final:'PROJET' }
+const fmtAgo = d => {
+  const s = Math.floor((Date.now() - new Date(d)) / 1000)
+  if (s < 60) return 'à l\'instant'
+  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`
+  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`
+  return `il y a ${Math.floor(s / 86400)} j`
+}
+
 export default function Home() {
   const navigate = useNavigate()
   const { user, profile } = useAuth()
   const [query,        setQuery]        = useState('')
   const [docCount,     setDocCount]     = useState(0)
+  const [uniCount,     setUniCount]     = useState(null)
+  const [modCount,     setModCount]     = useState(null)
+  const [weekDelta,    setWeekDelta]    = useState(null)
+  const [sparkline,    setSparkline]    = useState([])
+  const [recentDocs,   setRecentDocs]   = useState([])
+  const [activeTag,    setActiveTag]    = useState(-1)
   const [schoolsReady, setSchoolsReady] = useState(false)
+  const searchInputRef = useRef(null)
   const [followingCount, setFollowingCount] = useState(null)
   const [suggestFollowing, setSuggestFollowing] = useState(false)
   const [suggestDismissed, setSuggestDismissed] = useState(() =>
@@ -268,11 +307,49 @@ export default function Home() {
       .then(({ count }) => { if (count) setDocCount(count) })
       .catch(() => {})
       .finally(() => setSchoolsReady(true))
+
+    supabase.from('universities').select('*', { count:'exact', head:true }).then(({ count }) => setUniCount(count || 0))
+    supabase.from('modules').select('*', { count:'exact', head:true }).then(({ count }) => setModCount(count || 0))
+
+    // Real weekly delta + 7-day sparkline — computed from documents.created_at
+    supabase.from('documents').select('created_at').eq('is_verified', true)
+      .gte('created_at', new Date(Date.now() - 14 * 86400000).toISOString())
+      .then(({ data }) => {
+        const rows = data || []
+        const dayKey = d => new Date(d).toISOString().slice(0, 10)
+        const counts = {}
+        for (const r of rows) counts[dayKey(r.created_at)] = (counts[dayKey(r.created_at)] || 0) + 1
+        const days = [...Array(7)].map((_, i) => counts[dayKey(new Date(Date.now() - (6 - i) * 86400000))] || 0)
+        const thisWeek = days.reduce((s, n) => s + n, 0)
+        const prevWeek = rows.length - thisWeek
+        setSparkline(days)
+        setWeekDelta(prevWeek > 0 || thisWeek > 0 ? thisWeek - prevWeek : null)
+      })
+
+    // Real recent-activity feed
+    supabase.from('documents')
+      .select('id, doc_type, academic_year, created_at, modules(id, name, slug)')
+      .eq('is_verified', true)
+      .order('created_at', { ascending: false })
+      .limit(3)
+      .then(({ data }) => setRecentDocs(data || []))
   }, [])
 
   useEffect(() => {
     if (user) loadFollowingState(user.id)
   }, [user?.id]) // eslint-disable-line
+
+  // Real ⌘K / Ctrl+K shortcut — focuses the hero search input
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   const loadFollowingState = async (uid) => {
     const { count } = await supabase.from('user_follows').select('*', { count:'exact', head:true }).eq('follower_id', uid)
@@ -355,35 +432,80 @@ export default function Home() {
             <form onSubmit={onSearch}>
               <div className="search-bar">
                 <FiSearch size={16} style={{ color:'var(--text3)', flexShrink:0 }} />
-                <input className="search-input"
+                <input className="search-input" ref={searchInputRef}
                   placeholder="Recherche un module... ex: Analyse 1, POO, Droit Commercial"
-                  value={query} onChange={e => setQuery(e.target.value)} />
+                  value={query} onChange={e => setQuery(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveTag(i => (i + 1) % TAGS.length) }
+                    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveTag(i => (i - 1 + TAGS.length) % TAGS.length) }
+                    else if (e.key === 'Enter' && activeTag >= 0 && !query.trim()) { e.preventDefault(); navigate(`/browse?q=${encodeURIComponent(TAGS[activeTag])}`) }
+                  }} />
+                <span className="search-kbd">⌘K</span>
                 <button type="submit" className="search-submit">Rechercher</button>
               </div>
             </form>
           </div>
           <div className="search-tags">
-            <span className="search-tag-label">// tendances:</span>
-            {TAGS.map(t => (
-              <button key={t} className="search-tag"
+            <span className="search-tag-label">// suggestions</span>
+            {TAGS.map((t, i) => (
+              <button key={t} className={`search-tag ${activeTag === i ? 'on' : ''}`}
+                onMouseEnter={() => setActiveTag(i)}
                 onClick={() => { setQuery(t); navigate(`/browse?q=${encodeURIComponent(t)}`) }}>
                 {t}
               </button>
             ))}
+            <span className="search-tag-hint">↑↓ naviguer · ↵ ouvrir</span>
           </div>
           <div className="stats-row">
-            {[
-              { n:'762+', l:'Modules' },
-              { n: docCount || '0', l:'Documents' },
-              { n:'19', l:'Établissements' },
-              { n:'FREE', l:'Accès' },
-            ].map(s => (
-              <div key={s.l} className="stat">
-                <div className="stat-n">{s.n}</div>
-                <div className="stat-l">{s.l}</div>
+            <div className="stat">
+              <div className="stat-n">{modCount !== null ? modCount.toLocaleString() : '—'}</div>
+              <div className="stat-l">Modules</div>
+              {sparkline.length > 0 && (
+                <div className="stat-spark">
+                  {sparkline.map((n, i) => {
+                    const max = Math.max(...sparkline, 1)
+                    return <span key={i} className={i === sparkline.length - 1 ? 'today' : ''} style={{ height: `${8 + Math.round((n / max) * 14)}px` }} />
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="stat">
+              <div className="stat-n">{docCount || '0'}</div>
+              <div className="stat-l">Documents</div>
+              {weekDelta !== null && weekDelta !== 0 && (
+                <div className={`stat-delta ${weekDelta > 0 ? 'up' : 'down'}`}>
+                  {weekDelta > 0 ? '▲' : '▼'} {Math.abs(weekDelta)} cette semaine
+                </div>
+              )}
+            </div>
+            <div className="stat">
+              <div className="stat-n">{uniCount !== null ? uniCount : '—'}</div>
+              <div className="stat-l">Établissements</div>
+              <div className="stat-pills">
+                {SCHOOLS.slice(0, 3).map(s => <span key={s.id} className="stat-pill">{s.abbr}</span>)}
+                {uniCount > 3 && <span className="stat-pill">+{uniCount - 3}</span>}
               </div>
-            ))}
+            </div>
+            <div className="stat free">
+              <div className="stat-n">FREE</div>
+              <div className="stat-l">Accès</div>
+              <div className="stat-sub-free">Aucune carte, aucun quota</div>
+            </div>
           </div>
+
+          {recentDocs.length > 0 && (
+            <div className="recent-row">
+              {recentDocs.map(d => (
+                <div key={d.id} className="recent-card" onClick={() => navigate(`/module/${d.modules?.slug || d.modules?.id}`)}>
+                  <div className="recent-top">
+                    <span className="recent-ago">// ajouté {fmtAgo(d.created_at)}</span>
+                    <span className={`recent-badge ${d.doc_type?.startsWith('corrige') ? 'corrige' : ''}`}>{DOC_LABEL[d.doc_type] || d.doc_type?.toUpperCase()}</span>
+                  </div>
+                  <div className="recent-name">{d.modules?.name || 'Module'}{d.academic_year ? ` — ${d.academic_year}` : ''}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

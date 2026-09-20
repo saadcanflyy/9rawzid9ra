@@ -52,6 +52,9 @@ const css = `
   }
   .nb-link-pill { position: absolute; inset: 0; background: rgba(255,255,255,0.06); border-radius: 7px; z-index: 0; }
   .nb-right { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .nb-online { display: flex; align-items: center; gap: 6px; font-family: 'DM Mono', monospace; font-size: 0.72rem; color: #A4A0C8; margin-right: 4px; }
+  .nb-online-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ADE80; box-shadow: 0 0 0 3px rgba(74,222,128,0.18); flex-shrink: 0; }
+  @media(max-width: 1024px) { .nb-online { display: none; } }
   .nb-ghost { background: none; border: 1px solid #2C2A42; color: #A4A0C8; padding: 6px 15px; border-radius: 7px; font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: 'Outfit', sans-serif; }
   .nb-ghost:hover { border-color: #3D3B5C; color: #EAE7FF; }
   .nb-accent { background: linear-gradient(135deg,#6366F1,#4F46E5); color: #fff; border: none; padding: 6px 17px; border-radius: 7px; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: 'Outfit', sans-serif; transition: transform 0.15s, box-shadow 0.15s; box-shadow: 0 2px 12px rgba(99,102,241,0.25); }
@@ -167,7 +170,7 @@ const NOTIF_TEXT = {
 export default function Navbar({ activePage = '' }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user, profile } = useAuth()
+  const { user, profile, onlineCount } = useAuth()
   const [showDropdown, setShowDropdown] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -352,6 +355,7 @@ export default function Navbar({ activePage = '' }) {
 
         {/* col 3 — auth / avatar */}
         <div className="nb-right">
+          <span className="nb-online"><span className="nb-online-dot" />{onlineCount} en ligne</span>
           {user ? (
             <div className="nb-user">
               <button className="nb-upload-btn" onClick={() => navigate('/upload')}><FiUpload size={14} /> Uploader</button>
