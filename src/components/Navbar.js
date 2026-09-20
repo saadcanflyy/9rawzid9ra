@@ -62,17 +62,24 @@ const css = `
   .nb-avatar-wrap { position: relative; }
   .nb-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #818CF8); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 0.72rem; font-weight: 700; color: white; cursor: pointer; border: 2px solid rgba(99,102,241,0.3); transition: border-color 0.15s, transform 0.15s; flex-shrink: 0; }
   .nb-avatar:hover { border-color: #6366F1; transform: scale(1.04); }
-  .nb-dropdown { position: absolute; top: calc(100% + 10px); right: 0; background: #232232; border: 1px solid #2C2A42; border-radius: 14px; padding: 6px; min-width: 220px; box-shadow: 0 16px 40px rgba(0,0,0,0.55); z-index: 600; transform-origin: top right; }
-  .nb-dd-header { padding: 10px 10px 12px; border-bottom: 1px solid #2C2A42; margin-bottom: 4px; }
-  .nb-dd-name { font-size: 0.85rem; font-weight: 600; color: #EAE7FF; display: flex; align-items: center; gap: 6px; }
+  .nb-dropdown { position: absolute; top: calc(100% + 10px); right: 0; background: #232232; border: 1px solid #2C2A42; border-radius: 16px; padding: 8px; min-width: 240px; box-shadow: 0 16px 40px rgba(0,0,0,0.55); z-index: 600; transform-origin: top right; }
+  .nb-dd-header { padding: 14px 10px 14px; border-bottom: 1px solid #2C2A42; margin-bottom: 4px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .nb-dd-avatar { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #6366F1, #818CF8); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  .nb-dd-name { font-size: 0.9rem; font-weight: 600; color: #EAE7FF; display: flex; align-items: center; justify-content: center; gap: 6px; }
   .nb-dd-email { font-size: 0.68rem; color: #666287; font-family: 'DM Mono', monospace; margin-top: 3px; }
-  .nb-dd-points { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: #6366F1; background: rgba(99,102,241,0.1); padding: 2px 8px; border-radius: 4px; margin-top: 6px; display: inline-block; }
+  .nb-dd-pills { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 9px; }
+  .nb-dd-pill { font-family: 'DM Mono', monospace; font-size: 0.65rem; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .nb-dd-pill.points { color: #818CF8; background: rgba(99,102,241,0.15); }
+  .nb-dd-pill.uploads { color: #A4A0C8; background: rgba(164,160,200,0.1); }
   .nb-dd-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 9px; cursor: pointer; transition: background 0.15s, color 0.15s; font-size: 0.82rem; color: #A4A0C8; width: 100%; background: none; border: none; font-family: 'Outfit', sans-serif; text-align: left; }
   .nb-dd-item svg { flex-shrink: 0; opacity: 0.8; }
   .nb-dd-item:hover { background: rgba(255,255,255,0.05); color: #EAE7FF; }
   .nb-dd-item.admin { color: #F87171; }
   .nb-dd-item.admin:hover { background: rgba(248,113,113,0.08); }
   .nb-dd-item.danger:hover { background: rgba(248,113,113,0.08); color: #F87171; }
+  .nb-dd-item.gold { background: rgba(251,211,77,0.08); color: #FBD34D; }
+  .nb-dd-item.gold:hover { background: rgba(251,211,77,0.14); }
+  .nb-dd-kbd { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 0.62rem; color: #666287; background: rgba(255,255,255,0.04); border: 1px solid #2C2A42; border-radius: 4px; padding: 1px 6px; flex-shrink: 0; }
   .nb-dd-sep { height: 1px; background: #2C2A42; margin: 4px 0; }
   .nb-admin-tag { font-family: 'DM Mono', monospace; font-size: 0.55rem; background: rgba(248,113,113,0.1); color: #F87171; border: 1px solid rgba(248,113,113,0.2); padding: 1px 5px; border-radius: 3px; }
 
@@ -237,6 +244,18 @@ export default function Navbar({ activePage = '' }) {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [showNotifs])
+
+  // Keyboard shortcuts — ⌘/Ctrl+P profile, ⌘/Ctrl+M my modules
+  useEffect(() => {
+    if (!user) return
+    const handler = (e) => {
+      if (!(e.metaKey || e.ctrlKey)) return
+      if (e.key === 'p' || e.key === 'P') { e.preventDefault(); navigate('/profile') }
+      else if (e.key === 'm' || e.key === 'M') { e.preventDefault(); navigate('/my-modules') }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [user, navigate])
 
   // Real-time: new notifications
   useEffect(() => {
@@ -439,6 +458,7 @@ export default function Navbar({ activePage = '' }) {
                       transition={{ duration: 0.15, ease: 'easeOut' }}
                     >
                       <div className="nb-dd-header">
+                        <div className="nb-dd-avatar">{initials}</div>
                         <div className="nb-dd-name">
                           {profile?.name || 'Étudiant'}
                           {profile?.is_admin && <span className="nb-admin-tag">ADMIN</span>}
@@ -449,18 +469,20 @@ export default function Navbar({ activePage = '' }) {
                           )}
                         </div>
                         <div className="nb-dd-email">{user.email}</div>
-                        <div className="nb-dd-points">{profile?.points || 0} points · {profile?.uploads_count || 0} uploads</div>
+                        <div className="nb-dd-pills">
+                          <span className="nb-dd-pill points">{profile?.points || 0} points</span>
+                          <span className="nb-dd-pill uploads">{profile?.uploads_count || 0} uploads</span>
+                        </div>
                       </div>
-                      <button className="nb-dd-item" onClick={() => { navigate('/profile'); setShowDropdown(false) }}><FiUser size={15}/> Mon profil</button>
-                      <button className="nb-dd-item" onClick={() => { navigate('/my-modules'); setShowDropdown(false) }}><FiBookmark size={15}/> Mes modules</button>
+                      <button className="nb-dd-item" onClick={() => { navigate('/profile'); setShowDropdown(false) }}><FiUser size={15}/> Mon profil<span className="nb-dd-kbd">⌘P</span></button>
+                      <button className="nb-dd-item" onClick={() => { navigate('/my-modules'); setShowDropdown(false) }}><FiBookmark size={15}/> Mes modules<span className="nb-dd-kbd">⌘M</span></button>
                       {profile?.is_admin && (
                         <button className="nb-dd-item admin" onClick={() => { navigate('/admin'); setShowDropdown(false) }}><FiShield size={15}/> Panneau Admin</button>
                       )}
                       {profile?.is_moderator && !profile?.is_admin && (
                         <button className="nb-dd-item" style={{color:'var(--teal2)'}} onClick={() => { navigate('/moderator'); setShowDropdown(false) }}><FiShield size={15}/> Panneau Modérateur</button>
                       )}
-                      <div className="nb-dd-sep" />
-                      <a className="nb-dd-item" href="https://paypal.me/saadga2003" target="_blank" rel="noopener noreferrer" onClick={() => setShowDropdown(false)} style={{ color:'#FBD34D', textDecoration:'none' }}><FiHeart size={15}/> Soutenir 9rawZid9ra</a>
+                      <a className="nb-dd-item gold" href="https://paypal.me/saadga2003" target="_blank" rel="noopener noreferrer" onClick={() => setShowDropdown(false)} style={{ textDecoration:'none' }}><FiHeart size={15}/> Soutenir 9rawZid9ra</a>
                       <div className="nb-dd-sep" />
                       <button className="nb-dd-item danger" onClick={handleLogout}><FiLogOut size={15}/> Se déconnecter</button>
                     </motion.div>

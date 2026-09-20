@@ -442,6 +442,7 @@ export default function SenpaiZone() {
     document.title = 'Senpai Zone — 9rawZid9ra'
     supabase.from('universities').select('id,name').order('name').then(({ data }) => setUnis(data || []))
     loadPosts()
+    loadWeekStats()
     if (sp.get('module')) {
       supabase.from('modules').select('name').eq('id', sp.get('module')).single()
         .then(({ data }) => setFilterModName(data?.name || ''))
@@ -454,6 +455,8 @@ export default function SenpaiZone() {
       }
     }
   }, [])
+
+  const [weekStats, setWeekStats] = useState({ days: [], total: 0, deltaPct: null })
 
   const loadPosts = useCallback(async () => {
     setLoading(true)
@@ -471,6 +474,29 @@ export default function SenpaiZone() {
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  // Real weekly trend — counts from senpai_posts.created_at, no fabricated numbers
+  const loadWeekStats = useCallback(async () => {
+    const since14d = new Date(Date.now() - 14 * 86400000).toISOString()
+    const { data } = await supabase
+      .from('senpai_posts')
+      .select('created_at')
+      .is('parent_id', null)
+      .eq('is_approved', true)
+      .gte('created_at', since14d)
+    const rows = data || []
+    const dayKey = d => new Date(d).toISOString().slice(0, 10)
+    const counts = {}
+    for (const r of rows) counts[dayKey(r.created_at)] = (counts[dayKey(r.created_at)] || 0) + 1
+    const days = [...Array(7)].map((_, i) => {
+      const d = new Date(Date.now() - (6 - i) * 86400000)
+      return counts[dayKey(d)] || 0
+    })
+    const thisWeek = days.reduce((s, n) => s + n, 0)
+    const prevWeek = rows.length - thisWeek
+    const deltaPct = prevWeek > 0 ? Math.round(((thisWeek - prevWeek) / prevWeek) * 100) : null
+    setWeekStats({ days, total: thisWeek, deltaPct })
   }, [])
 
   // module search for compose — debounced 500ms
@@ -645,6 +671,11 @@ export default function SenpaiZone() {
       .order('created_at', { ascending: true })
     setReplies(data || [])
     setLoadingR(false)
+    // Real view counter — senpai_posts.views, incremented once per open
+    const newViews = (post.views || 0) + 1
+    setViewPost(vp => vp ? { ...vp, views: newViews } : vp)
+    setPosts(ps => ps.map(p => p.id === post.id ? { ...p, views: newViews } : p))
+    supabase.from('senpai_posts').update({ views: newViews }).eq('id', post.id).then()
   }
 
   // ── SEND REPLY ────────────────────────────────────────────────────────────
@@ -958,6 +989,9 @@ export default function SenpaiZone() {
                 </div>
               )}
             </div>
+            {post.views > 0 && (
+              <div style={{ fontSize:'0.68rem', color:'var(--text3)', fontFamily:'DM Mono,monospace', marginTop:4 }}>{post.views} vue{post.views !== 1 ? 's' : ''}</div>
+            )}
           </div>
         </div>
       </div>
@@ -1024,6 +1058,7 @@ export default function SenpaiZone() {
               <div className="sz-thread-stats">
                 <span className="sz-thread-stat"><b>{viewPost.helpful_count || 0}</b> utile{(viewPost.helpful_count || 0) !== 1 ? 's' : ''}</span>
                 <span className="sz-thread-stat"><b>{replies.length}</b> réponse{replies.length !== 1 ? 's' : ''}</span>
+                <span className="sz-thread-stat"><b>{viewPost.views || 0}</b> vue{(viewPost.views || 0) !== 1 ? 's' : ''}</span>
               </div>
               <div className="sz-post-actions" style={{ marginTop: 0, paddingTop: 4 }}>
                 <button className={`sz-act ${isV ? 'liked' : ''}`} onClick={e => handleVote(viewPost, e)}>
@@ -1435,6 +1470,28 @@ export default function SenpaiZone() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+
+          {weekStats.total > 0 && (
+            <div className="sz-widget">
+              <div className="sz-widget-head">Cette semaine</div>
+              <div style={{ padding:'14px' }}>
+                <div style={{ display:'flex', alignItems:'flex-end', gap:5, height:44, marginBottom:10 }}>
+                  {weekStats.days.map((n, i) => {
+                    const max = Math.max(...weekStats.days, 1)
+                    return <div key={i} style={{ flex:1, background: i === 6 ? 'var(--accent)' : 'rgba(99,102,241,0.35)', borderRadius:'2px 2px 0 0', minHeight:2, height:`${Math.round((n / max) * 44)}px`, transition:'height 0.3s' }} title={`${n} post${n !== 1 ? 's' : ''}`} />
+                  })}
+                </div>
+                <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.72rem', color:'var(--text2)' }}>
+                  {weekStats.total} nouveau{weekStats.total !== 1 ? 'x' : ''} post{weekStats.total !== 1 ? 's' : ''}
+                  {weekStats.deltaPct !== null && (
+                    <span style={{ color: weekStats.deltaPct >= 0 ? 'var(--green)' : 'var(--red)', marginLeft:6 }}>
+                      {weekStats.deltaPct >= 0 ? '▲' : '▼'} {Math.abs(weekStats.deltaPct)}% vs semaine dernière
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
