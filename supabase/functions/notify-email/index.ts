@@ -6,7 +6,7 @@ const SUPABASE_URL     = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SVC_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const WEBHOOK_SECRET   = Deno.env.get("WEBHOOK_SECRET") ?? "";
 const ADMIN_ID         = "84c11086-6041-4118-8f4c-138a0664966f";
-const FROM             = "9rawZid9ra <no-reply@mail.9rawzid9ra.space>";
+const FROM             = "9rawZid9ra <support@mail.9rawzid9ra.space>";
 const SITE_URL         = "https://9rawzid9ra.space";
 
 function escHtml(str: string): string {
