@@ -2,8 +2,8 @@ import { useNavigate, useLocation } from 'react-router-dom'
 
 const css = `
   .site-footer {
-    background: #050810;
-    border-top: 1px solid #1C2A45;
+    background: #100F1A;
+    border-top: 1px solid #2C2A42;
     padding: 2.5rem 2rem 1.5rem;
     font-family: 'Outfit', sans-serif;
   }
@@ -27,10 +27,10 @@ const css = `
     color: #FFFFFF;
     letter-spacing: -0.3px;
   }
-  .ft-logo b { color: #7BB3FF; font-weight: 700; }
+  .ft-logo b { color: #818CF8; font-weight: 700; }
   .ft-tagline {
     font-size: 0.78rem;
-    color: #4A5568;
+    color: #666287;
     max-width: 260px;
     line-height: 1.5;
   }
@@ -42,7 +42,7 @@ const css = `
   .ft-col-title {
     font-family: 'DM Mono', monospace;
     font-size: 0.62rem;
-    color: #4A5568;
+    color: #666287;
     letter-spacing: 2px;
     text-transform: uppercase;
     margin-bottom: 0.75rem;
@@ -53,18 +53,18 @@ const css = `
     border: none;
     padding: 0;
     font-size: 0.82rem;
-    color: #94A3B8;
+    color: #A4A0C8;
     cursor: pointer;
     font-family: 'Outfit', sans-serif;
     text-align: left;
     transition: color 0.15s;
   }
-  .ft-link:hover { color: #E2E8F0; }
+  .ft-link:hover { color: #EAE7FF; }
   .ft-bottom {
     max-width: 900px;
     margin: 1.5rem auto 0;
     padding-top: 1rem;
-    border-top: 1px solid rgba(28,42,69,0.5);
+    border-top: 1px solid rgba(44,42,66,0.5);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -74,7 +74,7 @@ const css = `
   .ft-copy {
     font-family: 'DM Mono', monospace;
     font-size: 0.68rem;
-    color: #4A5568;
+    color: #666287;
   }
   .ft-heart { color: #F87171; }
   @media(max-width:600px) {

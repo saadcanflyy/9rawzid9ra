@@ -6,16 +6,32 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
   :root {
-    --bg:#02040A; --surface:#070C18; --s2:#0C1222;
-    --border:#1C2A45; --borderhi:#2D4A7A;
-    --accent:#4F8EF7; --accent2:#7BB3FF; --teal:#2DD4BF; --teal2:#5EEAD4;
-    --red:#F87171; --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
+    --bg:#0F0E17; --surface:#191826; --s2:#232232;
+    --border:#2C2A42; --borderhi:#3D3B5C;
+    --accent:#6366F1; --accent2:#818CF8; --teal:#6366F1; --teal2:#A5B4FC;
+    --red:#F87171; --text:#EAE7FF; --text2:#A4A0C8; --text3:#666287; --white:#FFFFFF;
   }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#F5F4FB;
+      --surface:#FFFFFF;
+      --s2:#F0EEF9;
+      --border:#E3E0F0;
+      --borderhi:#C9C4E3;
+      --accent2:#4F46E5;
+      --teal2:#4F46E5;
+      --text:#1E1B2E;
+      --text2:#5B5775;
+      --text3:#8B87A3;
+      --white:#17152B;
+    }
+  }
+
   html,body { background:var(--bg); font-family:'Outfit',sans-serif; min-height:100vh; }
   .page { min-height:100vh; display:grid; grid-template-columns:1fr 1fr; }
   .left { background:var(--surface); border-right:1px solid var(--border); padding:3rem; display:flex; flex-direction:column; position:relative; overflow:hidden; }
-  .left::after { content:''; position:absolute; inset:0; background-image:radial-gradient(circle, rgba(79,142,247,0.1) 1px, transparent 1px); background-size:36px 36px; mask-image:radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 100%); pointer-events:none; }
-  .left::before { content:''; position:absolute; bottom:-100px; right:-100px; width:400px; height:400px; border-radius:50%; background:radial-gradient(circle, rgba(45,212,191,0.06) 0%, transparent 70%); pointer-events:none; }
+  .left::after { content:''; position:absolute; inset:0; background-image:radial-gradient(circle, rgba(99,102,241,0.1) 1px, transparent 1px); background-size:36px 36px; mask-image:radial-gradient(ellipse 80% 80% at 50% 50%, black 0%, transparent 100%); pointer-events:none; }
+  .left::before { content:''; position:absolute; bottom:-100px; right:-100px; width:400px; height:400px; border-radius:50%; background:radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%); pointer-events:none; }
   .left-inner { position:relative; z-index:1; flex:1; display:flex; flex-direction:column; }
   .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
   .logo-box { width:30px; height:30px; border-radius:7px; background:linear-gradient(135deg,var(--accent),var(--teal)); }
@@ -45,18 +61,18 @@ const css = `
   .field { margin-bottom:1rem; }
   .label { display:block; font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:0.5rem; }
   .input { width:100%; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:11px 14px; color:var(--text); font-size:0.9rem; font-family:'Outfit',sans-serif; outline:none; transition:border-color 0.15s, box-shadow 0.15s; }
-  .input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,142,247,0.1); }
+  .input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(99,102,241,0.1); }
   .input::placeholder { color:var(--text3); }
   .forgot { text-align:right; margin-top:6px; }
   .forgot button { font-size:0.72rem; color:var(--text3); background:none; border:none; cursor:pointer; font-family:'DM Mono',monospace; transition:color 0.15s; }
   .forgot button:hover { color:var(--accent2); }
-  .submit { width:100%; background:linear-gradient(135deg,var(--accent),#3A6ED4); color:var(--white); border:none; border-radius:10px; padding:13px; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; margin-top:1.5rem; position:relative; overflow:hidden; }
+  .submit { width:100%; background:linear-gradient(135deg,var(--accent),#4F46E5); color:var(--white); border:none; border-radius:10px; padding:13px; font-size:0.9rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; margin-top:1.5rem; position:relative; overflow:hidden; }
   .submit::before { content:''; position:absolute; inset:0; background:linear-gradient(to bottom,rgba(255,255,255,0.1),transparent); }
-  .submit:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 24px rgba(79,142,247,0.4); }
+  .submit:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 24px rgba(99,102,241,0.4); }
   .submit:disabled { opacity:0.5; cursor:not-allowed; }
   .alert { padding:10px 14px; border-radius:8px; font-size:0.82rem; margin-bottom:1rem; font-family:'DM Mono',monospace; }
   .err  { background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.2); color:var(--red); }
-  .info { background:rgba(79,142,247,0.08); border:1px solid rgba(79,142,247,0.2); color:#7BB3FF; }
+  .info { background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); color:#818CF8; }
   .register-box { margin-top:1.5rem; padding:1.25rem; background:var(--surface); border:1px solid var(--border); border-radius:10px; text-align:center; }
   .register-box p { font-size:0.82rem; color:var(--text2); margin-bottom:0.75rem; }
   .register-box button { width:100%; background:none; border:1px solid var(--border); color:var(--text2); border-radius:8px; padding:9px; font-size:0.82rem; font-weight:500; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; }
@@ -212,16 +228,16 @@ export default function Login() {
                 <span style={{ fontSize:'1.1rem' }}>🚫</span>
                 <span style={{ fontWeight:700, color:'#F87171', fontSize:'0.92rem' }}>Compte suspendu</span>
               </div>
-              <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.74rem', color:'#E2E8F0', marginBottom:4 }}>
+              <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.74rem', color:'#EAE7FF', marginBottom:4 }}>
                 Raison : <span style={{ color:'#F87171' }}>{banInfo.reason || 'Non spécifiée'}</span>
               </div>
-              <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.74rem', color:'#E2E8F0', marginBottom:8 }}>
+              <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.74rem', color:'#EAE7FF', marginBottom:8 }}>
                 {banInfo.until
                   ? `Jusqu'au : ${new Date(banInfo.until).toLocaleDateString('fr-MA', { day:'2-digit', month:'long', year:'numeric' })}`
                   : 'Bannissement permanent'}
               </div>
-              <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.68rem', color:'#4A5568' }}>
-                Contact : <a href="mailto:saadga2003@gmail.com" style={{ color:'#4F8EF7', textDecoration:'none' }}>saadga2003@gmail.com</a>
+              <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.68rem', color:'#666287' }}>
+                Contact : <a href="mailto:saadga2003@gmail.com" style={{ color:'#6366F1', textDecoration:'none' }}>saadga2003@gmail.com</a>
               </div>
             </div>
           )}
@@ -243,7 +259,7 @@ export default function Login() {
 
           {error && <div className="alert err">{error}</div>}
           {failCount >= 2 && (
-            <div style={{ background:'rgba(79,142,247,0.06)', border:'1px solid rgba(79,142,247,0.2)', borderRadius:10, padding:'12px 16px', marginBottom:'1rem', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
+            <div style={{ background:'rgba(99,102,241,0.06)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:10, padding:'12px 16px', marginBottom:'1rem', display:'flex', alignItems:'center', justifyContent:'space-between', gap:10 }}>
               <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.78rem', color:'var(--text2)' }}>Mot de passe oublié ?</span>
               <button type="button"
                 style={{ background:'var(--accent)', color:'#fff', border:'none', borderRadius:7, padding:'6px 14px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}

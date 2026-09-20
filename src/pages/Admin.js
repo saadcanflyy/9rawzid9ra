@@ -7,12 +7,29 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
   :root {
-    --bg:#02040A; --surface:#070C18; --s2:#0C1222; --s3:#111827;
-    --border:#1C2A45; --borderhi:#2D4A7A;
-    --accent:#4F8EF7; --accent2:#7BB3FF; --teal:#2DD4BF; --teal2:#5EEAD4;
+    --bg:#0F0E17; --surface:#191826; --s2:#232232; --s3:#2C2A42;
+    --border:#2C2A42; --borderhi:#3D3B5C;
+    --accent:#6366F1; --accent2:#818CF8; --teal:#6366F1; --teal2:#A5B4FC;
     --red:#F87171; --yellow:#FBD34D; --green:#4ADE80;
-    --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
+    --text:#EAE7FF; --text2:#A4A0C8; --text3:#666287; --white:#FFFFFF;
   }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#F5F4FB;
+      --surface:#FFFFFF;
+      --s2:#F0EEF9;
+      --s3:#E9E6F5;
+      --border:#E3E0F0;
+      --borderhi:#C9C4E3;
+      --accent2:#4F46E5;
+      --teal2:#4F46E5;
+      --text:#1E1B2E;
+      --text2:#5B5775;
+      --text3:#8B87A3;
+      --white:#17152B;
+    }
+  }
+
   html,body { background:var(--bg); font-family:'Outfit',sans-serif; min-height:100vh; }
   .page { min-height:100vh; display:flex; flex-direction:column; }
 
@@ -20,7 +37,7 @@ const css = `
   .nav {
     position:sticky; top:0; z-index:100; height:58px;
     display:flex; align-items:center; justify-content:space-between; padding:0 2rem;
-    background:rgba(2,4,10,0.95); backdrop-filter:blur(32px); border-bottom:1px solid var(--border);
+    background:rgba(15,14,23,0.95); backdrop-filter:blur(32px); border-bottom:1px solid var(--border);
   }
   .nav-left { display:flex; align-items:center; gap:1.5rem; }
   .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
@@ -49,7 +66,7 @@ const css = `
     margin-bottom:3px; border:1px solid transparent;
   }
   .nav-item:hover { background:var(--s2); }
-  .nav-item.active { background:rgba(79,142,247,0.08); border-color:rgba(79,142,247,0.15); }
+  .nav-item.active { background:rgba(99,102,241,0.08); border-color:rgba(99,102,241,0.15); }
   .nav-item-left { display:flex; align-items:center; gap:8px; }
   .nav-item-icon { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); width:16px; }
   .nav-item.active .nav-item-icon { color:var(--accent2); }
@@ -111,8 +128,8 @@ const css = `
   .act-approve:hover { background:rgba(74,222,128,0.2); }
   .act-reject { background:rgba(248,113,113,0.08); color:var(--red); border-color:rgba(248,113,113,0.15); }
   .act-reject:hover { background:rgba(248,113,113,0.15); }
-  .act-rename { background:rgba(79,142,247,0.08); color:var(--accent2); border-color:rgba(79,142,247,0.15); }
-  .act-rename:hover { background:rgba(79,142,247,0.15); }
+  .act-rename { background:rgba(99,102,241,0.08); color:var(--accent2); border-color:rgba(99,102,241,0.15); }
+  .act-rename:hover { background:rgba(99,102,241,0.15); }
   .act-ban { background:rgba(248,113,113,0.08); color:var(--red); border-color:rgba(248,113,113,0.15); }
   .act-ban:hover { background:rgba(248,113,113,0.15); }
   .act-view { background:var(--s2); color:var(--text2); border-color:var(--border); }
@@ -135,9 +152,9 @@ const css = `
 
   /* RANK BADGE */
   .rank-pill { font-family:'DM Mono',monospace; font-size:0.58rem; padding:2px 7px; border-radius:4px; }
-  .rank-etudiant  { background:rgba(148,163,184,0.08); color:var(--text2); border:1px solid var(--border); }
-  .rank-contrib   { background:rgba(45,212,191,0.08); color:var(--teal2); border:1px solid rgba(45,212,191,0.2); }
-  .rank-senpai    { background:rgba(79,142,247,0.08); color:var(--accent2); border:1px solid rgba(79,142,247,0.2); }
+  .rank-etudiant  { background:rgba(164,160,200,0.08); color:var(--text2); border:1px solid var(--border); }
+  .rank-contrib   { background:rgba(99,102,241,0.08); color:var(--teal2); border:1px solid rgba(99,102,241,0.2); }
+  .rank-senpai    { background:rgba(99,102,241,0.08); color:var(--accent2); border:1px solid rgba(99,102,241,0.2); }
   .rank-legende   { background:rgba(245,158,11,0.08); color:#F59E0B; border:1px solid rgba(245,158,11,0.25); }
 
   /* ACTIVITY FEED */
@@ -273,7 +290,7 @@ export default function Admin() {
 
   const [modal, setModal] = useState(null)
   // Alert = single OK button (onCancel:null). Confirm = with cancel (onCancel omitted → render adds it).
-  const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#4F8EF7', onCancel: null, onConfirm: () => setModal(null) })
+  const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#6366F1', onCancel: null, onConfirm: () => setModal(null) })
 
   // Rename state
   const [renamingId,  setRenamingId]  = useState(null)
@@ -523,7 +540,7 @@ export default function Admin() {
   const rejectMod = async (mod) => {
     const { count } = await supabase.from('documents').select('*', { count:'exact', head:true }).eq('module_id', mod.id)
     if (count > 0) {
-      setModal({ title: 'Suppression impossible', message: `Ce module contient ${count} document(s) et ne peut pas être supprimé.`, confirmText: 'OK', confirmColor: '#4F8EF7', onConfirm: () => setModal(null) })
+      setModal({ title: 'Suppression impossible', message: `Ce module contient ${count} document(s) et ne peut pas être supprimé.`, confirmText: 'OK', confirmColor: '#6366F1', onConfirm: () => setModal(null) })
       return
     }
     setModal({
@@ -631,7 +648,7 @@ export default function Admin() {
     setModal({
       title: currentBan ? 'Débannir cet utilisateur ?' : 'Bannir cet utilisateur ?',
       confirmText: currentBan ? 'Débannir' : 'Bannir',
-      confirmColor: currentBan ? '#4F8EF7' : '#F87171',
+      confirmColor: currentBan ? '#6366F1' : '#F87171',
       onConfirm: async () => {
         setModal(null)
         await supabase.from('user_profiles').update({ is_banned: !currentBan }).eq('id', id)
@@ -644,7 +661,7 @@ export default function Admin() {
     setModal({
       title: currentMod ? 'Retirer le rôle Modérateur ?' : 'Donner le rôle Modérateur ?',
       confirmText: currentMod ? 'Retirer' : 'Confirmer',
-      confirmColor: currentMod ? '#F87171' : '#4F8EF7',
+      confirmColor: currentMod ? '#F87171' : '#6366F1',
       onConfirm: async () => {
         setModal(null)
         const { error } = await supabase.from('user_profiles').update({ is_moderator: !currentMod }).eq('id', id)
@@ -896,7 +913,7 @@ export default function Admin() {
                   <button
                     onClick={sendAnnouncement}
                     disabled={!annText.trim() || annSending}
-                    style={{ background: annText.trim() ? 'rgba(79,142,247,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${annText.trim() ? 'rgba(79,142,247,0.3)' : 'var(--border)'}`, color: annText.trim() ? 'var(--accent2)' : 'var(--text3)', borderRadius:7, padding:'7px 16px', fontSize:'0.78rem', fontWeight:600, cursor: annText.trim() ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif' }}
+                    style={{ background: annText.trim() ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${annText.trim() ? 'rgba(99,102,241,0.3)' : 'var(--border)'}`, color: annText.trim() ? 'var(--accent2)' : 'var(--text3)', borderRadius:7, padding:'7px 16px', fontSize:'0.78rem', fontWeight:600, cursor: annText.trim() ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif' }}
                   >
                     {annSending ? 'Envoi...' : '📢 Envoyer à tous les utilisateurs'}
                   </button>
@@ -960,7 +977,7 @@ export default function Admin() {
                           return (
                             <Fragment key={u.id}>
                               <tr style={{cursor:'pointer'}} onClick={() => toggleContrib(u.id)}>
-                                <td className="table-mono" style={{color: i===0?'#F59E0B':i===1?'#94A3B8':i===2?'#CD7F32':'var(--text3)', fontWeight:i<3?700:400}}>
+                                <td className="table-mono" style={{color: i===0?'#F59E0B':i===1?'#A4A0C8':i===2?'#CD7F32':'var(--text3)', fontWeight:i<3?700:400}}>
                                   {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}
                                 </td>
                                 <td>
@@ -978,7 +995,7 @@ export default function Admin() {
                               </tr>
                               {isExpanded && (
                                 <tr>
-                                  <td colSpan={5} style={{padding:0,background:'rgba(79,142,247,0.03)',borderBottom:'1px solid var(--border)'}}>
+                                  <td colSpan={5} style={{padding:0,background:'rgba(99,102,241,0.03)',borderBottom:'1px solid var(--border)'}}>
                                     <div style={{padding:'10px 20px'}}>
                                       {isLoadingDocs ? (
                                         <div className="table-mono" style={{color:'var(--text3)'}}>Chargement...</div>
@@ -988,7 +1005,7 @@ export default function Admin() {
                                         <div style={{display:'flex',flexDirection:'column',gap:5,maxHeight:220,overflowY:'auto'}}>
                                           {docs.map((d, j) => (
                                             <div key={j} style={{display:'flex',alignItems:'center',gap:10}}>
-                                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',background:'rgba(79,142,247,0.1)',color:'var(--accent2)',border:'1px solid rgba(79,142,247,0.2)',borderRadius:3,padding:'1px 6px',minWidth:48,textAlign:'center',flexShrink:0}}>
+                                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',background:'rgba(99,102,241,0.1)',color:'var(--accent2)',border:'1px solid rgba(99,102,241,0.2)',borderRadius:3,padding:'1px 6px',minWidth:48,textAlign:'center',flexShrink:0}}>
                                                 {DOC_LABELS[d.doc_type] || d.doc_type || '?'}
                                               </span>
                                               <span style={{fontSize:'0.78rem',color:'var(--text)',flex:1}}>{d.modules?.name || '—'}</span>
@@ -1018,9 +1035,9 @@ export default function Admin() {
                       const typeStyle = item.type === 'document'
                         ? { bg:'rgba(74,222,128,0.1)', color:'#4ADE80', border:'rgba(74,222,128,0.25)', label:'DOC' }
                         : item.type === 'school'
-                        ? { bg:'rgba(79,142,247,0.1)', color:'#7BB3FF', border:'rgba(79,142,247,0.25)', label:'ÉCOLE' }
+                        ? { bg:'rgba(99,102,241,0.1)', color:'#818CF8', border:'rgba(99,102,241,0.25)', label:'ÉCOLE' }
                         : item.type === 'filiere'
-                        ? { bg:'rgba(45,212,191,0.1)', color:'#5EEAD4', border:'rgba(45,212,191,0.25)', label:'FILIÈRE' }
+                        ? { bg:'rgba(99,102,241,0.1)', color:'#A5B4FC', border:'rgba(99,102,241,0.25)', label:'FILIÈRE' }
                         : { bg:'rgba(251,211,77,0.1)', color:'#FBD34D', border:'rgba(251,211,77,0.25)', label:'MODULE' }
                       return (
                         <div key={i} className="feed-item">
@@ -1058,7 +1075,7 @@ export default function Admin() {
               <div style={{display:'flex', gap:8, marginBottom:'1rem'}}>
                 {[{k:'all',l:'Tous'},{k:'reported',l:'🚩 Signalés'},{k:'recent',l:'Récents'}].map(f => (
                   <button key={f.k} onClick={() => setDocFilter(f.k)}
-                    style={{ background: docFilter===f.k ? 'rgba(79,142,247,0.15)' : 'none', border: `1px solid ${docFilter===f.k ? 'rgba(79,142,247,0.3)' : '#1C2A45'}`, color: docFilter===f.k ? '#7BB3FF' : '#4A5568', borderRadius:7, padding:'6px 14px', fontSize:'0.78rem', cursor:'pointer', fontFamily:'Outfit', transition:'all 0.15s' }}
+                    style={{ background: docFilter===f.k ? 'rgba(99,102,241,0.15)' : 'none', border: `1px solid ${docFilter===f.k ? 'rgba(99,102,241,0.3)' : '#2C2A42'}`, color: docFilter===f.k ? '#818CF8' : '#666287', borderRadius:7, padding:'6px 14px', fontSize:'0.78rem', cursor:'pointer', fontFamily:'Outfit', transition:'all 0.15s' }}
                   >{f.l}</button>
                 ))}
               </div>
@@ -1100,7 +1117,7 @@ export default function Admin() {
                               )}
                             </div>
                             {movingDocId === d.id && (
-                              <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(79,142,247,0.05)', border:'1px solid rgba(79,142,247,0.2)', borderRadius:8 }}>
+                              <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(99,102,241,0.05)', border:'1px solid rgba(99,102,241,0.2)', borderRadius:8 }}>
                                 <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--accent2)', marginBottom:6 }}>// déplacer vers un autre module</div>
                                 <input
                                   style={{ width:'100%', background:'var(--s2)', border:'1px solid var(--border)', borderRadius:6, padding:'6px 10px', color:'var(--text)', fontSize:'0.78rem', fontFamily:'Outfit,sans-serif', outline:'none', marginBottom:6 }}
@@ -1113,7 +1130,7 @@ export default function Admin() {
                                     {moveResults.map(m => (
                                       <div key={m.id}
                                         onClick={() => setMoveSelId(m.id)}
-                                        style={{ padding:'5px 8px', borderRadius:5, cursor:'pointer', fontSize:'0.76rem', background: moveSelId === m.id ? 'rgba(79,142,247,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${moveSelId === m.id ? 'rgba(79,142,247,0.4)' : 'transparent'}`, color: moveSelId === m.id ? 'var(--accent2)' : 'var(--text2)' }}>
+                                        style={{ padding:'5px 8px', borderRadius:5, cursor:'pointer', fontSize:'0.76rem', background: moveSelId === m.id ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${moveSelId === m.id ? 'rgba(99,102,241,0.4)' : 'transparent'}`, color: moveSelId === m.id ? 'var(--accent2)' : 'var(--text2)' }}>
                                         {m.name}
                                         {m.filieres?.name && <span style={{ color:'var(--text3)', fontSize:'0.68rem', marginLeft:6, fontFamily:'DM Mono,monospace' }}>{m.filieres.name}{m.filieres.semester ? ` · S${m.filieres.semester}` : ''}</span>}
                                       </div>
@@ -1123,7 +1140,7 @@ export default function Admin() {
                                 <button
                                   disabled={!moveSelId || moveBusy}
                                   onClick={() => moveDoc(d.id, moveSelId)}
-                                  style={{ background: moveSelId ? 'rgba(79,142,247,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${moveSelId ? 'rgba(79,142,247,0.3)' : 'var(--border)'}`, color: moveSelId ? 'var(--accent2)' : 'var(--text3)', borderRadius:6, padding:'5px 12px', fontSize:'0.76rem', fontWeight:600, cursor: moveSelId ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif' }}>
+                                  style={{ background: moveSelId ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${moveSelId ? 'rgba(99,102,241,0.3)' : 'var(--border)'}`, color: moveSelId ? 'var(--accent2)' : 'var(--text3)', borderRadius:6, padding:'5px 12px', fontSize:'0.76rem', fontWeight:600, cursor: moveSelId ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif' }}>
                                   {moveBusy ? 'Déplacement...' : 'Confirmer'}
                                 </button>
                               </div>
@@ -1307,9 +1324,9 @@ export default function Admin() {
                             onClick={() => window.open('/user/' + u.id, '_blank')}
                           >
                             <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap'}}>
-                              <span className="table-name" style={{textDecoration:'underline',textDecorationColor:'rgba(79,142,247,0.3)'}}>{u.name || 'Sans nom'}</span>
+                              <span className="table-name" style={{textDecoration:'underline',textDecorationColor:'rgba(99,102,241,0.3)'}}>{u.name || 'Sans nom'}</span>
                               {u.is_moderator && !u.is_admin && (
-                                <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',fontWeight:700,padding:'1px 6px',borderRadius:3,background:'rgba(45,212,191,0.1)',color:'var(--teal2)',border:'1px solid rgba(45,212,191,0.25)'}}>MOD</span>
+                                <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',fontWeight:700,padding:'1px 6px',borderRadius:3,background:'rgba(99,102,241,0.1)',color:'var(--teal2)',border:'1px solid rgba(99,102,241,0.25)'}}>MOD</span>
                               )}
                             </div>
                             <div className="table-mono" style={{color:'var(--text3)'}}>{u.email}</div>
@@ -1332,7 +1349,7 @@ export default function Admin() {
                               {!u.is_admin && (
                                 <button
                                   className="act-btn"
-                                  style={u.is_moderator ? {background:'rgba(45,212,191,0.1)',color:'var(--teal2)',border:'1px solid rgba(45,212,191,0.25)'} : {background:'rgba(45,212,191,0.05)',color:'var(--text3)',border:'1px solid var(--border)'}}
+                                  style={u.is_moderator ? {background:'rgba(99,102,241,0.1)',color:'var(--teal2)',border:'1px solid rgba(99,102,241,0.25)'} : {background:'rgba(99,102,241,0.05)',color:'var(--text3)',border:'1px solid var(--border)'}}
                                   onClick={() => toggleModerator(u.id, u.is_moderator)}>
                                   {u.is_moderator ? 'Retirer MOD' : '+ MOD'}
                                 </button>
@@ -1388,14 +1405,14 @@ export default function Admin() {
                 <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                   {flaggedPosts.map(post => {
                     const TYPE_COLORS = {
-                      survival_guide:'#4F8EF7', cheat_code:'#FBD34D',
+                      survival_guide:'#6366F1', cheat_code:'#FBD34D',
                       timeline:'#4ADE80', red_flag:'#F87171', path_review:'#C4B5FD',
                     }
                     const TYPE_LABELS = {
                       survival_guide:'Guide de survie', cheat_code:'Cheat Code',
                       timeline:'Timeline', red_flag:'Red Flag', path_review:'Bilan de parcours',
                     }
-                    const color = TYPE_COLORS[post.post_type] || '#94A3B8'
+                    const color = TYPE_COLORS[post.post_type] || '#A4A0C8'
                     return (
                       <div key={post.id} style={{ background:'var(--surface)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:10, padding:'1rem 1.25rem' }}>
                         <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:10 }}>
@@ -1405,15 +1422,15 @@ export default function Admin() {
                                 {TYPE_LABELS[post.post_type] || post.post_type}
                               </span>
                               {post.is_anonymous && (
-                                <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#94A3B8', background:'rgba(148,163,184,0.08)', padding:'2px 8px', borderRadius:4, border:'1px solid rgba(148,163,184,0.15)' }}>🎭 Anonyme</span>
+                                <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#A4A0C8', background:'rgba(164,160,200,0.08)', padding:'2px 8px', borderRadius:4, border:'1px solid rgba(164,160,200,0.15)' }}>🎭 Anonyme</span>
                               )}
                               {!post.is_approved && <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#F87171', background:'rgba(248,113,113,0.08)', padding:'2px 8px', borderRadius:4, border:'1px solid rgba(248,113,113,0.2)' }}>⚠ Signalé</span>}
                             </div>
                             <div style={{ fontSize:'0.92rem', fontWeight:700, color:'#fff', marginBottom:4 }}>{post.title}</div>
-                            <div style={{ fontSize:'0.78rem', color:'#94A3B8', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden', marginBottom:8 }}>
+                            <div style={{ fontSize:'0.78rem', color:'#A4A0C8', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden', marginBottom:8 }}>
                               {post.content}
                             </div>
-                            <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568' }}>
+                            <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#666287' }}>
                               Par : {post.user_profiles?.name || '—'} · {post.user_profiles?.email || '—'} · {fmt(post.created_at)}
                             </div>
                           </div>
@@ -1503,13 +1520,13 @@ export default function Admin() {
                     {msgSenders.map(s => {
                       const initial = (s.name || '?')[0].toUpperCase()
                       const isSelected = selectedMsgUser?.id === s.id
-                      const colors = ['#4F8EF7','#2DD4BF','#F59E0B','#C4B5FD','#4ADE80','#F87171']
+                      const colors = ['#6366F1','#6366F1','#F59E0B','#C4B5FD','#4ADE80','#F87171']
                       const color = colors[s.id.charCodeAt(0) % colors.length]
                       return (
                         <div key={s.id} onClick={() => loadThread(s)}
                           style={{
                             display:'flex', alignItems:'center', gap:10, padding:'12px 14px', cursor:'pointer',
-                            background: isSelected ? 'rgba(79,142,247,0.08)' : 'transparent',
+                            background: isSelected ? 'rgba(99,102,241,0.08)' : 'transparent',
                             borderLeft: isSelected ? '3px solid var(--accent)' : '3px solid transparent',
                             transition:'all 0.15s',
                           }}
@@ -1559,8 +1576,8 @@ export default function Admin() {
                                 <div style={{
                                   maxWidth:'72%', padding:'8px 12px',
                                   borderRadius: fromAdmin ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
-                                  background: fromAdmin ? 'rgba(79,142,247,0.18)' : 'var(--s2)',
-                                  border: `1px solid ${fromAdmin ? 'rgba(79,142,247,0.35)' : 'var(--border)'}`,
+                                  background: fromAdmin ? 'rgba(99,102,241,0.18)' : 'var(--s2)',
+                                  border: `1px solid ${fromAdmin ? 'rgba(99,102,241,0.35)' : 'var(--border)'}`,
                                 }}>
                                   {fromAdmin && (
                                     <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.56rem', color:'var(--accent2)', marginBottom:4 }}>Vous</div>
@@ -1579,7 +1596,7 @@ export default function Admin() {
                             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
                             placeholder="Répondre..."
                             style={{ flex:1, background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 12px', color:'var(--text)', fontSize:'0.82rem', fontFamily:'Outfit,sans-serif', outline:'none', transition:'border-color 0.15s' }}
-                            onFocus={e => e.target.style.borderColor='rgba(79,142,247,0.4)'}
+                            onFocus={e => e.target.style.borderColor='rgba(99,102,241,0.4)'}
                             onBlur={e => e.target.style.borderColor='var(--border)'}
                           />
                           <button onClick={sendReply} disabled={!replyText.trim() || replySending}
@@ -1647,7 +1664,7 @@ export default function Admin() {
                           ? <div className="empty" style={{padding:'1rem 0'}}>// pas de données</div>
                           : analytics.topModules.map((m, i) => (
                             <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-                              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color: i===0?'#F59E0B':i===1?'#94A3B8':i===2?'#CD7F32':'var(--text3)', width:20, textAlign:'right', flexShrink:0 }}>
+                              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color: i===0?'#F59E0B':i===1?'#A4A0C8':i===2?'#CD7F32':'var(--text3)', width:20, textAlign:'right', flexShrink:0 }}>
                                 {i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`}
                               </span>
                               <div style={{ flex:1, minWidth:0 }}>

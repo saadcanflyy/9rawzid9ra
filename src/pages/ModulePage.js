@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import { FiEye, FiDownload, FiThumbsUp, FiCheck, FiX, FiTrendingUp, FiInbox } from 'react-icons/fi'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
@@ -9,23 +11,40 @@ const css = `
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
   :root {
-    --bg:       #02040A;
-    --surface:  #070C18;
-    --s2:       #0C1222;
-    --s3:       #111827;
-    --border:   #1C2A45;
-    --borderhi: #2D4A7A;
-    --accent:   #4F8EF7;
-    --accent2:  #7BB3FF;
-    --teal:     #2DD4BF;
-    --teal2:    #5EEAD4;
+    --bg:       #0F0E17;
+    --surface:  #191826;
+    --s2:       #232232;
+    --s3:       #2C2A42;
+    --border:   #2C2A42;
+    --borderhi: #3D3B5C;
+    --accent:   #6366F1;
+    --accent2:  #818CF8;
+    --teal:     #6366F1;
+    --teal2:    #A5B4FC;
     --red:      #F87171;
     --yellow:   #FBD34D;
-    --text:     #E2E8F0;
-    --text2:    #94A3B8;
-    --text3:    #4A5568;
+    --text:     #EAE7FF;
+    --text2:    #A4A0C8;
+    --text3:    #666287;
     --white:    #FFFFFF;
   }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#F5F4FB;
+      --surface:#FFFFFF;
+      --s2:#F0EEF9;
+      --s3:#E9E6F5;
+      --border:#E3E0F0;
+      --borderhi:#C9C4E3;
+      --accent2:#4F46E5;
+      --teal2:#4F46E5;
+      --text:#1E1B2E;
+      --text2:#5B5775;
+      --text3:#8B87A3;
+      --white:#17152B;
+    }
+  }
+
 
   html, body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; }
   .page { min-height: 100vh; display: flex; flex-direction: column; }
@@ -59,7 +78,7 @@ const css = `
   .mod-hero::after {
     content: '';
     position: absolute; inset: 0;
-    background: radial-gradient(ellipse 50% 100% at 100% 50%, rgba(79,142,247,0.05) 0%, transparent 60%);
+    background: radial-gradient(ellipse 50% 100% at 100% 50%, rgba(99,102,241,0.05) 0%, transparent 60%);
     pointer-events: none;
   }
   .mod-hero-inner { max-width: 1000px; position: relative; z-index: 1; }
@@ -68,8 +87,8 @@ const css = `
     font-family: 'DM Mono', monospace; font-size: 0.62rem;
     padding: 3px 10px; border-radius: 4px; letter-spacing: 0.5px;
   }
-  .tag-sem  { background: rgba(79,142,247,0.1); color: var(--accent2); border: 1px solid rgba(79,142,247,0.2); }
-  .tag-fil  { background: rgba(45,212,191,0.08); color: var(--teal2); border: 1px solid rgba(45,212,191,0.15); }
+  .tag-sem  { background: rgba(99,102,241,0.1); color: var(--accent2); border: 1px solid rgba(99,102,241,0.2); }
+  .tag-fil  { background: rgba(99,102,241,0.08); color: var(--teal2); border: 1px solid rgba(99,102,241,0.15); }
   .tag-uni  { background: rgba(255,255,255,0.04); color: var(--text3); border: 1px solid var(--border); }
   .mod-name {
     font-size: 2rem; font-weight: 700; color: var(--white);
@@ -167,10 +186,10 @@ const css = `
   }
   .icon-examen { background: rgba(248,113,113,0.08); color: var(--red); border: 1px solid rgba(248,113,113,0.15); }
   .icon-cc     { background: rgba(251,211,77,0.08); color: var(--yellow); border: 1px solid rgba(251,211,77,0.15); }
-  .icon-td     { background: rgba(79,142,247,0.08); color: var(--accent2); border: 1px solid rgba(79,142,247,0.15); }
-  .icon-tp     { background: rgba(45,212,191,0.08); color: var(--teal2); border: 1px solid rgba(45,212,191,0.15); }
+  .icon-td     { background: rgba(99,102,241,0.08); color: var(--accent2); border: 1px solid rgba(99,102,241,0.15); }
+  .icon-tp     { background: rgba(99,102,241,0.08); color: var(--teal2); border: 1px solid rgba(99,102,241,0.15); }
   .icon-quiz   { background: rgba(167,139,250,0.08); color: #C4B5FD; border: 1px solid rgba(167,139,250,0.15); }
-  .icon-cours  { background: rgba(94,234,212,0.08); color: var(--teal2); border: 1px solid rgba(94,234,212,0.15); }
+  .icon-cours  { background: rgba(165,180,252,0.08); color: var(--teal2); border: 1px solid rgba(165,180,252,0.15); }
 
   .doc-info { flex: 1; min-width: 0; }
   .doc-title {
@@ -186,12 +205,12 @@ const css = `
   .doc-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
   .doc-pages { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--text3); }
   .doc-dl-btn {
-    background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.2);
+    background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2);
     color: var(--accent2); border-radius: 7px; padding: 6px 14px;
     font-size: 0.75rem; font-weight: 600; cursor: pointer;
     font-family: 'Outfit', sans-serif; transition: all 0.15s; white-space: nowrap;
   }
-  .doc-dl-btn:hover { background: rgba(79,142,247,0.15); border-color: var(--accent); }
+  .doc-dl-btn:hover { background: rgba(99,102,241,0.15); border-color: var(--accent); }
 
   /* Empty state */
   .empty {
@@ -207,12 +226,12 @@ const css = `
     border-radius: 8px; padding: 10px 24px; font-size: 0.85rem; font-weight: 600;
     cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.2s;
   }
-  .empty-upload-btn:hover { background: #3A7BEF; transform: translateY(-1px); }
+  .empty-upload-btn:hover { background: #4F46E5; transform: translateY(-1px); }
 
   /* Skeleton */
   @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   .skel {
-    background: linear-gradient(90deg,#070C18,#0C1222,#070C18);
+    background: linear-gradient(90deg,#191826,#232232,#191826);
     background-size: 200% 100%; animation: shimmer 1.5s infinite;
     border-radius: 10px;
   }
@@ -253,7 +272,7 @@ const css = `
     font-size: 0.78rem; color: var(--text2); line-height: 1.6; margin-bottom: 1rem;
   }
   .upload-card-btn {
-    width: 100%; background: linear-gradient(135deg, var(--accent), #3A6ED4);
+    width: 100%; background: linear-gradient(135deg, var(--accent), #4F46E5);
     color: var(--white); border: none; border-radius: 8px;
     padding: 10px; font-size: 0.85rem; font-weight: 600;
     cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.2s;
@@ -263,7 +282,7 @@ const css = `
     content: ''; position: absolute; inset: 0;
     background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
   }
-  .upload-card-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(79,142,247,0.4); }
+  .upload-card-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(99,102,241,0.4); }
 
   /* Info rows */
   .info-row {
@@ -300,7 +319,7 @@ const css = `
   .related-item:hover { background: var(--s2); border-color: var(--border); }
   .related-sem {
     font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--accent);
-    background: rgba(79,142,247,0.08); padding: 2px 6px; border-radius: 3px;
+    background: rgba(99,102,241,0.08); padding: 2px 6px; border-radius: 3px;
     flex-shrink: 0;
   }
   .related-name { font-size: 0.8rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -326,7 +345,7 @@ const css = `
   /* ─── PDF PREVIEW MODAL ─── */
   .pdf-overlay {
     position:fixed; inset:0; z-index:900;
-    display:flex; flex-direction:column; background:#02040A;
+    display:flex; flex-direction:column; background:#0F0E17;
   }
   .pdf-modal-head {
     display:flex; align-items:center; justify-content:space-between;
@@ -339,11 +358,11 @@ const css = `
   }
   .pdf-modal-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
   .pdf-dl-btn {
-    background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.3);
+    background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3);
     color:var(--accent2); border-radius:7px; padding:6px 14px;
     font-size:0.75rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s;
   }
-  .pdf-dl-btn:hover { background:rgba(79,142,247,0.2); }
+  .pdf-dl-btn:hover { background:rgba(99,102,241,0.2); }
   .pdf-close-btn {
     background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.25);
     color:var(--red); border-radius:7px; padding:6px 12px;
@@ -355,11 +374,11 @@ const css = `
   /* ─── AUTH GATE MODAL ─── */
   .auth-gate-ov {
     position:fixed; inset:0; z-index:800;
-    background:rgba(2,4,10,0.88); backdrop-filter:blur(10px);
+    background:rgba(15,14,23,0.88); backdrop-filter:blur(10px);
     display:flex; align-items:center; justify-content:center; padding:1.5rem;
   }
   .auth-gate-box {
-    background:#0C1222; border:1px solid #2D4A7A;
+    background:#232232; border:1px solid #3D3B5C;
     border-radius:16px; padding:2rem 1.75rem; max-width:340px; width:100%;
     text-align:center; box-shadow:0 24px 64px rgba(0,0,0,0.7);
   }
@@ -696,11 +715,11 @@ export default function ModulePage() {
       <style>{css}</style>
       <Navbar />
       {/* Breadcrumb skeleton */}
-      <div style={{ padding:'0.6rem 2.5rem', background:'#070C18', borderBottom:'1px solid #1C2A45', display:'flex', gap:8 }}>
+      <div style={{ padding:'0.6rem 2.5rem', background:'#191826', borderBottom:'1px solid #2C2A42', display:'flex', gap:8 }}>
         {[60,80,90,110].map((w,i) => <div key={i} className="skel" style={{ height:12, width:w, borderRadius:4 }} />)}
       </div>
       {/* Hero skeleton */}
-      <div style={{ background:'#070C18', borderBottom:'1px solid #1C2A45', padding:'2rem 2.5rem' }}>
+      <div style={{ background:'#191826', borderBottom:'1px solid #2C2A42', padding:'2rem 2.5rem' }}>
         <div style={{ maxWidth:1000, display:'flex', flexDirection:'column', gap:14 }}>
           <div style={{ display:'flex', gap:8 }}>
             {[48,72,80].map((w,i) => <div key={i} className="skel" style={{ height:22, width:w, borderRadius:4 }} />)}
@@ -720,12 +739,12 @@ export default function ModulePage() {
       <div style={{ maxWidth:1300, margin:'0 auto', padding:'2rem 2.5rem', display:'grid', gridTemplateColumns:'1fr 320px', gap:'2rem' }}>
         <div>
           {/* Tabs skeleton */}
-          <div style={{ display:'flex', gap:4, marginBottom:'1.5rem', background:'#070C18', border:'1px solid #1C2A45', borderRadius:10, padding:4 }}>
+          <div style={{ display:'flex', gap:4, marginBottom:'1.5rem', background:'#191826', border:'1px solid #2C2A42', borderRadius:10, padding:4 }}>
             {[48,68,32,32,56,32,32,52].map((w,i) => <div key={i} className="skel" style={{ height:32, width:w+16, borderRadius:7 }} />)}
           </div>
           {/* Doc card skeletons */}
           {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ marginBottom:8, border:'1px solid #1C2A45', borderRadius:10, overflow:'hidden' }}>
+            <div key={i} style={{ marginBottom:8, border:'1px solid #2C2A42', borderRadius:10, overflow:'hidden' }}>
               <div style={{ padding:'14px 16px', display:'flex', alignItems:'center', gap:14 }}>
                 <div className="skel" style={{ width:42, height:42, borderRadius:9, flexShrink:0 }} />
                 <div style={{ flex:1, display:'flex', flexDirection:'column', gap:7 }}>
@@ -737,7 +756,7 @@ export default function ModulePage() {
                   <div className="skel" style={{ height:32, width:88, borderRadius:7 }} />
                 </div>
               </div>
-              <div style={{ height:36, borderTop:'1px solid #1C2A45', padding:'0 16px', display:'flex', alignItems:'center', gap:12 }}>
+              <div style={{ height:36, borderTop:'1px solid #2C2A42', padding:'0 16px', display:'flex', alignItems:'center', gap:12 }}>
                 <div className="skel" style={{ height:12, width:64, borderRadius:4 }} />
                 <div className="skel" style={{ height:12, width:80, borderRadius:4 }} />
               </div>
@@ -803,9 +822,9 @@ export default function ModulePage() {
             <button
               onClick={handleBookmark}
               title={isBookmarked ? 'Retirer des favoris' : 'Sauvegarder ce module'}
-              style={{ marginTop:8, flexShrink:0, background: isBookmarked ? 'rgba(45,212,191,0.12)' : 'rgba(79,142,247,0.08)', border:`1px solid ${isBookmarked ? '#2DD4BF' : 'rgba(79,142,247,0.35)'}`, color: isBookmarked ? '#2DD4BF' : '#7BB3FF', borderRadius:8, padding:'7px 14px', cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', gap:6, fontSize:'0.8rem', fontWeight:600, fontFamily:'Outfit,sans-serif' }}
+              style={{ marginTop:8, flexShrink:0, background: isBookmarked ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.08)', border:`1px solid ${isBookmarked ? '#6366F1' : 'rgba(99,102,241,0.35)'}`, color: isBookmarked ? '#6366F1' : '#818CF8', borderRadius:8, padding:'7px 14px', cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', gap:6, fontSize:'0.8rem', fontWeight:600, fontFamily:'Outfit,sans-serif' }}
             >
-              <svg width={14} height={14} viewBox="0 0 24 24" fill={isBookmarked ? '#2DD4BF' : 'none'} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <svg width={14} height={14} viewBox="0 0 24 24" fill={isBookmarked ? '#6366F1' : 'none'} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
               </svg>
               {isBookmarked ? 'Sauvegardé' : 'Sauvegarder'}
@@ -878,14 +897,14 @@ export default function ModulePage() {
           <div className="doc-list">
             {displayed.length === 0 ? (
               activeTab !== 'all' ? (
-                <div style={{ border:'1px dashed #1C2A45', borderRadius:12, padding:'24px 20px', textAlign:'center', background:'rgba(79,142,247,0.03)' }}>
-                  <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'#4A5568', letterSpacing:'2px', marginBottom:8 }}>
+                <div style={{ border:'1px dashed #2C2A42', borderRadius:12, padding:'24px 20px', textAlign:'center', background:'rgba(99,102,241,0.03)' }}>
+                  <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'#666287', letterSpacing:'2px', marginBottom:8 }}>
                     // aucun {TYPE_CONFIG[activeTab]?.full || activeTab} disponible
                   </div>
-                  <div style={{ fontSize:'0.95rem', fontWeight:600, color:'#E2E8F0', marginBottom:6 }}>
+                  <div style={{ fontSize:'0.95rem', fontWeight:600, color:'#EAE7FF', marginBottom:6 }}>
                     Ce document n'existe pas encore
                   </div>
-                  <div style={{ fontSize:'0.8rem', color:'#4A5568', marginBottom:16 }}>
+                  <div style={{ fontSize:'0.8rem', color:'#666287', marginBottom:16 }}>
                     {requests[activeTab]
                       ? `${requests[activeTab].votes} étudiant${requests[activeTab].votes > 1 ? 's' : ''} ont déjà demandé ce document`
                       : 'Sois le premier à demander ce document à la communauté !'}
@@ -894,12 +913,12 @@ export default function ModulePage() {
                     <button
                       onClick={() => handleRequest(activeTab)}
                       disabled={userRequested[activeTab]}
-                      style={{ background: userRequested[activeTab] ? 'rgba(45,212,191,0.1)' : 'rgba(79,142,247,0.12)', border:`1px solid ${userRequested[activeTab] ? 'rgba(45,212,191,0.3)' : 'rgba(79,142,247,0.3)'}`, color: userRequested[activeTab] ? '#2DD4BF' : '#7BB3FF', borderRadius:8, padding:'8px 18px', fontSize:'0.8rem', fontWeight:600, cursor: userRequested[activeTab] ? 'default' : 'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
+                      style={{ background: userRequested[activeTab] ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.12)', border:`1px solid ${userRequested[activeTab] ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.3)'}`, color: userRequested[activeTab] ? '#6366F1' : '#818CF8', borderRadius:8, padding:'8px 18px', fontSize:'0.8rem', fontWeight:600, cursor: userRequested[activeTab] ? 'default' : 'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
                     >
                       {userRequested[activeTab] ? '✓ Demande envoyée' : '📩 Demander ce document'}
                     </button>
                     <button onClick={() => navigate('/upload')}
-                      style={{ background:'none', border:'1px solid #1C2A45', color:'#94A3B8', borderRadius:8, padding:'8px 18px', fontSize:'0.8rem', fontWeight:500, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}>
+                      style={{ background:'none', border:'1px solid #2C2A42', color:'#A4A0C8', borderRadius:8, padding:'8px 18px', fontSize:'0.8rem', fontWeight:500, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}>
                       Uploader moi-même
                     </button>
                   </div>
@@ -922,34 +941,34 @@ export default function ModulePage() {
                 const cfg = TYPE_CONFIG[type]
                 const count = groupDocs.length
                 const iconColor = {
-                  examen:'#F87171', cc:'#FBD34D', td:'#7BB3FF', tp:'#2DD4BF',
-                  cours:'#5EEAD4', corrige_examen:'#FBD34D', corrige_td:'#7BB3FF',
-                  corrige_tp:'#2DD4BF', quiz:'#C4B5FD', projet_final:'#F87171',
-                }[type] || '#94A3B8'
+                  examen:'#F87171', cc:'#FBD34D', td:'#818CF8', tp:'#6366F1',
+                  cours:'#A5B4FC', corrige_examen:'#FBD34D', corrige_td:'#818CF8',
+                  corrige_tp:'#6366F1', quiz:'#C4B5FD', projet_final:'#F87171',
+                }[type] || '#A4A0C8'
                 const iconBg = {
                   examen:'rgba(248,113,113,0.08)', cc:'rgba(251,211,77,0.08)',
-                  td:'rgba(79,142,247,0.08)', tp:'rgba(45,212,191,0.08)',
-                  cours:'rgba(94,234,212,0.08)', corrige_examen:'rgba(251,211,77,0.08)',
-                  corrige_td:'rgba(79,142,247,0.08)', corrige_tp:'rgba(45,212,191,0.08)',
+                  td:'rgba(99,102,241,0.08)', tp:'rgba(99,102,241,0.08)',
+                  cours:'rgba(165,180,252,0.08)', corrige_examen:'rgba(251,211,77,0.08)',
+                  corrige_td:'rgba(99,102,241,0.08)', corrige_tp:'rgba(99,102,241,0.08)',
                   quiz:'rgba(167,139,250,0.08)', projet_final:'rgba(248,113,113,0.08)',
-                }[type] || 'rgba(148,163,184,0.08)'
+                }[type] || 'rgba(164,160,200,0.08)'
                 const iconBorder = {
                   examen:'rgba(248,113,113,0.2)', cc:'rgba(251,211,77,0.2)',
-                  td:'rgba(79,142,247,0.2)', tp:'rgba(45,212,191,0.2)',
-                  cours:'rgba(94,234,212,0.2)', corrige_examen:'rgba(251,211,77,0.2)',
-                  corrige_td:'rgba(79,142,247,0.2)', corrige_tp:'rgba(45,212,191,0.2)',
+                  td:'rgba(99,102,241,0.2)', tp:'rgba(99,102,241,0.2)',
+                  cours:'rgba(165,180,252,0.2)', corrige_examen:'rgba(251,211,77,0.2)',
+                  corrige_td:'rgba(99,102,241,0.2)', corrige_tp:'rgba(99,102,241,0.2)',
                   quiz:'rgba(167,139,250,0.2)', projet_final:'rgba(248,113,113,0.2)',
-                }[type] || 'rgba(148,163,184,0.2)'
+                }[type] || 'rgba(164,160,200,0.2)'
 
                 return (
                   <div key={type} style={{ marginBottom:'2rem' }}>
                     {/* Group header — only when showing all tabs */}
                     {activeTab === 'all' && (
-                      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12, paddingBottom:8, borderBottom:'1px solid #1C2A45' }}>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4A5568', letterSpacing:'2px', textTransform:'uppercase' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12, paddingBottom:8, borderBottom:'1px solid #2C2A42' }}>
+                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#666287', letterSpacing:'2px', textTransform:'uppercase' }}>
                           {cfg?.full || type}
                         </span>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4F8EF7', background:'rgba(79,142,247,0.08)', padding:'2px 8px', borderRadius:4 }}>
+                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#6366F1', background:'rgba(99,102,241,0.08)', padding:'2px 8px', borderRadius:4 }}>
                           {count} fichier{count > 1 ? 's' : ''}
                         </span>
                       </div>
@@ -957,12 +976,12 @@ export default function ModulePage() {
 
                     {/* Docs in group */}
                     {groupDocs.map(doc => (
-                      <div key={doc.id} id={`doc-${doc.id}`} style={{ marginBottom:6, border:'1px solid #1C2A45', borderRadius:10, overflow:'hidden', transition:'border-color 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor='#2D4A7A'}
-                        onMouseLeave={e => e.currentTarget.style.borderColor='#1C2A45'}
+                      <div key={doc.id} id={`doc-${doc.id}`} style={{ marginBottom:6, border:'1px solid #2C2A42', borderRadius:10, overflow:'hidden', transition:'border-color 0.15s' }}
+                        onMouseEnter={e => e.currentTarget.style.borderColor='#3D3B5C'}
+                        onMouseLeave={e => e.currentTarget.style.borderColor='#2C2A42'}
                       >
                       <div
-                        style={{ background:'#070C18', padding:'14px 16px', display:'flex', alignItems:'center', gap:14, cursor: doc.files?.length === 1 ? 'pointer' : 'default' }}
+                        style={{ background:'#191826', padding:'14px 16px', display:'flex', alignItems:'center', gap:14, cursor: doc.files?.length === 1 ? 'pointer' : 'default' }}
                         onClick={() => { if (doc.files?.length === 1) handleDownload(doc) }}
                       >
                         {/* Type icon */}
@@ -975,26 +994,26 @@ export default function ModulePage() {
                           <div style={{ fontSize:'0.9rem', fontWeight:600, color:'#FFFFFF', marginBottom:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
                             {doc.doc_number ? doc.doc_number : (cfg?.full || doc.doc_type)}
                           </div>
-                          <div style={{ display:'flex', gap:8, alignItems:'center', fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4A5568', flexWrap:'wrap' }}>
-                            {doc.academic_year && <span style={{ color:'#94A3B8' }}>{doc.academic_year}</span>}
+                          <div style={{ display:'flex', gap:8, alignItems:'center', fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#666287', flexWrap:'wrap' }}>
+                            {doc.academic_year && <span style={{ color:'#A4A0C8' }}>{doc.academic_year}</span>}
                             {doc.academic_year && doc.professor && <span>·</span>}
                             {doc.professor && <span>Prof. {doc.professor}</span>}
                             <span>·</span>
                             <span>{doc.files?.length > 1 ? `${doc.files.length} fichiers` : `${doc.pages_count || 1} page${(doc.pages_count || 1) > 1 ? 's' : ''}`}</span>
                             <span>·</span>
                             <span>{doc.downloads || 0} DL</span>
-                            <span style={{ color:'#2D4A7A' }}>·</span>
+                            <span style={{ color:'#3D3B5C' }}>·</span>
                             <span
-                              style={{ color:'#5EEAD4', cursor:'pointer', fontFamily:'Outfit,sans-serif', fontWeight:500 }}
+                              style={{ color:'#A5B4FC', cursor:'pointer', fontFamily:'Outfit,sans-serif', fontWeight:500 }}
                               onClick={e => { e.stopPropagation(); navigate(`/user/${doc.uploader_id}`) }}
                               title={`Voir le profil de ${doc.user_profiles?.name || 'Anonyme'}`}
                             >
                               ↑ {doc.user_profiles?.name || 'Anonyme'}
                             </span>
                             {doc.user_profiles?.is_fondateur && (
-                              <span style={{ background:'#FBD34D', color:'#02040A', borderRadius:4, padding:'1px 6px', fontSize:'0.58rem', fontWeight:700, fontFamily:'DM Mono,monospace', flexShrink:0 }}>🏆</span>
+                              <span style={{ background:'#FBD34D', color:'#0F0E17', borderRadius:4, padding:'1px 6px', fontSize:'0.58rem', fontWeight:700, fontFamily:'DM Mono,monospace', flexShrink:0 }}>🏆</span>
                             )}
-                            <span style={{ marginLeft:4, background: doc.is_verified ? 'rgba(45,212,191,0.1)' : 'rgba(251,211,77,0.1)', color: doc.is_verified ? '#2DD4BF' : '#FBD34D', border:`1px solid ${doc.is_verified ? 'rgba(45,212,191,0.2)' : 'rgba(251,211,77,0.2)'}`, borderRadius:4, padding:'1px 7px', fontSize:'0.6rem' }}>
+                            <span style={{ marginLeft:4, background: doc.is_verified ? 'rgba(99,102,241,0.1)' : 'rgba(251,211,77,0.1)', color: doc.is_verified ? '#6366F1' : '#FBD34D', border:`1px solid ${doc.is_verified ? 'rgba(99,102,241,0.2)' : 'rgba(251,211,77,0.2)'}`, borderRadius:4, padding:'1px 7px', fontSize:'0.6rem' }}>
                               {doc.is_verified ? 'Vérifié' : 'En attente'}
                             </span>
                           </div>
@@ -1014,9 +1033,9 @@ export default function ModulePage() {
                                     supabase.from('documents').update({ downloads: (doc.downloads || 0) + 1 }).eq('id', doc.id).then()
                                   }
                                 }}
-                                style={{ background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.2)', color:'#7BB3FF', borderRadius:6, padding:'5px 12px', fontSize:'0.72rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}
-                                onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.15)'; e.currentTarget.style.borderColor='#4F8EF7' }}
-                                onMouseLeave={e => { e.currentTarget.style.background='rgba(79,142,247,0.08)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.2)' }}
+                                style={{ background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.2)', color:'#818CF8', borderRadius:6, padding:'5px 12px', fontSize:'0.72rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}
+                                onMouseEnter={e => { e.currentTarget.style.background='rgba(99,102,241,0.15)'; e.currentTarget.style.borderColor='#6366F1' }}
+                                onMouseLeave={e => { e.currentTarget.style.background='rgba(99,102,241,0.08)'; e.currentTarget.style.borderColor='rgba(99,102,241,0.2)' }}
                               >
                                 {doc.file_names?.[i]
                                   ? doc.file_names[i].replace(/\.[^/.]+$/, '').replace(/_/g, ' ')
@@ -1028,43 +1047,43 @@ export default function ModulePage() {
                           <div style={{ display:'flex', gap:6, flexShrink:0 }}>
                             <button
                               onClick={e => { e.stopPropagation(); if (!user) { setShowAuthGate(true); return } if (window.innerWidth <= 768) { window.open(doc.files[0], '_blank') } else { setPreviewDoc(doc) } }}
-                              style={{ background:'rgba(45,212,191,0.07)', border:'1px solid rgba(45,212,191,0.2)', color:'#2DD4BF', borderRadius:7, padding:'7px 12px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
-                              onMouseEnter={e => { e.currentTarget.style.background='rgba(45,212,191,0.15)'; e.currentTarget.style.borderColor='#2DD4BF' }}
-                              onMouseLeave={e => { e.currentTarget.style.background='rgba(45,212,191,0.07)'; e.currentTarget.style.borderColor='rgba(45,212,191,0.2)' }}
+                              style={{ background:'rgba(99,102,241,0.07)', border:'1px solid rgba(99,102,241,0.2)', color:'#6366F1', borderRadius:7, padding:'7px 12px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
+                              onMouseEnter={e => { e.currentTarget.style.background='rgba(99,102,241,0.15)'; e.currentTarget.style.borderColor='#6366F1' }}
+                              onMouseLeave={e => { e.currentTarget.style.background='rgba(99,102,241,0.07)'; e.currentTarget.style.borderColor='rgba(99,102,241,0.2)' }}
                             >
-                              👁 Aperçu
+                              <FiEye size={13} style={{marginRight:5, verticalAlign:'-2px'}}/> Aperçu
                             </button>
                             <button
                               onClick={e => { e.stopPropagation(); handleDownload(doc) }}
-                              style={{ background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.2)', color:'#7BB3FF', borderRadius:7, padding:'7px 16px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
-                              onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.15)'; e.currentTarget.style.borderColor='#4F8EF7' }}
-                              onMouseLeave={e => { e.currentTarget.style.background='rgba(79,142,247,0.08)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.2)' }}
+                              style={{ background:'rgba(99,102,241,0.08)', border:'1px solid rgba(99,102,241,0.2)', color:'#818CF8', borderRadius:7, padding:'7px 16px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
+                              onMouseEnter={e => { e.currentTarget.style.background='rgba(99,102,241,0.15)'; e.currentTarget.style.borderColor='#6366F1' }}
+                              onMouseLeave={e => { e.currentTarget.style.background='rgba(99,102,241,0.08)'; e.currentTarget.style.borderColor='rgba(99,102,241,0.2)' }}
                             >
-                              Télécharger
+                              <FiDownload size={13} style={{marginRight:5, verticalAlign:'-2px'}}/> Télécharger
                             </button>
                           </div>
                         ) : null}
                       </div>
                       {/* Reactions row */}
-                      <div style={{ display:'flex', alignItems:'center', gap:16, padding:'8px 16px', borderTop:'1px solid #1C2A45', background:'rgba(0,0,0,0.2)' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:16, padding:'8px 16px', borderTop:'1px solid #2C2A42', background:'rgba(0,0,0,0.2)' }}>
                         <button onClick={e => { e.stopPropagation(); handleHelpful(doc) }}
                           style={{ display:'flex', alignItems:'center', gap:6,
-                            background: userReactions[doc.id]?.helpful ? 'rgba(79,142,247,0.15)' : 'none',
-                            border: userReactions[doc.id]?.helpful ? '1px solid rgba(79,142,247,0.3)' : '1px solid transparent',
-                            color: userReactions[doc.id]?.helpful ? '#7BB3FF' : '#4A5568',
+                            background: userReactions[doc.id]?.helpful ? 'rgba(99,102,241,0.15)' : 'none',
+                            border: userReactions[doc.id]?.helpful ? '1px solid rgba(99,102,241,0.3)' : '1px solid transparent',
+                            color: userReactions[doc.id]?.helpful ? '#818CF8' : '#666287',
                             borderRadius:6, padding:'4px 10px', fontSize:'0.75rem', cursor:'pointer',
                             fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}>
-                          👍 Utile{doc.helpful_count > 0 ? ` · ${doc.helpful_count}` : ''}
+                          <FiThumbsUp size={12} style={{marginRight:2}}/> Utile{doc.helpful_count > 0 ? ` · ${doc.helpful_count}` : ''}
                         </button>
                         <div style={{ display:'flex', alignItems:'center', gap:3 }}>
                           {[1,2,3,4,5].map(star => (
                             <span key={star} onClick={e => { e.stopPropagation(); handleRating(doc, star) }}
                               style={{ cursor:'pointer', fontSize:'0.9rem',
-                                color: (userReactions[doc.id]?.rating || 0) >= star ? '#FBD34D' : '#1C2A45',
+                                color: (userReactions[doc.id]?.rating || 0) >= star ? '#FBD34D' : '#2C2A42',
                                 transition:'color 0.1s' }}>★</span>
                           ))}
                           {doc.rating_count > 0 && (
-                            <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4A5568', marginLeft:4 }}>
+                            <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#666287', marginLeft:4 }}>
                               {(doc.rating_sum / doc.rating_count).toFixed(1)} ({doc.rating_count})
                             </span>
                           )}
@@ -1076,9 +1095,9 @@ export default function ModulePage() {
                             setCopyToast(true)
                             setTimeout(() => setCopyToast(false), 2000)
                           }}
-                          style={{ background:'none', border:'none', color:'#4A5568', fontSize:'0.72rem', fontFamily:'DM Mono,monospace', cursor:'pointer', transition:'color 0.15s', padding:'4px 6px' }}
-                          onMouseEnter={e => e.currentTarget.style.color='#94A3B8'}
-                          onMouseLeave={e => e.currentTarget.style.color='#4A5568'}
+                          style={{ background:'none', border:'none', color:'#666287', fontSize:'0.72rem', fontFamily:'DM Mono,monospace', cursor:'pointer', transition:'color 0.15s', padding:'4px 6px' }}
+                          onMouseEnter={e => e.currentTarget.style.color='#A4A0C8'}
+                          onMouseLeave={e => e.currentTarget.style.color='#666287'}
                         >
                           🔗 Partager
                         </button>
@@ -1089,11 +1108,11 @@ export default function ModulePage() {
                             </span>
                           ) : (
                             <button onClick={e => { e.stopPropagation(); handleReport(doc) }}
-                              style={{ background:'none', border:'none', color:'#4A5568',
+                              style={{ background:'none', border:'none', color:'#666287',
                                 fontSize:'0.72rem', fontFamily:'DM Mono,monospace',
                                 transition:'color 0.15s', cursor:'pointer' }}
-                              onMouseEnter={e => e.currentTarget.style.color='#94A3B8'}
-                              onMouseLeave={e => e.currentTarget.style.color='#4A5568'}>
+                              onMouseEnter={e => e.currentTarget.style.color='#A4A0C8'}
+                              onMouseLeave={e => e.currentTarget.style.color='#666287'}>
                               🚩 Signaler
                             </button>
                           )}
@@ -1108,10 +1127,10 @@ export default function ModulePage() {
           </div>
 
           {/* SENPAI ZONE SECTION */}
-          <div style={{ marginTop:'2.5rem', paddingTop:'2rem', borderTop:'1px solid #1C2A45' }}>
+          <div style={{ marginTop:'2.5rem', paddingTop:'2rem', borderTop:'1px solid #2C2A42' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1rem' }}>
               <div>
-                <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568', letterSpacing:'2px', textTransform:'uppercase', marginBottom:4 }}>
+                <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#666287', letterSpacing:'2px', textTransform:'uppercase', marginBottom:4 }}>
                   // senpai zone — tips étudiants
                 </div>
                 <div style={{ fontSize:'1rem', fontWeight:700, color:'#fff' }}>Expériences sur ce module</div>
@@ -1119,17 +1138,17 @@ export default function ModulePage() {
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <button
                   onClick={() => navigate(`/senpai?compose=1&module=${id}`)}
-                  style={{ background:'rgba(79,142,247,0.12)', border:'1px solid rgba(79,142,247,0.3)', color:'#7BB3FF', borderRadius:8, padding:'6px 14px', fontSize:'0.78rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.2)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.5)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background='rgba(79,142,247,0.12)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.3)' }}
+                  style={{ background:'rgba(99,102,241,0.12)', border:'1px solid rgba(99,102,241,0.3)', color:'#818CF8', borderRadius:8, padding:'6px 14px', fontSize:'0.78rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background='rgba(99,102,241,0.2)'; e.currentTarget.style.borderColor='rgba(99,102,241,0.5)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background='rgba(99,102,241,0.12)'; e.currentTarget.style.borderColor='rgba(99,102,241,0.3)' }}
                 >
                   + Partager
                 </button>
                 <button
                   onClick={() => navigate(`/senpai?module=${id}`)}
-                  style={{ background:'none', border:'1px solid #1C2A45', color:'#94A3B8', borderRadius:8, padding:'6px 14px', fontSize:'0.78rem', fontWeight:500, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor='#2D4A7A'; e.currentTarget.style.color='#E2E8F0' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor='#1C2A45'; e.currentTarget.style.color='#94A3B8' }}
+                  style={{ background:'none', border:'1px solid #2C2A42', color:'#A4A0C8', borderRadius:8, padding:'6px 14px', fontSize:'0.78rem', fontWeight:500, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor='#3D3B5C'; e.currentTarget.style.color='#EAE7FF' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor='#2C2A42'; e.currentTarget.style.color='#A4A0C8' }}
                 >
                   Voir tous →
                 </button>
@@ -1137,12 +1156,12 @@ export default function ModulePage() {
             </div>
 
             {senpaiPosts.length === 0 ? (
-              <div style={{ background:'#070C18', border:'1px dashed #1C2A45', borderRadius:12, padding:'2rem', textAlign:'center' }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A5568" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin:'0 auto 10px' }}>
+              <div style={{ background:'#191826', border:'1px dashed #2C2A42', borderRadius:12, padding:'2rem', textAlign:'center' }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#666287" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin:'0 auto 10px' }}>
                   <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
                 </svg>
-                <div style={{ fontSize:'0.88rem', fontWeight:600, color:'#94A3B8', marginBottom:6 }}>Aucun tip senpai pour ce module</div>
-                <div style={{ fontSize:'0.78rem', color:'#4A5568', marginBottom:'1rem' }}>Sois le premier à partager ton expérience !</div>
+                <div style={{ fontSize:'0.88rem', fontWeight:600, color:'#A4A0C8', marginBottom:6 }}>Aucun tip senpai pour ce module</div>
+                <div style={{ fontSize:'0.78rem', color:'#666287', marginBottom:'1rem' }}>Sois le premier à partager ton expérience !</div>
                 <button
                   onClick={() => navigate(`/senpai?compose=1&module=${id}`)}
                   style={{ background:'rgba(196,181,253,0.1)', border:'1px solid rgba(196,181,253,0.25)', color:'#C4B5FD', borderRadius:8, padding:'8px 18px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
@@ -1156,7 +1175,7 @@ export default function ModulePage() {
               <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
                 {senpaiPosts.map(post => {
                   const PT_COLORS = {
-                    survival_guide: { color:'#7BB3FF', bg:'rgba(79,142,247,0.15)', border:'rgba(79,142,247,0.3)', label:'Guide de survie' },
+                    survival_guide: { color:'#818CF8', bg:'rgba(99,102,241,0.15)', border:'rgba(99,102,241,0.3)', label:'Guide de survie' },
                     cheat_code:     { color:'#FBD34D', bg:'rgba(251,211,77,0.15)', border:'rgba(251,211,77,0.3)', label:'Cheat Code' },
                     timeline:       { color:'#4ADE80', bg:'rgba(74,222,128,0.15)', border:'rgba(74,222,128,0.3)', label:'Timeline' },
                     red_flag:       { color:'#F87171', bg:'rgba(248,113,113,0.15)', border:'rgba(248,113,113,0.3)', label:'Red Flag' },
@@ -1166,28 +1185,28 @@ export default function ModulePage() {
                   const authorName = post.user_profiles?.name || 'Anonyme'
                   return (
                     <div key={post.id}
-                      style={{ background:'#070C18', border:'1px solid #1C2A45', borderRadius:10, padding:'12px 14px', cursor:'pointer', transition:'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor='#2D4A7A'; e.currentTarget.style.background='#0C1222' }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor='#1C2A45'; e.currentTarget.style.background='#070C18' }}
+                      style={{ background:'#191826', border:'1px solid #2C2A42', borderRadius:10, padding:'12px 14px', cursor:'pointer', transition:'all 0.15s' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor='#3D3B5C'; e.currentTarget.style.background='#232232' }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor='#2C2A42'; e.currentTarget.style.background='#191826' }}
                       onClick={() => navigate(`/senpai?post=${post.id}`)}
                     >
                       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, marginBottom:8 }}>
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                          <div style={{ width:26, height:26, borderRadius:'50%', background:'linear-gradient(135deg,#C4B5FD,#4F8EF7)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.58rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
+                          <div style={{ width:26, height:26, borderRadius:'50%', background:'linear-gradient(135deg,#C4B5FD,#6366F1)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.58rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
                             {authorName.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}
                           </div>
-                          <span style={{ fontSize:'0.78rem', fontWeight:600, color:'#E2E8F0' }}>{authorName}</span>
+                          <span style={{ fontSize:'0.78rem', fontWeight:600, color:'#EAE7FF' }}>{authorName}</span>
                         </div>
                         <div style={{ padding:'2px 8px', borderRadius:20, background:pt.bg, color:pt.color, fontSize:'0.65rem', fontWeight:600, flexShrink:0, border:`1px solid ${pt.border}` }}>
                           {pt.label}
                         </div>
                       </div>
                       <div style={{ fontSize:'0.85rem', fontWeight:600, color:'#fff', marginBottom:4 }}>{post.title}</div>
-                      <div style={{ fontSize:'0.78rem', color:'#94A3B8', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
+                      <div style={{ fontSize:'0.78rem', color:'#A4A0C8', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
                         {post.content}
                       </div>
                       <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', marginTop:8 }}>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568' }}>
+                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#666287' }}>
                           {post.helpful_count || 0} utile{(post.helpful_count || 0) !== 1 ? 's' : ''}
                         </span>
                       </div>
@@ -1196,9 +1215,9 @@ export default function ModulePage() {
                 })}
                 <button
                   onClick={() => navigate(`/senpai?module=${id}`)}
-                  style={{ background:'none', border:'1px dashed #1C2A45', borderRadius:10, padding:'10px', fontSize:'0.78rem', color:'#4A5568', cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', textAlign:'center' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor='#2D4A7A'; e.currentTarget.style.color='#94A3B8' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor='#1C2A45'; e.currentTarget.style.color='#4A5568' }}
+                  style={{ background:'none', border:'1px dashed #2C2A42', borderRadius:10, padding:'10px', fontSize:'0.78rem', color:'#666287', cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', textAlign:'center' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor='#3D3B5C'; e.currentTarget.style.color='#A4A0C8' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor='#2C2A42'; e.currentTarget.style.color='#666287' }}
                 >
                   Voir tous les tips pour ce module →
                 </button>
@@ -1304,7 +1323,7 @@ export default function ModulePage() {
               <span className="aside-card-title" style={{ color:'#FBD34D' }}>// soutenir le projet</span>
             </div>
             <div className="aside-card-body" style={{ textAlign:'center' }}>
-              <div style={{ fontSize:'0.78rem', color:'#4A5568', lineHeight:1.6, marginBottom:'0.75rem' }}>
+              <div style={{ fontSize:'0.78rem', color:'#666287', lineHeight:1.6, marginBottom:'0.75rem' }}>
                 9rawZid9ra est 100% gratuit. Un pourboire nous aide à grandir.
               </div>
               <a
@@ -1327,27 +1346,27 @@ export default function ModulePage() {
             <div style={{fontSize:'1.05rem',fontWeight:700,color:'#fff',marginBottom:'0.5rem',lineHeight:1.35}}>
               Connecte-toi pour accéder aux documents
             </div>
-            <div style={{fontSize:'0.8rem',color:'#94A3B8',lineHeight:1.6,marginBottom:'1.5rem'}}>
+            <div style={{fontSize:'0.8rem',color:'#A4A0C8',lineHeight:1.6,marginBottom:'1.5rem'}}>
               Crée un compte gratuit pour télécharger et prévisualiser les examens, CCs et TDs.
             </div>
             <div style={{display:'flex',gap:10,justifyContent:'center'}}>
               <button
                 onClick={() => { sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search); navigate('/login', { state: { from: `/module/${slug}` } }) }}
-                style={{background:'#4F8EF7',color:'#fff',border:'none',borderRadius:9,padding:'10px 22px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'background 0.15s'}}
-                onMouseEnter={e => e.currentTarget.style.background='#3A7BEF'}
-                onMouseLeave={e => e.currentTarget.style.background='#4F8EF7'}>
+                style={{background:'#6366F1',color:'#fff',border:'none',borderRadius:9,padding:'10px 22px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'background 0.15s'}}
+                onMouseEnter={e => e.currentTarget.style.background='#4F46E5'}
+                onMouseLeave={e => e.currentTarget.style.background='#6366F1'}>
                 Se connecter
               </button>
               <button
                 onClick={() => { sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search); navigate('/register', { state: { from: `/module/${slug}` } }) }}
-                style={{background:'none',border:'1px solid #1C2A45',color:'#94A3B8',borderRadius:9,padding:'10px 22px',fontSize:'0.875rem',fontWeight:500,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'all 0.15s'}}
-                onMouseEnter={e => { e.currentTarget.style.borderColor='#2D4A7A'; e.currentTarget.style.color='#E2E8F0' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor='#1C2A45'; e.currentTarget.style.color='#94A3B8' }}>
+                style={{background:'none',border:'1px solid #2C2A42',color:'#A4A0C8',borderRadius:9,padding:'10px 22px',fontSize:'0.875rem',fontWeight:500,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'all 0.15s'}}
+                onMouseEnter={e => { e.currentTarget.style.borderColor='#3D3B5C'; e.currentTarget.style.color='#EAE7FF' }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor='#2C2A42'; e.currentTarget.style.color='#A4A0C8' }}>
                 Créer un compte
               </button>
             </div>
             <button onClick={() => setShowAuthGate(false)}
-              style={{background:'none',border:'none',color:'#4A5568',fontSize:'0.72rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:'1rem',display:'block',width:'100%'}}>
+              style={{background:'none',border:'none',color:'#666287',fontSize:'0.72rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:'1rem',display:'block',width:'100%'}}>
               Continuer sans compte
             </button>
           </div>
@@ -1377,7 +1396,7 @@ export default function ModulePage() {
       )}
 
       {copyToast && (
-        <div style={{ position:'fixed', bottom:28, left:'50%', transform:'translateX(-50%)', zIndex:9999, background:'#0C1222', border:'1px solid #2D4A7A', borderRadius:10, padding:'10px 22px', fontFamily:'DM Mono,monospace', fontSize:'0.75rem', color:'#5EEAD4', boxShadow:'0 8px 32px rgba(0,0,0,0.5)', whiteSpace:'nowrap', pointerEvents:'none' }}>
+        <div style={{ position:'fixed', bottom:28, left:'50%', transform:'translateX(-50%)', zIndex:9999, background:'#232232', border:'1px solid #3D3B5C', borderRadius:10, padding:'10px 22px', fontFamily:'DM Mono,monospace', fontSize:'0.75rem', color:'#A5B4FC', boxShadow:'0 8px 32px rgba(0,0,0,0.5)', whiteSpace:'nowrap', pointerEvents:'none' }}>
           ✓ Lien copié !
         </div>
       )}

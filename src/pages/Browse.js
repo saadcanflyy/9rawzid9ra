@@ -15,11 +15,28 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
   :root {
-    --bg:#02040A; --surface:#070C18; --s2:#0C1222; --s3:#111827;
-    --border:#1C2A45; --borderhi:#2D4A7A;
-    --accent:#4F8EF7; --accent2:#7BB3FF; --teal:#2DD4BF; --teal2:#5EEAD4;
-    --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
+    --bg:#0F0E17; --surface:#191826; --s2:#232232; --s3:#2C2A42;
+    --border:#2C2A42; --borderhi:#3D3B5C;
+    --accent:#6366F1; --accent2:#818CF8; --teal:#6366F1; --teal2:#A5B4FC;
+    --text:#EAE7FF; --text2:#A4A0C8; --text3:#666287; --white:#FFFFFF;
   }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#F5F4FB;
+      --surface:#FFFFFF;
+      --s2:#F0EEF9;
+      --s3:#E9E6F5;
+      --border:#E3E0F0;
+      --borderhi:#C9C4E3;
+      --accent2:#4F46E5;
+      --teal2:#4F46E5;
+      --text:#1E1B2E;
+      --text2:#5B5775;
+      --text3:#8B87A3;
+      --white:#17152B;
+    }
+  }
+
   html, body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; height:100%; }
   .browse { min-height:100vh; display:flex; flex-direction:column; }
   .layout { display:flex; flex:1; overflow:hidden; height:calc(100vh - 58px); }
@@ -42,12 +59,12 @@ const css = `
   .sem-wrap { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; }
   .sem-btn { background:var(--s2); border:1px solid var(--border); border-radius:6px; padding:6px 2px; font-size:0.68rem; color:var(--text3); cursor:pointer; transition:all 0.15s; text-align:center; font-family:'DM Mono',monospace; }
   .sem-btn:hover { border-color:var(--borderhi); color:var(--text2); }
-  .sem-btn.on { background:rgba(79,142,247,0.1); border-color:var(--accent); color:var(--accent2); }
+  .sem-btn.on { background:rgba(99,102,241,0.1); border-color:var(--accent); color:var(--accent2); }
 
   .type-wrap { display:flex; flex-direction:column; gap:3px; }
   .type-row { display:flex; align-items:center; gap:10px; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; cursor:pointer; transition:all 0.15s; font-family:'Outfit',sans-serif; }
   .type-row:hover { border-color:var(--borderhi); }
-  .type-row.on { background:rgba(79,142,247,0.06); border-color:var(--accent); }
+  .type-row.on { background:rgba(99,102,241,0.06); border-color:var(--accent); }
   .type-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; background:var(--border); }
   .type-row.on .type-dot { background:var(--accent); }
   .type-name { font-size:0.8rem; color:var(--text2); }
@@ -71,12 +88,12 @@ const css = `
   .uni-dd-ask:hover { background:var(--s3); }
 
   /* REQUEST FORMS */
-  .req-form { margin-top:8px; background:rgba(79,142,247,0.04); border:1px solid rgba(79,142,247,0.18); border-radius:8px; padding:10px 12px; }
+  .req-form { margin-top:8px; background:rgba(99,102,241,0.04); border:1px solid rgba(99,102,241,0.18); border-radius:8px; padding:10px 12px; }
   .req-form-title { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--accent2); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
   .req-input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:7px 10px; color:var(--text); font-size:0.8rem; font-family:'Outfit',sans-serif; outline:none; margin-bottom:6px; transition:border-color 0.15s; }
   .req-input:focus { border-color:var(--accent); }
   .req-input::placeholder { color:var(--text3); }
-  .req-send { background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.3); color:var(--accent2); border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.12s; }
+  .req-send { background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.3); color:var(--accent2); border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.12s; }
   .req-send:disabled { opacity:0.4; cursor:not-allowed; }
   .req-cancel { background:none; border:none; color:var(--text3); font-size:0.72rem; cursor:pointer; font-family:'DM Mono',monospace; margin-left:6px; }
   .req-link { display:block; margin-top:6px; background:none; border:none; color:var(--text3); font-size:0.7rem; cursor:pointer; font-family:'DM Mono',monospace; padding:0; text-align:left; transition:color 0.15s; }
@@ -88,14 +105,14 @@ const css = `
   .main::-webkit-scrollbar { width:4px; }
   .main::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
 
-  .topbar { position:sticky; top:0; z-index:10; background:rgba(2,4,10,0.92); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); padding:0.875rem 1.5rem; display:flex; align-items:center; gap:1rem; }
+  .topbar { position:sticky; top:0; z-index:10; background:rgba(15,14,23,0.92); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); padding:0.875rem 1.5rem; display:flex; align-items:center; gap:1rem; }
   .search-field { flex:1; display:flex; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:0 4px 0 14px; gap:10px; transition:border-color 0.15s, box-shadow 0.15s; }
-  .search-field:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,142,247,0.1); }
+  .search-field:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(99,102,241,0.1); }
   .search-prompt { font-family:'DM Mono',monospace; font-size:0.75rem; color:var(--text3); flex-shrink:0; }
   .search-input { flex:1; background:none; border:none; outline:none; font-size:0.875rem; color:var(--text); font-family:'Outfit',sans-serif; padding:9px 0; }
   .search-input::placeholder { color:var(--text3); }
   .search-btn { background:var(--accent); color:var(--white); border:none; border-radius:7px; padding:7px 16px; font-size:0.8rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; }
-  .search-btn:hover { background:#3A7BEF; }
+  .search-btn:hover { background:#4F46E5; }
 
   .breadcrumb { display:flex; align-items:center; gap:6px; padding:0.6rem 1.5rem; border-bottom:1px solid var(--border); background:var(--surface); flex-wrap:wrap; }
   .bc-item { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text3); }
@@ -116,10 +133,10 @@ const css = `
   .mod-card:hover { background:var(--s2); }
   .mod-card:hover::before { transform:scaleY(1); }
   .mod-top { display:flex; align-items:center; justify-content:space-between; }
-  .mod-sem { font-family:'DM Mono',monospace; font-size:0.62rem; font-weight:500; color:var(--accent); background:rgba(79,142,247,0.08); border:1px solid rgba(79,142,247,0.15); padding:2px 8px; border-radius:4px; letter-spacing:0.5px; }
+  .mod-sem { font-family:'DM Mono',monospace; font-size:0.62rem; font-weight:500; color:var(--accent); background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.15); padding:2px 8px; border-radius:4px; letter-spacing:0.5px; }
   .mod-type-tag { font-family:'DM Mono',monospace; font-size:0.58rem; text-transform:uppercase; letter-spacing:0.5px; padding:2px 7px; border-radius:3px; }
-  .tag-cours { background:rgba(45,212,191,0.08); color:var(--teal2); }
-  .tag-projet { background:rgba(79,142,247,0.08); color:var(--accent2); }
+  .tag-cours { background:rgba(99,102,241,0.08); color:var(--teal2); }
+  .tag-projet { background:rgba(99,102,241,0.08); color:var(--accent2); }
   .mod-name { font-size:0.9rem; font-weight:600; color:var(--white); line-height:1.35; }
   .mod-path { font-size:0.72rem; color:var(--text3); font-family:'DM Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .mod-footer { display:flex; align-items:center; justify-content:space-between; padding-top:0.75rem; margin-top:0.25rem; border-top:1px solid var(--border); }
@@ -133,7 +150,7 @@ const css = `
   .empty-title { font-size:1rem; font-weight:600; color:var(--text2); margin-bottom:6px; }
   .empty-sub { font-size:0.8rem; color:var(--text3); }
 
-  .skel { background:linear-gradient(90deg,#070C18,#0C1222,#070C18); background-size:200% 100%; height:130px; animation:shimmerB 1.5s infinite; }
+  .skel { background:linear-gradient(90deg,#191826,#232232,#191826); background-size:200% 100%; height:130px; animation:shimmerB 1.5s infinite; }
   @keyframes shimmerB { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
   @keyframes pulse { 0%,100%{opacity:0.35} 50%{opacity:0.7} }
 
@@ -161,7 +178,7 @@ const css = `
       background:var(--accent); color:#fff; border:none; border-radius:24px;
       padding:11px 20px; font-size:0.875rem; font-weight:700;
       font-family:'Outfit',sans-serif; cursor:pointer;
-      box-shadow:0 4px 24px rgba(79,142,247,0.5); transition:all 0.2s;
+      box-shadow:0 4px 24px rgba(99,102,241,0.5); transition:all 0.2s;
     }
   }
   .mob-badge {
@@ -170,7 +187,7 @@ const css = `
     font-size:0.68rem; font-weight:700; padding:0 4px;
   }
   .mob-overlay {
-    position:fixed; inset:0; z-index:600; background:rgba(2,4,10,0.75);
+    position:fixed; inset:0; z-index:600; background:rgba(15,14,23,0.75);
     backdrop-filter:blur(4px);
   }
   .mob-drawer {
@@ -187,7 +204,7 @@ const css = `
   .mob-drawer-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; padding-bottom:1rem; border-bottom:1px solid var(--border); }
   .mob-drawer-title { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); letter-spacing:2px; text-transform:uppercase; }
   .mob-drawer-reset { background:none; border:none; color:#F87171; font-size:0.7rem; cursor:pointer; font-family:'DM Mono',monospace; font-weight:500; }
-  .mob-apply { width:100%; background:linear-gradient(135deg,#4F8EF7,#3A6ED4); color:#fff; border:none; border-radius:12px; padding:13px; font-size:0.9rem; font-weight:700; font-family:'Outfit',sans-serif; cursor:pointer; margin-top:1.25rem; }
+  .mob-apply { width:100%; background:linear-gradient(135deg,#6366F1,#4F46E5); color:#fff; border:none; border-radius:12px; padding:13px; font-size:0.9rem; font-weight:700; font-family:'Outfit',sans-serif; cursor:pointer; margin-top:1.25rem; }
 
   @keyframes fade-hint {
     0%   { opacity:0; transform:translateX(-50%) translateY(8px); }
@@ -197,9 +214,9 @@ const css = `
   }
   .scroll-hint {
     position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
-    z-index:700; background:#0C1222; border:1px solid #2D4A7A;
+    z-index:700; background:#232232; border:1px solid #3D3B5C;
     border-radius:10px; padding:10px 22px;
-    font-family:'DM Mono',monospace; font-size:0.78rem; color:#5EEAD4;
+    font-family:'DM Mono',monospace; font-size:0.78rem; color:#A5B4FC;
     box-shadow:0 8px 32px rgba(0,0,0,0.5); white-space:nowrap;
     pointer-events:none; animation:fade-hint 1.5s ease forwards;
   }
@@ -524,13 +541,13 @@ export default function Browse() {
         const myUni = unis.find(u => u.id === userUniId)
         if (!myUni) return null
         return (
-          <div style={{ borderBottom:'1px solid rgba(79,142,247,0.1)', padding:'9px 24px', display:'flex', alignItems:'center', justifyContent:'center', gap:12, flexWrap:'wrap', background:'rgba(79,142,247,0.04)' }}>
+          <div style={{ borderBottom:'1px solid rgba(99,102,241,0.1)', padding:'9px 24px', display:'flex', alignItems:'center', justifyContent:'center', gap:12, flexWrap:'wrap', background:'rgba(99,102,241,0.04)' }}>
             <span style={{ fontSize:'0.875rem', color:'var(--text2)', fontFamily:'Outfit,sans-serif' }}>
               🎓 Tu étudies à <b style={{ color:'var(--accent2)' }}>{myUni.name}</b> — voir les modules de ton université
             </span>
             <button
               onClick={() => { setSelUni(String(myUni.id)); setUniSearch(myUni.name) }}
-              style={{ background:'rgba(79,142,247,0.1)', border:'1px solid rgba(79,142,247,0.25)', color:'var(--accent2)', borderRadius:7, padding:'4px 14px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}>
+              style={{ background:'rgba(99,102,241,0.1)', border:'1px solid rgba(99,102,241,0.25)', color:'var(--accent2)', borderRadius:7, padding:'4px 14px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}>
               Voir →
             </button>
           </div>
@@ -555,8 +572,8 @@ export default function Browse() {
                   onClick={() => { setSelUni(String(myUni.id)); setUniSearch(myUni.name) }}
                   style={{
                     width:'100%', display:'flex', alignItems:'center', gap:7,
-                    background: active ? 'rgba(79,142,247,0.12)' : 'rgba(79,142,247,0.05)',
-                    border: `1px solid ${active ? 'rgba(79,142,247,0.4)' : 'rgba(79,142,247,0.15)'}`,
+                    background: active ? 'rgba(99,102,241,0.12)' : 'rgba(99,102,241,0.05)',
+                    border: `1px solid ${active ? 'rgba(99,102,241,0.4)' : 'rgba(99,102,241,0.15)'}`,
                     borderRadius:8, padding:'7px 10px', cursor:'pointer', transition:'all 0.15s',
                     fontFamily:'Outfit,sans-serif', fontSize:'0.8rem',
                     color: active ? 'var(--accent2)' : 'var(--text2)', textAlign:'left',
@@ -839,17 +856,17 @@ export default function Browse() {
                     <div style={{marginTop:'1.25rem',display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
                       <button
                         onClick={() => setShowEmptyFilForm(v => !v)}
-                        style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'9px 18px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'all 0.15s'}}>
+                        style={{background:'rgba(99,102,241,0.1)',border:'1px solid rgba(99,102,241,0.3)',color:'var(--accent2)',borderRadius:8,padding:'9px 18px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'all 0.15s'}}>
                         Suggérer une filière
                       </button>
                       <button
                         onClick={() => navigate('/upload')}
-                        style={{background:'linear-gradient(135deg,#4F8EF7,#3A6ED4)',border:'none',color:'#fff',borderRadius:8,padding:'9px 18px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'opacity 0.15s'}}>
+                        style={{background:'linear-gradient(135deg,#6366F1,#4F46E5)',border:'none',color:'#fff',borderRadius:8,padding:'9px 18px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'opacity 0.15s'}}>
                         Uploader un document
                       </button>
                     </div>
                     {showEmptyFilForm && !filReqSent && (
-                      <div style={{marginTop:'1rem',background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.18)',borderRadius:8,padding:'12px 14px',width:'100%',maxWidth:300,textAlign:'left'}}>
+                      <div style={{marginTop:'1rem',background:'rgba(99,102,241,0.04)',border:'1px solid rgba(99,102,241,0.18)',borderRadius:8,padding:'12px 14px',width:'100%',maxWidth:300,textAlign:'left'}}>
                         <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:8}}>// filière manquante</div>
                         {!user ? (
                           <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
@@ -887,7 +904,7 @@ export default function Browse() {
                               setModReqName(debouncedQuery.trim())
                               setModReqFilId(selFil)
                             }}
-                            style={{ background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.3)', color: 'var(--accent2)', borderRadius: 8, padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit,sans-serif' }}
+                            style={{ background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.3)', color: 'var(--accent2)', borderRadius: 8, padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit,sans-serif' }}
                           >
                             + Ajouter "{debouncedQuery}" comme module
                           </button>
@@ -966,7 +983,7 @@ export default function Browse() {
                         <div className="req-ok">✓ Module ajouté !</div>
                         <button
                           onClick={() => navigate('/upload')}
-                          style={{ marginTop: '0.75rem', background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.3)', color: 'var(--accent2)', borderRadius: 8, padding: '7px 16px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit,sans-serif' }}
+                          style={{ marginTop: '0.75rem', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', color: 'var(--accent2)', borderRadius: 8, padding: '7px 16px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit,sans-serif' }}
                         >
                           Uploader des documents →
                         </button>

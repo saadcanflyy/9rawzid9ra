@@ -8,11 +8,28 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
   :root {
-    --bg:#02040A; --surface:#070C18; --s2:#0C1222; --s3:#111827;
-    --border:#1C2A45; --borderhi:#2D4A7A;
-    --accent:#4F8EF7; --accent2:#7BB3FF; --teal:#2DD4BF; --teal2:#5EEAD4;
-    --red:#F87171; --yellow:#FBD34D; --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
+    --bg:#0F0E17; --surface:#191826; --s2:#232232; --s3:#2C2A42;
+    --border:#2C2A42; --borderhi:#3D3B5C;
+    --accent:#6366F1; --accent2:#818CF8; --teal:#6366F1; --teal2:#A5B4FC;
+    --red:#F87171; --yellow:#FBD34D; --text:#EAE7FF; --text2:#A4A0C8; --text3:#666287; --white:#FFFFFF;
   }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#F5F4FB;
+      --surface:#FFFFFF;
+      --s2:#F0EEF9;
+      --s3:#E9E6F5;
+      --border:#E3E0F0;
+      --borderhi:#C9C4E3;
+      --accent2:#4F46E5;
+      --teal2:#4F46E5;
+      --text:#1E1B2E;
+      --text2:#5B5775;
+      --text3:#8B87A3;
+      --white:#17152B;
+    }
+  }
+
   html,body { background:var(--bg); font-family:'Outfit',sans-serif; min-height:100vh; }
   .page { min-height:100vh; display:flex; flex-direction:column; }
   .layout { max-width:860px; margin:0 auto; padding:2.5rem 2rem; width:100%; flex:1; }
@@ -26,8 +43,8 @@ const css = `
   .stepper-item:last-child { flex:0; }
   .s-num { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:0.75rem; font-weight:500; flex-shrink:0; transition:all 0.3s; }
   .s-num.pending { background:var(--s2); border:1px solid var(--border); color:var(--text3); }
-  .s-num.active  { background:rgba(79,142,247,0.15); border:1px solid var(--accent); color:var(--accent2); }
-  .s-num.done    { background:rgba(45,212,191,0.12); border:1px solid var(--teal); color:var(--teal2); }
+  .s-num.active  { background:rgba(99,102,241,0.15); border:1px solid var(--accent); color:var(--accent2); }
+  .s-num.done    { background:rgba(99,102,241,0.12); border:1px solid var(--teal); color:var(--teal2); }
   .s-info { display:flex; flex-direction:column; }
   .s-label { font-size:0.78rem; font-weight:600; color:var(--text2); }
   .s-sub { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); }
@@ -59,7 +76,7 @@ const css = `
   .module-result:hover { background:var(--s3); }
   .module-result-name { font-size:0.85rem; color:var(--text); }
   .module-result-sem { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--accent2); }
-  .module-selected { background:rgba(79,142,247,0.06); border:1px solid rgba(79,142,247,0.2); border-radius:9px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; }
+  .module-selected { background:rgba(99,102,241,0.06); border:1px solid rgba(99,102,241,0.2); border-radius:9px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; }
   .module-selected-name { font-size:0.875rem; color:var(--white); font-weight:500; }
   .module-selected-clear { background:none; border:none; color:var(--text3); cursor:pointer; font-size:0.75rem; font-family:'DM Mono',monospace; transition:color 0.15s; }
   .module-selected-clear:hover { color:var(--red); }
@@ -68,12 +85,12 @@ const css = `
   .prof-wrap { position:relative; }
   .prof-dd { position:absolute; top:100%; left:0; right:0; z-index:50; background:var(--s2); border:1px solid var(--borderhi); border-radius:9px; margin-top:4px; box-shadow:0 8px 24px rgba(0,0,0,0.4); }
   .prof-chips { display:flex; flex-wrap:wrap; gap:6px; padding:8px 10px; }
-  .prof-chip { background:rgba(79,142,247,0.08); border:1px solid rgba(79,142,247,0.2); color:var(--accent2); border-radius:20px; padding:4px 10px; font-size:0.75rem; cursor:pointer; transition:all 0.15s; font-family:'DM Mono',monospace; }
-  .prof-chip:hover { background:rgba(79,142,247,0.18); border-color:var(--accent); }
+  .prof-chip { background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2); color:var(--accent2); border-radius:20px; padding:4px 10px; font-size:0.75rem; cursor:pointer; transition:all 0.15s; font-family:'DM Mono',monospace; }
+  .prof-chip:hover { background:rgba(99,102,241,0.18); border-color:var(--accent); }
 
   /* FILE UPLOAD */
   .upload-zone { border:2px dashed var(--border); border-radius:12px; padding:2.5rem; text-align:center; cursor:pointer; transition:all 0.2s; background:var(--s2); }
-  .upload-zone:hover, .upload-zone.drag { border-color:var(--accent); background:rgba(79,142,247,0.04); }
+  .upload-zone:hover, .upload-zone.drag { border-color:var(--accent); background:rgba(99,102,241,0.04); }
   .upload-zone-icon { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); margin-bottom:0.75rem; letter-spacing:2px; }
   .upload-zone-title { font-size:0.95rem; font-weight:600; color:var(--text2); margin-bottom:6px; }
   .upload-zone-sub { font-size:0.78rem; color:var(--text3); }
@@ -84,7 +101,7 @@ const css = `
   .file-icon { width:40px; height:40px; border-radius:7px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:500; }
   .file-icon-pdf  { background:rgba(248,113,113,0.1); color:var(--red);     border:1px solid rgba(248,113,113,0.2); }
   .file-icon-ppt  { background:rgba(234,88,12,0.1);  color:#FB923C;        border:1px solid rgba(234,88,12,0.2);  }
-  .file-icon-doc  { background:rgba(79,142,247,0.1); color:var(--accent2); border:1px solid rgba(79,142,247,0.2); }
+  .file-icon-doc  { background:rgba(99,102,241,0.1); color:var(--accent2); border:1px solid rgba(99,102,241,0.2); }
   .file-icon-xls  { background:rgba(74,222,128,0.1); color:#4ADE80;        border:1px solid rgba(74,222,128,0.2); }
   .file-icon-nb   { background:rgba(251,211,77,0.1); color:var(--yellow);  border:1px solid rgba(251,211,77,0.2); }
   .file-info { flex:1; min-width:0; }
@@ -109,9 +126,9 @@ const css = `
   .submit-section { display:flex; gap:12px; align-items:center; justify-content:flex-end; margin-top:1.5rem; }
   .btn-back { background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:11px 24px; font-size:0.875rem; font-weight:500; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; }
   .btn-back:hover { border-color:var(--borderhi); color:var(--text); }
-  .btn-submit { background:linear-gradient(135deg,var(--accent),#3A6ED4); color:var(--white); border:none; border-radius:9px; padding:11px 28px; font-size:0.875rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; position:relative; overflow:hidden; }
+  .btn-submit { background:linear-gradient(135deg,var(--accent),#4F46E5); color:var(--white); border:none; border-radius:9px; padding:11px 28px; font-size:0.875rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; position:relative; overflow:hidden; }
   .btn-submit::before { content:''; position:absolute; inset:0; background:linear-gradient(to bottom,rgba(255,255,255,0.1),transparent); }
-  .btn-submit:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 24px rgba(79,142,247,0.4); }
+  .btn-submit:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 24px rgba(99,102,241,0.4); }
   .btn-submit:disabled { opacity:0.5; cursor:not-allowed; }
 
   /* ALERT */
@@ -121,16 +138,16 @@ const css = `
 
   /* TOAST */
   @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
-  .toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(45,212,191,0.12); border:1px solid rgba(45,212,191,0.35); color:var(--teal2); border-radius:10px; padding:12px 22px; font-size:0.82rem; font-weight:600; font-family:'DM Mono',monospace; z-index:9999; white-space:nowrap; box-shadow:0 8px 32px rgba(0,0,0,0.5); animation:toastIn 0.2s ease; pointer-events:none; }
+  .toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.35); color:var(--teal2); border-radius:10px; padding:12px 22px; font-size:0.82rem; font-weight:600; font-family:'DM Mono',monospace; z-index:9999; white-space:nowrap; box-shadow:0 8px 32px rgba(0,0,0,0.5); animation:toastIn 0.2s ease; pointer-events:none; }
 
   /* SUCCESS */
   .success-wrap { text-align:center; padding:3rem 2rem; }
-  .success-icon { width:64px; height:64px; border-radius:16px; background:rgba(45,212,191,0.1); border:1px solid rgba(45,212,191,0.2); display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; font-family:'DM Mono',monospace; font-size:1.5rem; color:var(--teal2); }
+  .success-icon { width:64px; height:64px; border-radius:16px; background:rgba(99,102,241,0.1); border:1px solid rgba(99,102,241,0.2); display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; font-family:'DM Mono',monospace; font-size:1.5rem; color:var(--teal2); }
   .success-title { font-size:1.3rem; font-weight:700; color:var(--white); margin-bottom:6px; }
   .success-desc { font-size:0.85rem; color:var(--text2); line-height:1.6; margin-bottom:2rem; }
   .success-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-  .btn-primary { background:linear-gradient(135deg,var(--accent),#3A6ED4); color:var(--white); border:none; border-radius:9px; padding:11px 24px; font-size:0.875rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; }
-  .btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(79,142,247,0.4); }
+  .btn-primary { background:linear-gradient(135deg,var(--accent),#4F46E5); color:var(--white); border:none; border-radius:9px; padding:11px 24px; font-size:0.875rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; }
+  .btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(99,102,241,0.4); }
 
   @media(max-width:768px) {
     .layout { padding:1.5rem 1rem; }
@@ -677,7 +694,7 @@ export default function Upload() {
             title: 'Document similaire détecté',
             message: 'Un document similaire existe déjà pour ce module et cette année. Veux-tu quand même uploader ?',
             confirmText: 'Uploader quand même',
-            confirmColor: '#4F8EF7',
+            confirmColor: '#6366F1',
             onConfirm: () => { setModal(null); handleSubmit(true) },
             onCancel: () => setModal(null),
           })
@@ -918,8 +935,8 @@ export default function Upload() {
                       <button
                         style={{
                           display:'flex',flexDirection:'column',gap:5,textAlign:'left',
-                          background: uniMode === 'independent' ? 'rgba(45,212,191,0.1)' : 'rgba(45,212,191,0.03)',
-                          border: uniMode === 'independent' ? '2px solid rgba(45,212,191,0.55)' : '1px solid rgba(45,212,191,0.18)',
+                          background: uniMode === 'independent' ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.03)',
+                          border: uniMode === 'independent' ? '2px solid rgba(99,102,241,0.55)' : '1px solid rgba(99,102,241,0.18)',
                           borderRadius:12,padding:'14px 15px',cursor:'pointer',width:'100%',transition:'all 0.2s',
                         }}
                         onClick={handleSelectIndependent}>
@@ -931,8 +948,8 @@ export default function Upload() {
                       <button
                         style={{
                           display:'flex',flexDirection:'column',gap:5,textAlign:'left',
-                          background: uniMode === 'multi_faculty' ? 'rgba(79,142,247,0.1)' : 'rgba(79,142,247,0.03)',
-                          border: uniMode === 'multi_faculty' ? '2px solid rgba(79,142,247,0.55)' : '1px solid rgba(79,142,247,0.18)',
+                          background: uniMode === 'multi_faculty' ? 'rgba(99,102,241,0.1)' : 'rgba(99,102,241,0.03)',
+                          border: uniMode === 'multi_faculty' ? '2px solid rgba(99,102,241,0.55)' : '1px solid rgba(99,102,241,0.18)',
                           borderRadius:12,padding:'14px 15px',cursor:'pointer',width:'100%',transition:'all 0.2s',
                         }}
                         onClick={() => { setUniMode('multi_faculty'); setSelFac(''); setFils([]); setSelFil(''); setShowAddFacForm(false) }}>
@@ -959,7 +976,7 @@ export default function Upload() {
                           Faculté introuvable ? → L'ajouter
                         </button>
                       ) : (
-                        <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:10,padding:'1rem 1.25rem',marginTop:4}}>
+                        <div style={{background:'rgba(99,102,241,0.04)',border:'1px solid rgba(99,102,241,0.15)',borderRadius:10,padding:'1rem 1.25rem',marginTop:4}}>
                           <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'0.875rem'}}>// ajouter une composante</div>
                           <div className="field-grid">
                             <div>
@@ -982,7 +999,7 @@ export default function Upload() {
                           <div style={{display:'flex',gap:8,alignItems:'center',marginTop:4}}>
                             <button
                               disabled={addFacBusy || !addFacName.trim()}
-                              style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:addFacBusy?'not-allowed':'pointer',fontFamily:'Outfit,sans-serif',opacity:addFacBusy||!addFacName.trim()?0.6:1}}
+                              style={{background:'rgba(99,102,241,0.1)',border:'1px solid rgba(99,102,241,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:addFacBusy?'not-allowed':'pointer',fontFamily:'Outfit,sans-serif',opacity:addFacBusy||!addFacName.trim()?0.6:1}}
                               onClick={handleAddFacultyInline}>
                               {addFacBusy ? 'Ajout...' : 'Ajouter'}
                             </button>
@@ -1027,7 +1044,7 @@ export default function Upload() {
                         ✓ Filière ajoutée et disponible immédiatement !
                       </div>
                     ) : (
-                      <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:10,padding:'1rem 1.25rem'}}>
+                      <div style={{background:'rgba(99,102,241,0.04)',border:'1px solid rgba(99,102,241,0.15)',borderRadius:10,padding:'1rem 1.25rem'}}>
                         <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'0.875rem'}}>// signaler une filière manquante</div>
                         <div className="field-grid">
                           <div>
@@ -1043,7 +1060,7 @@ export default function Upload() {
                         </div>
                         <div style={{display:'flex',gap:8,alignItems:'center',marginTop:4}}>
                           <button
-                            style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif'}}
+                            style={{background:'rgba(99,102,241,0.1)',border:'1px solid rgba(99,102,241,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif'}}
                             onClick={handleFiliereRequest}>
                             Signaler la filière
                           </button>
@@ -1083,7 +1100,7 @@ export default function Upload() {
                             </div>
                           ))}
                           <div className="module-result"
-                            style={{borderTop:'1px dashed rgba(79,142,247,0.2)',color:'var(--accent2)'}}
+                            style={{borderTop:'1px dashed rgba(99,102,241,0.2)',color:'var(--accent2)'}}
                             onClick={() => { setSelMod({ id: null, name: modSearch.trim(), custom: true }); setModResults([]); }}>
                             <span style={{fontSize:'0.82rem'}}>+ Créer &quot;{modSearch.trim()}&quot; comme nouveau module</span>
                           </div>
@@ -1092,7 +1109,7 @@ export default function Upload() {
                       {modResults.length === 0 && modSearch.trim().length >= 2 && selFil && selSem && (
                         <div style={{marginTop:6}}>
                           <button
-                            style={{width:'100%',background:'rgba(79,142,247,0.06)',border:'1px dashed rgba(79,142,247,0.3)',borderRadius:8,padding:'9px 12px',color:'var(--accent2)',fontSize:'0.82rem',fontFamily:'Outfit,sans-serif',cursor:'pointer',textAlign:'left',transition:'background 0.15s'}}
+                            style={{width:'100%',background:'rgba(99,102,241,0.06)',border:'1px dashed rgba(99,102,241,0.3)',borderRadius:8,padding:'9px 12px',color:'var(--accent2)',fontSize:'0.82rem',fontFamily:'Outfit,sans-serif',cursor:'pointer',textAlign:'left',transition:'background 0.15s'}}
                             onClick={() => { setSelMod({ id: null, name: modSearch.trim(), custom: true }); setModResults([]); }}>
                             + Créer le module &quot;{modSearch.trim()}&quot; et continuer
                           </button>
@@ -1116,7 +1133,7 @@ export default function Upload() {
                       ✓ Établissement ajouté et disponible immédiatement !
                     </div>
                   ) : (
-                    <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:10,padding:'1rem 1.25rem'}}>
+                    <div style={{background:'rgba(99,102,241,0.04)',border:'1px solid rgba(99,102,241,0.15)',borderRadius:10,padding:'1rem 1.25rem'}}>
                       <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'0.875rem'}}>// demande d'ajout d'établissement</div>
 
                       {/* Step 1 — choose type */}
@@ -1127,7 +1144,7 @@ export default function Upload() {
                           { v:'faculty',                   l:"Une faculté d'une université déjà listée",           s:'Ex: Faculté des Sciences → Univ. Mohammed V' },
                           { v:'university_with_faculties', l:"Une nouvelle université + ses facultés",             s:'Ajouter l\'université et ses composantes en même temps' },
                         ].map(opt => (
-                          <label key={opt.v} style={{display:'flex',alignItems:'flex-start',gap:10,background:schoolCase===opt.v?'rgba(79,142,247,0.08)':'transparent',border:`1px solid ${schoolCase===opt.v?'rgba(79,142,247,0.3)':'var(--border)'}`,borderRadius:8,padding:'10px 12px',cursor:'pointer',transition:'all 0.15s'}}>
+                          <label key={opt.v} style={{display:'flex',alignItems:'flex-start',gap:10,background:schoolCase===opt.v?'rgba(99,102,241,0.08)':'transparent',border:`1px solid ${schoolCase===opt.v?'rgba(99,102,241,0.3)':'var(--border)'}`,borderRadius:8,padding:'10px 12px',cursor:'pointer',transition:'all 0.15s'}}>
                             <input type="radio" name="schoolCase" value={opt.v} checked={schoolCase===opt.v} onChange={() => setSchoolCase(opt.v)} style={{marginTop:3,accentColor:'var(--accent)',flexShrink:0}} />
                             <div>
                               <div style={{fontSize:'0.82rem',fontWeight:500,color:'var(--text)'}}>{opt.l}</div>
@@ -1200,7 +1217,7 @@ export default function Upload() {
                               </div>
                             ))}
                             <button
-                              style={{background:'none',border:'1px dashed rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:7,padding:'6px 14px',fontSize:'0.78rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:2,width:'100%',transition:'background 0.15s'}}
+                              style={{background:'none',border:'1px dashed rgba(99,102,241,0.3)',color:'var(--accent2)',borderRadius:7,padding:'6px 14px',fontSize:'0.78rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:2,width:'100%',transition:'background 0.15s'}}
                               onClick={() => setSchBFaculties(a => [...a, { name: '', type: 'Faculté' }])}>
                               + Ajouter une composante
                             </button>
@@ -1258,7 +1275,7 @@ export default function Upload() {
                               </div>
                             ))}
                             <button
-                              style={{background:'none',border:'1px dashed rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:7,padding:'6px 14px',fontSize:'0.78rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:2,width:'100%',transition:'background 0.15s'}}
+                              style={{background:'none',border:'1px dashed rgba(99,102,241,0.3)',color:'var(--accent2)',borderRadius:7,padding:'6px 14px',fontSize:'0.78rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:2,width:'100%',transition:'background 0.15s'}}
                               onClick={() => setSchCFaculties(a => [...a, { name:'', type:'Faculté' }])}>
                               + Ajouter une faculté
                             </button>
@@ -1270,7 +1287,7 @@ export default function Upload() {
                         <div style={{display:'flex',gap:8,alignItems:'center',marginTop:8}}>
                           <button
                             type="button"
-                            style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:schoolSubmitting?'not-allowed':'pointer',fontFamily:'Outfit,sans-serif',opacity:schoolSubmitting?0.5:1}}
+                            style={{background:'rgba(99,102,241,0.1)',border:'1px solid rgba(99,102,241,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:schoolSubmitting?'not-allowed':'pointer',fontFamily:'Outfit,sans-serif',opacity:schoolSubmitting?0.5:1}}
                             onClick={handleSchoolRequest}
                             disabled={schoolSubmitting}>
                             {schoolSubmitting ? 'Envoi en cours...' : 'Envoyer la demande'}
@@ -1309,8 +1326,8 @@ export default function Upload() {
                         style={{
                           display:'flex',alignItems:'center',justifyContent:'space-between',gap:4,
                           padding:'7px 10px',borderRadius:8,cursor:'pointer',transition:'all 0.12s',
-                          background: docType===t.k ? 'rgba(79,142,247,0.1)' : 'var(--s3)',
-                          border: `1px solid ${docType===t.k ? 'rgba(79,142,247,0.35)' : 'var(--border)'}`,
+                          background: docType===t.k ? 'rgba(99,102,241,0.1)' : 'var(--s3)',
+                          border: `1px solid ${docType===t.k ? 'rgba(99,102,241,0.35)' : 'var(--border)'}`,
                         }}>
                         <span style={{fontSize:'0.8rem',color:docType===t.k?'var(--accent2)':'var(--text2)',fontFamily:'Outfit,sans-serif',userSelect:'none',lineHeight:1.3}}>
                           {t.l}
@@ -1324,8 +1341,8 @@ export default function Upload() {
                             {typeTooltip === t.k && (
                               <div style={{
                                 position:'absolute',right:0,bottom:'calc(100% + 5px)',zIndex:200,
-                                background:'#111827',border:'1px solid #2D4A7A',
-                                borderRadius:7,padding:'6px 10px',fontSize:'0.72rem',color:'#94A3B8',
+                                background:'#2C2A42',border:'1px solid #3D3B5C',
+                                borderRadius:7,padding:'6px 10px',fontSize:'0.72rem',color:'#A4A0C8',
                                 whiteSpace:'nowrap',boxShadow:'0 4px 16px rgba(0,0,0,0.5)',
                                 fontFamily:'Outfit,sans-serif',lineHeight:1.4,pointerEvents:'none',
                               }}>

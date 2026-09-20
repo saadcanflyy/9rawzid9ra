@@ -4,11 +4,26 @@ const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
   :root {
-    --bg:#02040A; --surface:#070C18; --s2:#0C1222;
-    --border:#1C2A45;
-    --accent:#4F8EF7; --accent2:#7BB3FF; --teal2:#5EEAD4;
-    --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
+    --bg:#0F0E17; --surface:#191826; --s2:#232232;
+    --border:#2C2A42;
+    --accent:#6366F1; --accent2:#818CF8; --teal2:#A5B4FC;
+    --text:#EAE7FF; --text2:#A4A0C8; --text3:#666287; --white:#FFFFFF;
   }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#F5F4FB;
+      --surface:#FFFFFF;
+      --s2:#F0EEF9;
+      --border:#E3E0F0;
+      --accent2:#4F46E5;
+      --teal2:#4F46E5;
+      --text:#1E1B2E;
+      --text2:#5B5775;
+      --text3:#8B87A3;
+      --white:#17152B;
+    }
+  }
+
   body { background:var(--bg); color:var(--text); font-family:'Outfit',sans-serif; }
   .legal-page { min-height:100vh; }
   .legal-hero {
@@ -47,7 +62,7 @@ const css = `
     color: var(--white);
     margin: 2rem 0 0.75rem;
     padding-top: 1rem;
-    border-top: 1px solid rgba(28,42,69,0.4);
+    border-top: 1px solid rgba(44,42,66,0.4);
   }
   .legal-body h2:first-child { border-top: none; margin-top: 0; padding-top: 0; }
   .legal-body p {

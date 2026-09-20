@@ -6,20 +6,20 @@ import { supabase } from '../supabase'
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
   *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  html, body { background:#02040A; color:#E2E8F0; font-family:'Outfit',sans-serif; }
+  html, body { background:#0F0E17; color:#EAE7FF; font-family:'Outfit',sans-serif; }
 
-  .ai-page { min-height:100vh; background:#02040A; display:flex; flex-direction:column; overflow:hidden; position:relative; }
+  .ai-page { min-height:100vh; background:#0F0E17; display:flex; flex-direction:column; overflow:hidden; position:relative; }
 
   /* ambient glow layers */
   .ai-glow1 {
     position:absolute; width:600px; height:600px; border-radius:50%;
-    background:radial-gradient(circle, rgba(79,142,247,0.09) 0%, transparent 70%);
+    background:radial-gradient(circle, rgba(99,102,241,0.09) 0%, transparent 70%);
     top:-120px; left:50%; transform:translateX(-50%);
     pointer-events:none;
   }
   .ai-glow2 {
     position:absolute; width:400px; height:400px; border-radius:50%;
-    background:radial-gradient(circle, rgba(45,212,191,0.07) 0%, transparent 70%);
+    background:radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%);
     bottom:60px; right:10%; pointer-events:none;
   }
 
@@ -33,25 +33,25 @@ const css = `
   /* pulsing orb */
   .ai-orb {
     width:80px; height:80px; border-radius:50%; margin:0 auto 2rem;
-    background:radial-gradient(circle at 35% 35%, rgba(123,179,255,0.3), rgba(79,142,247,0.06));
-    border:1px solid rgba(79,142,247,0.25);
+    background:radial-gradient(circle at 35% 35%, rgba(129,140,248,0.3), rgba(99,102,241,0.06));
+    border:1px solid rgba(99,102,241,0.25);
     display:flex; align-items:center; justify-content:center;
     position:relative;
     animation:orb-pulse 3s ease-in-out infinite;
   }
   .ai-orb::before {
     content:''; position:absolute; inset:-6px; border-radius:50%;
-    border:1px solid rgba(79,142,247,0.1);
+    border:1px solid rgba(99,102,241,0.1);
     animation:orb-ring 3s ease-in-out infinite;
   }
   .ai-orb::after {
     content:''; position:absolute; inset:-14px; border-radius:50%;
-    border:1px solid rgba(79,142,247,0.05);
+    border:1px solid rgba(99,102,241,0.05);
     animation:orb-ring 3s ease-in-out infinite 0.3s;
   }
   @keyframes orb-pulse {
-    0%,100% { box-shadow:0 0 24px rgba(79,142,247,0.15), 0 0 60px rgba(79,142,247,0.06); }
-    50%      { box-shadow:0 0 36px rgba(79,142,247,0.28), 0 0 80px rgba(79,142,247,0.12); }
+    0%,100% { box-shadow:0 0 24px rgba(99,102,241,0.15), 0 0 60px rgba(99,102,241,0.06); }
+    50%      { box-shadow:0 0 36px rgba(99,102,241,0.28), 0 0 80px rgba(99,102,241,0.12); }
   }
   @keyframes orb-ring {
     0%,100% { opacity:1; transform:scale(1); }
@@ -60,7 +60,7 @@ const css = `
 
   /* eyebrow label */
   .ai-eyebrow {
-    font-family:'DM Mono',monospace; font-size:0.62rem; color:rgba(79,142,247,0.7);
+    font-family:'DM Mono',monospace; font-size:0.62rem; color:rgba(99,102,241,0.7);
     letter-spacing:3px; text-transform:uppercase; margin-bottom:1.25rem;
     animation:fadeUp 0.6s 0.1s ease both;
   }
@@ -72,7 +72,7 @@ const css = `
     animation:fadeUp 0.6s 0.2s ease both;
   }
   .ai-title-grad {
-    background:linear-gradient(90deg,#7BB3FF 0%,#2DD4BF 100%);
+    background:linear-gradient(90deg,#818CF8 0%,#6366F1 100%);
     -webkit-background-clip:text; -webkit-text-fill-color:transparent;
     background-clip:text;
     animation:shimmer-grad 4s ease-in-out infinite alternate;
@@ -84,7 +84,7 @@ const css = `
 
   /* subtitle */
   .ai-sub {
-    font-size:0.88rem; color:#4A5568; line-height:1.75;
+    font-size:0.88rem; color:#666287; line-height:1.75;
     margin-bottom:2.5rem; max-width:320px; margin-left:auto; margin-right:auto;
     animation:fadeUp 0.6s 0.3s ease both;
   }
@@ -93,33 +93,33 @@ const css = `
   .ai-btn-wrap { animation:fadeUp 0.6s 0.4s ease both; }
   .ai-btn {
     display:inline-flex; align-items:center; gap:10px;
-    background:linear-gradient(135deg,#4F8EF7,#3A6ED4);
+    background:linear-gradient(135deg,#6366F1,#4F46E5);
     color:#fff; border:none; border-radius:12px;
     padding:14px 32px; font-size:0.95rem; font-weight:700;
     cursor:pointer; font-family:'Outfit',sans-serif;
     transition:all 0.2s; position:relative; overflow:hidden;
-    box-shadow:0 4px 20px rgba(79,142,247,0.3);
+    box-shadow:0 4px 20px rgba(99,102,241,0.3);
   }
   .ai-btn::before {
     content:''; position:absolute; inset:0;
     background:linear-gradient(to bottom,rgba(255,255,255,0.1),transparent);
   }
-  .ai-btn:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(79,142,247,0.45); }
+  .ai-btn:hover { transform:translateY(-2px); box-shadow:0 8px 32px rgba(99,102,241,0.45); }
   .ai-btn:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
 
   /* success / login prompts */
   .ai-success {
     display:inline-flex; align-items:center; gap:8px;
-    background:rgba(45,212,191,0.08); border:1px solid rgba(45,212,191,0.2);
+    background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.2);
     border-radius:12px; padding:14px 28px;
-    font-family:'DM Mono',monospace; font-size:0.82rem; color:#5EEAD4;
+    font-family:'DM Mono',monospace; font-size:0.82rem; color:#A5B4FC;
     animation:fadeUp 0.4s ease both;
   }
   .ai-login-hint {
-    margin-top:1rem; font-family:'DM Mono',monospace; font-size:0.72rem; color:#4A5568;
+    margin-top:1rem; font-family:'DM Mono',monospace; font-size:0.72rem; color:#666287;
     animation:fadeUp 0.4s ease both;
   }
-  .ai-login-hint a { color:#7BB3FF; cursor:pointer; background:none; border:none; font:inherit; padding:0; }
+  .ai-login-hint a { color:#818CF8; cursor:pointer; background:none; border:none; font:inherit; padding:0; }
   .ai-login-hint a:hover { color:#fff; }
 
   /* bottom morse-style dots */
@@ -129,10 +129,10 @@ const css = `
   }
   .ai-dot {
     width:5px; height:5px; border-radius:50%;
-    background:rgba(79,142,247,0.25);
+    background:rgba(99,102,241,0.25);
   }
-  .ai-dot:nth-child(2) { background:rgba(79,142,247,0.5); animation:dot-blink 2s 0.4s ease-in-out infinite; }
-  .ai-dot:nth-child(3) { background:rgba(45,212,191,0.4); animation:dot-blink 2s 0.8s ease-in-out infinite; }
+  .ai-dot:nth-child(2) { background:rgba(99,102,241,0.5); animation:dot-blink 2s 0.4s ease-in-out infinite; }
+  .ai-dot:nth-child(3) { background:rgba(99,102,241,0.4); animation:dot-blink 2s 0.8s ease-in-out infinite; }
   @keyframes dot-blink { 0%,100%{opacity:0.3} 50%{opacity:1} }
 
   @keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:none} }
@@ -176,8 +176,8 @@ export default function AICoach() {
               <circle cx="16" cy="18" r="3" fill="rgba(255,255,255,0.9)"/>
               <defs>
                 <linearGradient id="orb-g" x1="16" y1="4" x2="16" y2="24" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#7BB3FF"/>
-                  <stop offset="100%" stopColor="#2DD4BF"/>
+                  <stop offset="0%" stopColor="#818CF8"/>
+                  <stop offset="100%" stopColor="#6366F1"/>
                 </linearGradient>
               </defs>
             </svg>
@@ -204,7 +204,7 @@ export default function AICoach() {
             )}
             {noUser && (
               <div className="ai-login-hint">
-                <button className="a" onClick={() => navigate('/login')} style={{ background:'none', border:'none', color:'#7BB3FF', cursor:'pointer', fontFamily:'inherit', fontSize:'inherit', padding:0 }}>
+                <button className="a" onClick={() => navigate('/login')} style={{ background:'none', border:'none', color:'#818CF8', cursor:'pointer', fontFamily:'inherit', fontSize:'inherit', padding:0 }}>
                   Connecte-toi
                 </button>
                 {' '}pour enregistrer ta notification
