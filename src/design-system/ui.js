@@ -173,7 +173,10 @@ import React from 'react';
 
   /* ---- DocumentRow ---- */
   function DocumentRow(props) {
-    return h('div', { className: 'qz-row' },
+    var Tag = props.href ? (props.linkAs || 'a') : 'div';
+    var rowProps = { className: 'qz-row' };
+    if (props.href) { if (props.linkAs) rowProps.to = props.href; else rowProps.href = props.href; }
+    return h(Tag, rowProps,
       h(DocType, { type: props.type, size: 'lg' }),
       h('div', { className: 'qz-row__main' },
         h('p', { className: 'qz-row__title' }, props.title),
@@ -182,20 +185,24 @@ import React from 'react';
           props.professor ? h('span', null, props.professor) : null,
           props.pages ? h('span', null, props.pages + ' p.') : null,
           props.downloads != null ? h('span', null, props.downloads + ' ↓') : null,
+          props.ago ? h('span', null, props.ago) : null,
           props.verified ? h(Badge, { tone: 'success', icon: 'check' }, 'Vérifié') : null)),
-      h('div', { className: 'qz-row__actions' },
-        h(Button, { variant: 'ghost', size: 'sm', icon: 'eye', iconOnly: true, 'aria-label': 'Aperçu' }),
-        h(Button, { variant: 'secondary', size: 'sm', icon: 'download' }, 'Télécharger')));
+      props.hideActions ? null : h('div', { className: 'qz-row__actions' },
+        h(Button, { variant: 'ghost', size: 'sm', icon: 'eye', iconOnly: true, 'aria-label': 'Aperçu', onClick: props.onPreview }),
+        h(Button, { variant: 'secondary', size: 'sm', icon: 'download', onClick: props.onDownload }, 'Télécharger')));
   }
 
   /* ---- SchoolCard ---- */
   function SchoolCard(props) {
     var tone = { 'Public': 'accent', 'Privé': 'brand', 'Semi-public': 'neutral' }[props.kind] || 'neutral';
-    return h(Card, { href: props.href || '#', className: 'qz-school' },
-      h('div', { className: 'qz-school__row' }, h('span', { className: 'qz-eyebrow' }, props.abbr), props.kind ? h(Badge, { tone: tone }, props.kind) : null),
+    var hasStats = props.filieres != null || props.docs != null;
+    return h(Card, { href: props.href || '#', linkAs: props.linkAs, className: 'qz-school' },
+      (props.abbr || props.kind) ? h('div', { className: 'qz-school__row' }, props.abbr ? h('span', { className: 'qz-eyebrow' }, props.abbr) : h('span', null), props.kind ? h(Badge, { tone: tone }, props.kind) : null) : null,
       h('h3', { className: 'qz-school__name' }, props.name),
-      h('span', { className: 'qz-muted', style: { fontSize: 13, lineHeight: '20px' } }, props.city),
-      h('div', { className: 'qz-school__stats' }, h('span', null, h('b', null, props.filieres), ' filières'), h('span', null, h('b', null, props.docs), ' docs')));
+      props.city ? h('span', { className: 'qz-muted', style: { fontSize: 13, lineHeight: '20px' } }, props.city) : null,
+      hasStats ? h('div', { className: 'qz-school__stats' },
+        props.filieres != null ? h('span', null, h('b', null, props.filieres), ' filières') : null,
+        props.docs != null ? h('span', null, h('b', null, props.docs), ' docs') : null) : null);
   }
 
   /* ---- StatStrip ---- */
