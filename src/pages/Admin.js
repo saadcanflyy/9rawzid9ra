@@ -132,6 +132,7 @@ export default function Admin() {
 
   // Auth check
   useEffect(() => {
+    document.title = 'Panneau Admin — 9rawZid9ra'
     async function check() {
       const { data: { session } } = await supabase.auth.getSession()
       const user = session?.user

@@ -1,5 +1,6 @@
 /* 9rawZid9ra UI components (ES module). Generated from the design system bundle. Styles: ./qz.css + ./tokens.css */
 import React from 'react';
+import { trapFocus, focusFirst } from './focusTrap';
 
   var h = React.createElement;
   var useState = React.useState;
@@ -285,15 +286,17 @@ import React from 'react';
 
   /* ---- Modal ---- */
   function Modal(props) {
+    var modalRef = useRef(null);
     var cancelRef = useRef(null);
     useEffect(function () {
       function onKey(e) { if (e.key === 'Escape' && props.onClose) props.onClose(); }
       window.addEventListener('keydown', onKey);
+      var untrap = modalRef.current ? trapFocus(modalRef.current) : null;
       var t = setTimeout(function () { if (cancelRef.current) cancelRef.current.focus(); }, 0);
-      return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); };
+      return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); };
     }, []);
     return h('div', { className: 'qz-scrim', onClick: props.onClose },
-      h('div', { className: 'qz-modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'qz-modal-t', onClick: function (e) { e.stopPropagation(); } },
+      h('div', { className: 'qz-modal', ref: modalRef, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'qz-modal-t', onClick: function (e) { e.stopPropagation(); } },
         h('h2', { className: 'qz-modal__title', id: 'qz-modal-t' }, props.title),
         h('p', { className: 'qz-modal__body' }, props.children),
         h('div', { className: 'qz-modal__actions' },
@@ -442,13 +445,16 @@ import React from 'react';
 
   /* ---- Sheet (bottom sheet / side drawer) ---- */
   function Sheet(props) {
+    var sheetRef = useRef(null);
     useEffect(function () {
       function onKey(e) { if (e.key === 'Escape' && props.onClose) props.onClose(); }
       window.addEventListener('keydown', onKey);
-      return function () { window.removeEventListener('keydown', onKey); };
+      var untrap = sheetRef.current ? trapFocus(sheetRef.current) : null;
+      var t = setTimeout(function () { if (sheetRef.current) focusFirst(sheetRef.current, sheetRef.current); }, 0);
+      return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); };
     }, []);
     return h('div', { className: 'qz-scrim', onClick: props.onClose },
-      h('div', { className: cx('qz-sheet', props.side === 'right' && 'qz-sheet--right', props.wide && 'qz-sheet--wide'), role: 'dialog', 'aria-modal': 'true', 'aria-label': props.title, onClick: function (e) { e.stopPropagation(); } },
+      h('div', { className: cx('qz-sheet', props.side === 'right' && 'qz-sheet--right', props.wide && 'qz-sheet--wide'), ref: sheetRef, tabIndex: -1, role: 'dialog', 'aria-modal': 'true', 'aria-label': props.title, onClick: function (e) { e.stopPropagation(); } },
         props.title ? h('div', { className: 'qz-sheet__head' },
           h('h2', { className: 'qz-h3' }, props.title),
           h('button', { type: 'button', className: 'qz-iconbtn', 'aria-label': 'Fermer', onClick: props.onClose }, h(Icon, { name: 'x' }))) : null,

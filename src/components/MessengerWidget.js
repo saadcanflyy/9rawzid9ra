@@ -38,8 +38,15 @@ export default function MessengerWidget() {
   const isOpenRef = useRef(false)
   const userRef = useRef(null)
   const activeContactRef = useRef(null)
+  const launcherRef = useRef(null)
 
   useEffect(() => { isOpenRef.current = isOpen }, [isOpen])
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e) => { if (e.key === 'Escape') { setIsOpen(false); launcherRef.current?.focus() } }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isOpen])
   useEffect(() => { activeContactRef.current = activeContact }, [activeContact])
   useEffect(() => { userRef.current = user }, [user])
 
@@ -295,7 +302,7 @@ export default function MessengerWidget() {
   return (
     <>
       {isOpen && (
-        <div className="qz-messenger-panel">
+        <div className="qz-messenger-panel" role="dialog" aria-label="Messagerie">
           <div className="qz-chat">
             <div className="qz-chat__head">
               {view === 'chat' && (
@@ -413,10 +420,12 @@ export default function MessengerWidget() {
       )}
 
       <button
+        ref={launcherRef}
         type="button"
         className={`qz-messenger-launcher${isOpen ? ' qz-messenger-launcher--open' : ''}${hasPulse ? ' qz-pulse' : ''}`}
         onClick={() => { if (!isOpen) { setView('inbox'); loadInbox(user.id) } setIsOpen(o => !o) }}
         aria-label="Messages"
+        aria-expanded={isOpen}
       >
         <Icon name={isOpen ? 'x' : 'message'} />
         {!isOpen && unread > 0 && <span className="qz-pip">{unread > 9 ? '9+' : unread}</span>}

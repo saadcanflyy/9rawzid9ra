@@ -2,8 +2,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
-import { SkeletonTheme } from 'react-loading-skeleton'
-import 'react-loading-skeleton/dist/skeleton.css'
 import { supabase } from './supabase'
 import { AuthProvider } from './context/AuthContext'
 import Home from './pages/Home'
@@ -91,7 +89,6 @@ function App() {
   if (bannedUser) return <BanScreen banInfo={bannedUser} />
 
   return (
-    <SkeletonTheme baseColor="var(--surface-2)" highlightColor="var(--surface-3)">
     <AuthProvider>
     <BrowserRouter>
       <Routes>
@@ -138,7 +135,6 @@ function App() {
       />
     </BrowserRouter>
     </AuthProvider>
-    </SkeletonTheme>
   )
 }
 

@@ -16,10 +16,9 @@ const css = `
   .mp-hero__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-4); }
   .mp-layout { max-width: 1300px; margin: 0 auto; padding: var(--space-6); display: grid; grid-template-columns: 1fr 320px; gap: var(--space-8); align-items: start; }
   @media (max-width: 1023px) { .mp-layout { grid-template-columns: 1fr; } }
-  .mp-tabs-wrap { position: sticky; top: 56px; z-index: 10; background: var(--bg); padding: var(--space-3) 0; margin-bottom: var(--space-4); position: relative; }
+  .mp-tabs-wrap { position: sticky; top: 56px; z-index: 10; background: var(--bg); padding: var(--space-3) 0; margin-bottom: var(--space-4); }
   .mp-tabs-scroll { overflow-x: auto; scrollbar-width: none; }
   .mp-tabs-scroll::-webkit-scrollbar { display: none; }
-  .mp-tabs-fade { position: absolute; right: 0; top: var(--space-3); bottom: var(--space-3); width: 48px; background: linear-gradient(to right, transparent, var(--bg) 80%); pointer-events: none; }
   .mp-group { margin-bottom: var(--space-6); }
   .mp-group__head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
   .mp-doc-card { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: var(--space-2); background: var(--surface); }
@@ -405,7 +404,6 @@ export default function ModulePage() {
               <Tabs label="Types de documents" value={activeTab} onChange={setActiveTab}
                 items={TABS.map(t => ({ id: t.k, label: t.l, count: t.k === 'all' ? undefined : (tabCount(t.k) || undefined) }))} />
             </div>
-            <div className="mp-tabs-fade" />
           </div>
 
           {tabDocs.length === 0 ? (

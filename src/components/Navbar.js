@@ -44,6 +44,8 @@ export default function Navbar({ activePage = '' }) {
   const [notifs, setNotifs] = useState([])
   const [showNotifs, setShowNotifs] = useState(false)
   const notifRef = useRef(null)
+  const notifBtnRef = useRef(null)
+  const accountBtnRef = useRef(null)
   const searchRef = useRef(null)
   const mobileSearchRef = useRef(null)
 
@@ -90,16 +92,20 @@ export default function Navbar({ activePage = '' }) {
 
   useEffect(() => {
     if (!showDropdown) return
-    const handler = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const onClick = (e) => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setShowDropdown(false) }
+    const onKey = (e) => { if (e.key === 'Escape') { setShowDropdown(false); accountBtnRef.current?.focus() } }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey) }
   }, [showDropdown])
 
   useEffect(() => {
     if (!showNotifs) return
-    const handler = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false) }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const onClick = (e) => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false) }
+    const onKey = (e) => { if (e.key === 'Escape') { setShowNotifs(false); notifBtnRef.current?.focus() } }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey) }
   }, [showNotifs])
 
   // Keyboard shortcuts — ⌘/Ctrl+P profile, ⌘/Ctrl+M my modules, "/" focuses search
@@ -245,7 +251,7 @@ export default function Navbar({ activePage = '' }) {
               </span>
 
               <div className="qz-dropdown-anchor" ref={notifRef}>
-                <button type="button" className="qz-iconbtn" aria-label={`${unreadCount} notifications`} onClick={() => setShowNotifs(v => !v)}>
+                <button type="button" ref={notifBtnRef} className="qz-iconbtn" aria-haspopup="true" aria-expanded={showNotifs} aria-label={`${unreadCount} notifications`} onClick={() => setShowNotifs(v => !v)}>
                   <Icon name="bell" />
                   {unreadCount > 0 && <span className="qz-pip">{unreadCount}</span>}
                 </button>
@@ -293,7 +299,7 @@ export default function Navbar({ activePage = '' }) {
               </div>
 
               <div className="qz-dropdown-anchor" ref={dropdownRef}>
-                <button type="button" onClick={() => setShowDropdown(d => !d)} aria-label="Menu du compte" style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }}>
+                <button type="button" ref={accountBtnRef} onClick={() => setShowDropdown(d => !d)} aria-haspopup="true" aria-expanded={showDropdown} aria-label="Menu du compte" style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }}>
                   <Avatar name={profile?.name || user.email} size="sm" founder={founder} />
                 </button>
                 {showDropdown && (

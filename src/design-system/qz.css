@@ -101,9 +101,9 @@ button.qz-badge:hover { filter: brightness(1.15); }
 .qz-dot { width: 6px; height: 6px; border-radius: var(--radius-full); background: currentColor; flex-shrink: 0; }
 
 /* ---------- Doc type tag ---------- */
-.qz-type { --c: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; min-width: 52px; height: 22px; padding: 0 6px; border-radius: var(--radius-xs); font: 500 11px/16px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); white-space: nowrap; }
+.qz-type { --c: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; min-width: 56px; height: 22px; padding: 0 6px; border-radius: var(--radius-xs); font: 500 12px/16px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); white-space: nowrap; }
 .qz-type--exam { --c: var(--type-exam); } .qz-type--cc { --c: var(--type-cc); } .qz-type--td { --c: var(--type-td); } .qz-type--tp { --c: var(--type-tp); } .qz-type--cours { --c: var(--type-cours); } .qz-type--corrige { --c: var(--type-corrige); }
-.qz-type--lg { height: 44px; min-width: 44px; width: 44px; font-size: 10px; border-radius: var(--radius-md); letter-spacing: .04em; }
+.qz-type--lg { height: 48px; min-width: 48px; width: 48px; font-size: 12px; padding: 0 4px; border-radius: var(--radius-md); letter-spacing: 0; }
 
 /* ---------- Card ---------- */
 .qz-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-5); }
