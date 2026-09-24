@@ -1,8 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './design-system/tokens.css';
+import './design-system/qz.css';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { initTheme } from './design-system/theme';
+
+initTheme();
 
 // Suppress ResizeObserver benign warning from CRA dev overlay
 window.addEventListener('error', (e) => {

@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { SkeletonTheme } from 'react-loading-skeleton'
+import 'react-loading-skeleton/dist/skeleton.css'
 import { supabase } from './supabase'
 import { AuthProvider } from './context/AuthContext'
 import Home from './pages/Home'
@@ -24,6 +26,7 @@ import About from './pages/About'
 import Contact from './pages/Contact'
 import MessengerWidget from './components/MessengerWidget'
 import Footer from './components/Footer'
+import DesignPreview from './pages/DesignPreview'
 
 const notFoundCss = `
   @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=DM+Mono:wght@400;500&display=swap');
@@ -84,6 +87,16 @@ function BanScreen({ banInfo }) {
 function App() {
   const [bannedUser, setBannedUser] = useState(null)
   const banSignOutRef = useRef(false)
+  const [toastPosition, setToastPosition] = useState(
+    typeof window !== 'undefined' && window.innerWidth >= 640 ? 'bottom-right' : 'bottom-center'
+  )
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 640px)')
+    const onChange = (e) => setToastPosition(e.matches ? 'bottom-right' : 'bottom-center')
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
 
   useEffect(() => {
     const checkBan = async (session) => {
@@ -118,6 +131,7 @@ function App() {
   if (bannedUser) return <BanScreen banInfo={bannedUser} />
 
   return (
+    <SkeletonTheme baseColor="var(--surface-2)" highlightColor="var(--surface-3)">
     <AuthProvider>
     <BrowserRouter>
       <Routes>
@@ -139,30 +153,32 @@ function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
+        {process.env.NODE_ENV !== 'production' && <Route path="/__design" element={<DesignPreview />} />}
         <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer />
       <WelcomeModal />
       <MessengerWidget />
       <Toaster
-        position="bottom-center"
+        position={toastPosition}
         toastOptions={{
-          duration: 3200,
+          duration: 4000,
           style: {
-            background: '#0C1222',
-            color: '#E2E8F0',
-            border: '1px solid #1C2A45',
-            borderRadius: '10px',
-            fontFamily: "'Outfit', sans-serif",
-            fontSize: '0.85rem',
-            boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
+            background: 'var(--surface)',
+            color: 'var(--text)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            fontFamily: 'var(--font-sans)',
+            fontSize: '14px',
+            boxShadow: 'var(--shadow-md)',
           },
-          success: { iconTheme: { primary: '#4F8EF7', secondary: '#0C1222' } },
-          error: { iconTheme: { primary: '#F87171', secondary: '#0C1222' } },
+          success: { iconTheme: { primary: 'var(--success)', secondary: 'var(--surface)' } },
+          error: { iconTheme: { primary: 'var(--danger)', secondary: 'var(--surface)' } },
         }}
       />
     </BrowserRouter>
     </AuthProvider>
+    </SkeletonTheme>
   )
 }
 
