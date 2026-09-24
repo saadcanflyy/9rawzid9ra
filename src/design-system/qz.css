@@ -404,6 +404,43 @@ button.qz-badge:hover { filter: brightness(1.15); }
 .qz-footer__bottom { max-width: 1120px; margin: var(--space-8) auto 0; padding-top: var(--space-4); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-2); }
 @media (max-width: 640px) { .qz-footer__inner { flex-direction: column; gap: var(--space-6); } .qz-footer__links { gap: var(--space-6); } }
 
+/* ---------- Table (Admin / Modérateur) ---------- */
+.qz-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.qz-table { width: 100%; border-collapse: collapse; }
+.qz-table th { font: 500 11px/16px var(--font-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--text-subtle); text-align: left; padding: var(--space-3) var(--space-4); background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.qz-table td { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 14px; }
+.qz-table tr:last-child td { border-bottom: 0; }
+.qz-table tr:hover td { background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+.qz-table-name { font: 550 14px/20px var(--font-sans); color: var(--text); }
+.qz-table-mono { font: 400 12px/18px var(--font-mono); color: var(--text-subtle); }
+.qz-table-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+/* ---------- Panel layout (Admin / Modérateur) ---------- */
+.qz-panel { display: flex; min-height: 100vh; }
+.qz-panel__rail { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; background: var(--surface); border-right: 1px solid var(--border); position: sticky; top: 0; height: 100vh; }
+.qz-panel__rail-head { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; padding: var(--space-5) var(--space-4) var(--space-4); }
+.qz-panel__nav { flex: 1; overflow-y: auto; padding: 0 var(--space-3); display: flex; flex-direction: column; gap: 2px; }
+.qz-panel__item { display: flex; align-items: center; gap: var(--space-3); height: 36px; padding: 0 var(--space-3); border-radius: var(--radius-md); border: 0; border-left: 2px solid transparent; background: none; color: var(--text-muted); font: 550 14px/20px var(--font-sans); text-align: left; cursor: pointer; width: 100%; }
+.qz-panel__item:hover { background: var(--surface-2); color: var(--text); }
+.qz-panel__item[aria-current="page"] { background: var(--surface-2); color: var(--text); border-left-color: var(--brand); }
+.qz-panel__item svg { flex-shrink: 0; color: inherit; }
+.qz-panel__item-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qz-panel__rail-foot { padding: var(--space-3); border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: var(--space-1); }
+.qz-panel__user { padding: var(--space-2) var(--space-3); font-size: 13px; line-height: 20px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qz-panel__topbar { display: none; }
+.qz-panel__main { flex: 1; min-width: 0; }
+.qz-panel__container { max-width: 1120px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-16); }
+.qz-panel__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-6); }
+.qz-panel__header-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .qz-panel { flex-direction: column; }
+  .qz-panel__rail { display: none; }
+  .qz-panel__topbar { display: flex; flex-direction: column; position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .qz-panel__topbar-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+  .qz-panel__topbar .qz-tabs { padding: 0 var(--space-4); }
+  .qz-panel__container { padding: var(--space-6) var(--space-4) var(--space-12); }
+}
+
 /* ---------- RTL ---------- */
 [dir="rtl"] { font-family: var(--font-arabic); }
 [dir="rtl"] .qz-stat + .qz-stat { border-left: 0; border-right: 1px solid var(--border); }

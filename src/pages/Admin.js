@@ -1,213 +1,65 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import ConfirmModal from '../components/ConfirmModal'
+import PanelLayout from '../components/PanelLayout'
+import { Button, Input, Select, Badge, Chip, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, ProgressBar, Icon } from '../design-system/ui'
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  :root {
-    --bg:#02040A; --surface:#070C18; --s2:#0C1222; --s3:#111827;
-    --border:#1C2A45; --borderhi:#2D4A7A;
-    --accent:#4F8EF7; --accent2:#7BB3FF; --teal:#2DD4BF; --teal2:#5EEAD4;
-    --red:#F87171; --yellow:#FBD34D; --green:#4ADE80;
-    --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
+  .ad-announce { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6); }
+  .ad-announce-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .ad-section { margin-bottom: var(--space-8); }
+  .ad-section-title { margin-bottom: var(--space-4); }
+  .ad-cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); }
+  .ad-feed { display: flex; flex-direction: column; gap: var(--space-2); }
+  .ad-feed-item { display: flex; align-items: center; gap: var(--space-3); background: var(--surface-2); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); }
+  .ad-feed-main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ad-filters { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap; }
+  .ad-move-panel { margin-top: var(--space-2); padding: var(--space-3); background: var(--surface-2); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-2); }
+  .ad-move-result { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
+  .ad-ban-form { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-top: var(--space-3); padding: var(--space-3); background: var(--surface-2); border-radius: var(--radius-md); }
+  .ad-ban-reason { flex: 1; min-width: 160px; }
+  .ad-list { display: flex; flex-direction: column; gap: var(--space-3); }
+  .ad-post { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+  .ad-post-body { flex: 1; min-width: 0; }
+  .ad-charts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-bottom: var(--space-8); }
+  .ad-chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-5); }
+  .ad-bars { display: flex; align-items: flex-end; gap: 3px; height: 60px; }
+  .ad-bar { flex: 1; background: var(--brand); border-radius: 2px 2px 0 0; opacity: .75; min-height: 2px; }
+  .ad-rank-row { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+  .ad-rank-num { font-family: var(--font-mono); font-size: 12px; color: var(--text-subtle); width: 22px; text-align: right; flex-shrink: 0; }
+  .ad-rank-body { flex: 1; min-width: 0; }
+  .ad-rank-top { display: flex; justify-content: space-between; gap: var(--space-2); margin-bottom: 4px; }
+  .ad-rank-name { font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ad-rank-val { font-family: var(--font-mono); font-size: 12px; color: var(--brand-text); flex-shrink: 0; }
+  .ad-user-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .ad-msg-layout { display: flex; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; height: calc(100vh - 260px); min-height: 420px; }
+  .ad-msg-left { width: 280px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; background: var(--surface); }
+  .ad-msg-right { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--surface); }
+  .ad-msg-empty { margin: auto; }
+  .ad-msg-head { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); background: var(--surface-2); }
+  .ad-msg-thread { flex: 1; overflow-y: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+  .ad-msg-compose { display: flex; gap: var(--space-2); padding: var(--space-3); border-top: 1px solid var(--border); flex-shrink: 0; }
+  .ad-msg-compose .qz-field { flex: 1; }
+  @media (max-width: 900px) {
+    .ad-cols, .ad-charts { grid-template-columns: 1fr; }
   }
-
-  html,body { background:var(--bg); font-family:'Outfit',sans-serif; min-height:100vh; }
-  .page { min-height:100vh; display:flex; flex-direction:column; }
-
-  /* NAV */
-  .nav {
-    position:sticky; top:0; z-index:100; height:58px;
-    display:flex; align-items:center; justify-content:space-between; padding:0 2rem;
-    background:rgba(2,4,10,0.95); backdrop-filter:blur(32px); border-bottom:1px solid var(--border);
-  }
-  .nav-left { display:flex; align-items:center; gap:1.5rem; }
-  .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
-  .logo-box { width:28px; height:28px; border-radius:6px; background:linear-gradient(135deg,var(--accent),var(--teal)); }
-  .logo-text { font-family:'DM Mono',monospace; font-size:0.88rem; color:var(--white); }
-  .logo-text b { color:var(--accent2); font-weight:500; }
-  .nav-divider { width:1px; height:20px; background:var(--border); }
-  .admin-badge {
-    font-family:'DM Mono',monospace; font-size:0.62rem;
-    background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.2);
-    color:var(--red); padding:3px 10px; border-radius:4px; letter-spacing:1px;
-  }
-  .nav-right { display:flex; gap:8px; }
-  .btn-ghost { background:none; border:1px solid var(--border); color:var(--text2); padding:5px 14px; border-radius:7px; font-size:0.8rem; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; }
-  .btn-ghost:hover { border-color:var(--borderhi); color:var(--text); }
-
-  /* LAYOUT */
-  .layout { display:flex; flex:1; height:calc(100vh - 58px); overflow:hidden; }
-
-  /* SIDEBAR */
-  .sidebar { width:220px; flex-shrink:0; border-right:1px solid var(--border); background:var(--surface); padding:1.25rem; }
-  .sidebar-title { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); letter-spacing:2px; text-transform:uppercase; margin-bottom:1rem; }
-  .nav-item {
-    display:flex; align-items:center; justify-content:space-between;
-    padding:9px 12px; border-radius:8px; cursor:pointer; transition:all 0.15s;
-    margin-bottom:3px; border:1px solid transparent;
-  }
-  .nav-item:hover { background:var(--s2); }
-  .nav-item.active { background:rgba(79,142,247,0.08); border-color:rgba(79,142,247,0.15); }
-  .nav-item-left { display:flex; align-items:center; gap:8px; }
-  .nav-item-icon { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); width:16px; }
-  .nav-item.active .nav-item-icon { color:var(--accent2); }
-  .nav-item-label { font-size:0.82rem; color:var(--text2); font-weight:500; }
-  .nav-item.active .nav-item-label { color:var(--white); }
-  .nav-badge {
-    font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:700;
-    background:rgba(248,113,113,0.15); color:var(--red); border:1px solid rgba(248,113,113,0.2);
-    padding:1px 7px; border-radius:4px; min-width:20px; text-align:center;
-  }
-  .nav-badge.yellow { background:rgba(251,211,77,0.1); color:var(--yellow); border-color:rgba(251,211,77,0.2); }
-
-  /* MAIN */
-  .main { flex:1; overflow-y:auto; padding:1.75rem; }
-  .main::-webkit-scrollbar { width:4px; }
-  .main::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
-
-  /* STATS */
-  .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; margin-bottom:2rem; }
-  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.1rem; }
-  .stat-val { font-family:'DM Mono',monospace; font-size:1.6rem; font-weight:500; color:var(--white); margin-bottom:4px; }
-  .stat-val.red { color:var(--red); }
-  .stat-val.yellow { color:var(--yellow); }
-  .stat-val.green { color:var(--green); }
-  .stat-val.blue { color:var(--accent2); }
-  .stat-label { font-size:0.75rem; color:var(--text2); font-weight:500; }
-  .stat-sub { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); margin-top:3px; }
-
-  /* SECTION */
-  .section-title {
-    font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3);
-    letter-spacing:1.5px; text-transform:uppercase; margin-bottom:1rem;
-    display:flex; align-items:center; gap:10px;
-  }
-  .section-title::after { content:''; flex:1; height:1px; background:var(--border); }
-
-  /* TABLE */
-  .table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; margin-bottom:2rem; }
-  .table { width:100%; border-collapse:collapse; }
-  .table th { padding:10px 14px; text-align:left; font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--border); background:var(--s2); }
-  .table td { padding:12px 14px; font-size:0.82rem; color:var(--text2); border-bottom:1px solid var(--border); vertical-align:middle; }
-  .table tr:last-child td { border-bottom:none; }
-  .table tr:hover td { background:rgba(255,255,255,0.02); }
-  .table-name { color:var(--white); font-weight:500; }
-  .table-mono { font-family:'DM Mono',monospace; font-size:0.72rem; }
-
-  /* BADGES */
-  .badge { font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:600; padding:2px 8px; border-radius:4px; letter-spacing:0.5px; }
-  .badge-pending  { background:rgba(251,211,77,0.1); color:var(--yellow); border:1px solid rgba(251,211,77,0.2); }
-  .badge-approved { background:rgba(74,222,128,0.1); color:var(--green); border:1px solid rgba(74,222,128,0.2); }
-  .badge-rejected { background:rgba(248,113,113,0.1); color:var(--red); border:1px solid rgba(248,113,113,0.2); }
-  .badge-flagged  { background:rgba(248,113,113,0.1); color:var(--red); border:1px solid rgba(248,113,113,0.2); }
-  .badge-verified { background:rgba(74,222,128,0.1); color:var(--green); border:1px solid rgba(74,222,128,0.2); }
-
-  /* ACTION BUTTONS */
-  .actions { display:flex; gap:6px; }
-  .act-btn { padding:5px 12px; border-radius:6px; font-size:0.72rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; border:1px solid transparent; }
-  .act-approve { background:rgba(74,222,128,0.1); color:var(--green); border-color:rgba(74,222,128,0.2); }
-  .act-approve:hover { background:rgba(74,222,128,0.2); }
-  .act-reject { background:rgba(248,113,113,0.08); color:var(--red); border-color:rgba(248,113,113,0.15); }
-  .act-reject:hover { background:rgba(248,113,113,0.15); }
-  .act-rename { background:rgba(79,142,247,0.08); color:var(--accent2); border-color:rgba(79,142,247,0.15); }
-  .act-rename:hover { background:rgba(79,142,247,0.15); }
-  .act-ban { background:rgba(248,113,113,0.08); color:var(--red); border-color:rgba(248,113,113,0.15); }
-  .act-ban:hover { background:rgba(248,113,113,0.15); }
-  .act-view { background:var(--s2); color:var(--text2); border-color:var(--border); }
-  .act-view:hover { border-color:var(--borderhi); color:var(--text); }
-
-  /* RENAME INLINE */
-  .rename-input { background:var(--s2); border:1px solid var(--accent); border-radius:6px; padding:5px 10px; color:var(--text); font-size:0.8rem; font-family:'Outfit',sans-serif; outline:none; width:200px; }
-
-  /* EMPTY */
-  .empty { text-align:center; padding:3rem 2rem; color:var(--text3); font-family:'DM Mono',monospace; font-size:0.75rem; }
-
-  /* SKELETON */
-  .skel { background:var(--surface); border:1px solid var(--border); border-radius:12px; height:60px; animation:pulse 1.8s ease-in-out infinite; margin-bottom:6px; }
-  @keyframes pulse { 0%,100%{opacity:0.35} 50%{opacity:0.7} }
-
-  /* OVERVIEW GRID */
-  .overview-cols { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem; }
-  .overview-col-title { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:0.75rem; display:flex; align-items:center; gap:10px; }
-  .overview-col-title::after { content:''; flex:1; height:1px; background:var(--border); }
-
-  /* RANK BADGE */
-  .rank-pill { font-family:'DM Mono',monospace; font-size:0.58rem; padding:2px 7px; border-radius:4px; }
-  .rank-etudiant  { background:rgba(148,163,184,0.08); color:var(--text2); border:1px solid var(--border); }
-  .rank-contrib   { background:rgba(79,142,247,0.08); color:var(--teal2); border:1px solid rgba(79,142,247,0.2); }
-  .rank-senpai    { background:rgba(79,142,247,0.08); color:var(--accent2); border:1px solid rgba(79,142,247,0.2); }
-  .rank-legende   { background:rgba(245,158,11,0.08); color:#F59E0B; border:1px solid rgba(245,158,11,0.25); }
-
-  /* ACTIVITY FEED */
-  .feed { display:flex; flex-direction:column; gap:5px; }
-  .feed-item { display:flex; align-items:center; gap:10px; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:9px 12px; }
-  .feed-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; background:var(--accent); }
-  .feed-info { flex:1; min-width:0; }
-  .feed-main { font-size:0.8rem; color:var(--text); font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .feed-sub  { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); margin-top:2px; }
-  .feed-time { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); flex-shrink:0; }
-
-  /* MONTHLY REPORT */
-  .report-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:2rem; }
-  .report-card { background:var(--s2); border:1px solid var(--border); border-radius:10px; padding:1rem; }
-  .report-val { font-family:'DM Mono',monospace; font-size:1.3rem; font-weight:500; color:var(--white); margin-bottom:3px; }
-  .report-label { font-size:0.72rem; color:var(--text2); }
-  .report-delta { font-family:'DM Mono',monospace; font-size:0.62rem; margin-top:4px; }
-  .delta-up   { color:var(--green); }
-  .delta-flat { color:var(--text3); }
-
-  /* ACCESS DENIED */
-  .denied { text-align:center; padding:5rem 2rem; }
-  .denied-code { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text3); margin-bottom:1rem; }
-  .denied-title { font-size:1.2rem; font-weight:700; color:var(--white); margin-bottom:0.5rem; }
-  .denied-desc { font-size:0.85rem; color:var(--text2); }
-
-  /* MESSAGES RESPONSIVE */
-  .msg-layout { display:flex; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
-  .msg-left   { width:280px; flex-shrink:0; border-right:1px solid var(--border); display:flex; flex-direction:column; background:var(--surface); overflow-y:auto; }
-  .msg-right  { flex:1; display:flex; flex-direction:column; background:var(--surface); overflow:hidden; min-width:0; }
-  @media(max-width:700px) {
-    .msg-layout { flex-direction:column; height:auto !important; }
-    .msg-left   { width:100%; max-height:220px; border-right:none; border-bottom:1px solid var(--border); }
-    .msg-right  { min-height:320px; }
-  }
-
-  /* ANALYTICS GRIDS */
-  .an-grid2 { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:2rem; }
-
-  @media(max-width:768px) {
-    .layout { flex-direction:column; height:auto; overflow:visible; }
-    .sidebar { width:100%; height:auto; border-right:none; border-bottom:1px solid var(--border); padding:0.75rem 1rem; display:flex; flex-direction:row; overflow-x:auto; gap:4px; flex-wrap:nowrap; }
-    .sidebar-title { display:none; }
-    .nav-item { flex-shrink:0; margin-bottom:0; white-space:nowrap; padding:7px 12px; }
-    .main { padding:1rem; overflow:visible; height:auto; }
-    .overview-cols { grid-template-columns:1fr; }
-    .table-wrap { overflow-x:auto; }
-    .table { min-width:480px; }
-    .table th, .table td { padding:8px 10px; font-size:0.75rem; }
-    .stats-grid { grid-template-columns:repeat(2,1fr); }
-    .nav { padding:0 1rem; }
-    .nav-left { gap:0.75rem; }
-    .admin-badge { display:none; }
-    .an-grid2 { grid-template-columns:1fr; }
-  }
-  @media(max-width:480px) {
-    .stats-grid { grid-template-columns:1fr 1fr; gap:8px; }
-    .stat-card { padding:0.85rem 1rem; }
-    .sidebar { gap:3px; }
-    .nav-item-label { font-size:0.75rem; }
-    .report-grid { grid-template-columns:1fr 1fr; }
-    .table { min-width:380px; }
-    .table th, .table td { padding:6px 8px; font-size:0.7rem; }
-    .an-grid2 { gap:1rem; }
+  @media (max-width: 700px) {
+    .ad-msg-layout { flex-direction: column; height: auto; }
+    .ad-msg-left { width: 100%; max-height: 220px; border-bottom: 1px solid var(--border); }
+    .ad-msg-right { min-height: 320px; }
   }
 `
 
+const TYPE_TONES = { survival_guide: 'brand', cheat_code: 'warning', timeline: 'success', red_flag: 'danger', path_review: 'accent' }
+const TYPE_LABELS = { survival_guide: 'Guide de survie', cheat_code: 'Cheat Code', timeline: 'Timeline', red_flag: 'Red Flag', path_review: 'Bilan de parcours' }
+const LEVEL_TONE = { Légende: 'founder', Senpai: 'accent', Contributeur: 'brand', Étudiant: 'neutral' }
+const DOC_LABELS = { cours: 'Cours', td: 'TD', tp: 'TP', exam: 'Exam', résumé: 'Résumé', autre: 'Autre' }
+const FEED_LABEL = { document: 'Doc', school: 'École', filiere: 'Filière', module: 'Module' }
+const FEED_TONE = { document: 'success', school: 'brand', filiere: 'accent', module: 'warning' }
+
+const getLevel = (pts) => pts >= 600 ? 'Légende' : pts >= 300 ? 'Senpai' : pts >= 100 ? 'Contributeur' : 'Étudiant'
+
 export default function Admin() {
-  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('overview')
   const [user, setUser] = useState(null)
   const [isAdmin, setIsAdmin] = useState(false)
@@ -218,8 +70,6 @@ export default function Admin() {
   const [stats,        setStats]        = useState(null)
   const [pendingDocs,  setPendingDocs]  = useState([])
   const [pendingMods,  setPendingMods]  = useState([])
-  const [schoolReqs,   setSchoolReqs]   = useState([])
-  const [filiereReqs,  setFiliereReqs]  = useState([])
   const [uniList,      setUniList]      = useState([])
   const [facList,      setFacList]      = useState([])
   const [filiereList,  setFiliereList]  = useState([])
@@ -412,11 +262,6 @@ export default function Admin() {
     setLoading(false)
   }
 
-  const approvePost = async (post) => {
-    await supabase.from('senpai_posts').update({ is_approved: true }).eq('id', post.id)
-    setFlaggedPosts(ps => ps.filter(p => p.id !== post.id))
-  }
-
   const deletePost = (post) => {
     setModal({
       title: 'Supprimer ce post ?',
@@ -452,18 +297,6 @@ export default function Admin() {
       await supabase.from('points_log').insert({ user_id: doc.uploader_id, points: 50, reason: 'Upload approuvé après modération', document_id: id })
     }
     setPendingDocs(d => d.filter(x => x.id !== id))
-  }
-
-  const deleteDoc = (id) => {
-    setModal({
-      title: 'Supprimer ce document ?',
-      confirmText: 'Supprimer', confirmColor: '#F87171',
-      onConfirm: async () => {
-        setModal(null)
-        await supabase.from('documents').delete().eq('id', id)
-        setPendingDocs(d => d.filter(x => x.id !== id))
-      },
-    })
   }
 
   const handleDeleteDoc = (doc) => {
@@ -520,11 +353,6 @@ export default function Admin() {
     setPendingDocs(d => d.map(x => x.id === docId ? { ...x, module_id: moduleId } : x))
   }
 
-  const approveMod = async (mod) => {
-    await supabase.from('modules').update({ verified: true }).eq('id', mod.id)
-    setPendingMods(m => m.filter(x => x.id !== mod.id))
-  }
-
   const renameMod = async (mod) => {
     if (!renameVal.trim()) return
     await supabase.from('modules').update({ name: renameVal.trim(), verified: true }).eq('id', mod.id)
@@ -550,25 +378,6 @@ export default function Admin() {
     })
   }
 
-  const approveSchool = async (id) => {
-    await supabase.from('school_requests').update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: user.id }).eq('id', id)
-    setSchoolReqs(s => s.map(x => x.id === id ? { ...x, status: 'approved' } : x))
-  }
-
-  const rejectSchool = async (id) => {
-    await supabase.from('school_requests').update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: user.id }).eq('id', id)
-    setSchoolReqs(s => s.map(x => x.id === id ? { ...x, status: 'rejected' } : x))
-  }
-
-  const approveFiliere = async (id) => {
-    await supabase.from('filiere_suggestions').update({ status: 'approved', reviewed_at: new Date().toISOString(), reviewed_by: user.id }).eq('id', id)
-    setFiliereReqs(f => f.map(x => x.id === id ? { ...x, status: 'approved' } : x))
-  }
-
-  const rejectFiliere = async (id) => {
-    await supabase.from('filiere_suggestions').update({ status: 'rejected', reviewed_at: new Date().toISOString(), reviewed_by: user.id }).eq('id', id)
-    setFiliereReqs(f => f.map(x => x.id === id ? { ...x, status: 'rejected' } : x))
-  }
 
   const isNew = ts => Date.now() - new Date(ts).getTime() < 86400000
 
@@ -639,19 +448,6 @@ export default function Admin() {
     })
   }
 
-  const banUser = (id, currentBan) => {
-    setModal({
-      title: currentBan ? 'Débannir cet utilisateur ?' : 'Bannir cet utilisateur ?',
-      confirmText: currentBan ? 'Débannir' : 'Bannir',
-      confirmColor: currentBan ? '#4F8EF7' : '#F87171',
-      onConfirm: async () => {
-        setModal(null)
-        await supabase.from('user_profiles').update({ is_banned: !currentBan }).eq('id', id)
-        setUsers(u => u.map(x => x.id === id ? { ...x, is_banned: !currentBan } : x))
-      },
-    })
-  }
-
   const toggleModerator = (id, currentMod) => {
     setModal({
       title: currentMod ? 'Retirer le rôle Modérateur ?' : 'Donner le rôle Modérateur ?',
@@ -663,7 +459,7 @@ export default function Admin() {
         if (error) { console.error('toggleModerator error:', error); showAlert('Erreur : ' + error.message); return }
         setUsers(u => u.map(x => x.id === id ? { ...x, is_moderator: !currentMod } : x))
         const notifContent = !currentMod
-          ? "Tu as été nommé modérateur de 9rawZid9ra 🛡️ Bienvenue dans l'équipe !"
+          ? "Tu as été nommé modérateur de 9rawZid9ra. Bienvenue dans l'équipe !"
           : 'Ton rôle de modérateur a été retiré.'
         const notifType = !currentMod ? 'moderator_assigned' : 'moderator_removed'
         supabase.from('notifications').insert({ user_id: id, type: notifType, content: notifContent, read: false }).then()
@@ -797,10 +593,10 @@ export default function Admin() {
     setAnnSending(true)
     const { data: allUsers } = await supabase.from('user_profiles').select('id').neq('id', user.id)
     if (allUsers && allUsers.length > 0) {
-      const inserts = allUsers.map(u => ({ user_id: u.id, type: 'announcement', content: `📢 Saad GENIUS : ${annText.trim()}`, read: false }))
+      const inserts = allUsers.map(u => ({ user_id: u.id, type: 'announcement', content: `Saad GENIUS : ${annText.trim()}`, read: false }))
       await supabase.from('notifications').insert(inserts)
     }
-    setAnnResult(`Annonce envoyée à ${allUsers?.length || 0} utilisateurs ✓`)
+    setAnnResult(`Annonce envoyée à ${allUsers?.length || 0} utilisateurs`)
     setAnnText('')
     setAnnSending(false)
     setTimeout(() => setAnnResult(null), 5000)
@@ -831,180 +627,126 @@ export default function Admin() {
 
   const fmt = (d) => new Date(d).toLocaleDateString('fr-MA', { day:'2-digit', month:'short', year:'2-digit' })
 
-  if (authLoading) return <div className="page"><style>{css}</style><div style={{padding:'4rem',textAlign:'center',fontFamily:'DM Mono',fontSize:'0.75rem',color:'var(--text3)'}}>Chargement...</div></div>
+  if (authLoading) {
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="t-mono qz-subtle">Chargement…</span></div>
+  }
 
-  if (!user || !isAdmin) return (
-    <div className="page">
-      <style>{css}</style>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}>
-        <div className="denied">
-          <div className="denied-code">// 403 — access forbidden</div>
-          <div className="denied-title">Accès non autorisé</div>
-          <div className="denied-desc">Cette page est réservée aux administrateurs.</div>
-        </div>
-      </div>
-    </div>
-  )
+  if (!user || !isAdmin) {
+    return <div><style>{css}</style><PanelLayout denied /></div>
+  }
 
   const TABS = [
-    { k:'overview',   label:'Vue d\'ensemble', icon:'~>' },
-    { k:'documents',  label:'Documents',        icon:'[]', count: stats?.pendingDocs },
-    { k:'modules',    label:'Modules',          icon:'#',  count: stats?.pendingMods },
-    { k:'schools',    label:'Écoles',           icon:'@',  count: stats?.pendingSchools },
-    { k:'filieres',   label:'Filières',         icon:'≡',  count: stats?.pendingFilieres },
-    { k:'users',      label:'Utilisateurs',     icon:'::' },
-    { k:'senpai',     label:'Senpai Zone',      icon:'🧠', count: stats?.flaggedPosts },
-    { k:'messages',   label:'Messages',         icon:'✉',  count: unreadMsgCount },
-    { k:'analytics',  label:'Analytiques',      icon:'📊' },
+    { id: 'overview',  label: "Vue d'ensemble", icon: 'monitor' },
+    { id: 'documents', label: 'Documents', icon: 'flag' },
+    { id: 'modules',   label: 'Modules', icon: 'bookmark', count: stats?.pendingMods },
+    { id: 'schools',   label: 'Écoles', icon: 'shield', count: stats?.pendingSchools },
+    { id: 'filieres',  label: 'Filières', icon: 'file', count: stats?.pendingFilieres },
+    { id: 'users',     label: 'Utilisateurs', icon: 'user' },
+    { id: 'senpai',    label: 'Senpai Zone', icon: 'message', count: stats?.flaggedPosts },
+    { id: 'messages',  label: 'Messages', icon: 'inbox', count: unreadMsgCount },
+    { id: 'analytics', label: 'Analytiques', icon: 'up' },
   ]
 
+  const TITLES = {
+    overview: ["Vue d'ensemble", 'Annonces, rapport mensuel et activité récente.'],
+    documents: ['Documents', 'Tous les documents uploadés sur la plateforme.'],
+    modules: ['Modules', "Modules en attente d'approbation."],
+    schools: ['Écoles', 'Universités et facultés enregistrées.'],
+    filieres: ['Filières', 'Filières enregistrées.'],
+    users: ['Utilisateurs', 'Gère les rôles et les bannissements.'],
+    senpai: ['Senpai Zone', '100 derniers posts.'],
+    messages: ['Messages', 'Réponds aux utilisateurs.'],
+    analytics: ['Analytiques', 'Santé et croissance de la plateforme.'],
+  }
+
   return (
-    <div className="page">
+    <div>
       <style>{css}</style>
-
-      <nav className="nav">
-        <div className="nav-left">
-          <div className="logo" onClick={() => navigate('/')}><div className="logo-box"/><span className="logo-text">9raw<b>Zid</b>9ra</span></div>
-          <div className="nav-divider"/>
-          <span className="admin-badge">ADMIN</span>
-        </div>
-        <div className="nav-right">
-          <button className="btn-ghost" onClick={() => navigate('/')}>Retour au site</button>
-        </div>
-      </nav>
-
-      <div className="layout">
-        {/* SIDEBAR */}
-        <aside className="sidebar">
-          <div className="sidebar-title">// panneau admin</div>
-          {TABS.map(t => (
-            <div key={t.k} className={`nav-item ${activeTab===t.k?'active':''}`} onClick={() => setActiveTab(t.k)}>
-              <div className="nav-item-left">
-                <span className="nav-item-icon">{t.icon}</span>
-                <span className="nav-item-label">{t.label}</span>
-              </div>
-              {t.count > 0 && <span className={`nav-badge ${t.k==='modules'||t.k==='schools'?'yellow':''}`}>{t.count}</span>}
+      <PanelLayout
+        role="admin"
+        tabs={TABS}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        title={TITLES[activeTab]?.[0]}
+        subtitle={TITLES[activeTab]?.[1]}
+      >
+        {activeTab === 'overview' && (
+          <>
+            <div className="ad-section">
+              <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Annonce</span></div>
+              <Card>
+                <div className="ad-announce">
+                  <Input multiline maxLength={200} counter placeholder="Message de l'annonce..." value={annText} onChange={e => setAnnText(e.target.value)} />
+                  <div className="ad-announce-row">
+                    <Button variant="primary" icon="send" onClick={sendAnnouncement} disabled={!annText.trim() || annSending} loading={annSending}>Envoyer à tous les utilisateurs</Button>
+                    {annResult && <Badge tone="success" icon="check">{annResult}</Badge>}
+                  </div>
+                </div>
+              </Card>
             </div>
-          ))}
-        </aside>
 
-        {/* MAIN */}
-        <main className="main">
+            <div className="ad-section">
+              <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Rapport — {new Date().toLocaleDateString('fr-MA', { month: 'long', year: 'numeric' })}</span></div>
+              <StatStrip items={[
+                { value: stats?.docsThisMonth ?? '—', label: 'Documents ce mois', delta: stats ? (stats.docsLastMonth > 0 ? `vs ${stats.docsLastMonth} le mois dernier` : 'premier mois') : undefined },
+                { value: stats?.usersThisMonth ?? '—', label: 'Nouveaux utilisateurs' },
+                { value: '—', label: 'Revenus publicitaires', delta: 'fonctionnalité à venir' },
+                { value: '—', label: 'Abonnements premium', delta: 'fonctionnalité à venir' },
+              ]} />
+            </div>
 
-          {/* OVERVIEW */}
-          {activeTab === 'overview' && (
-            <>
-              {/* ANNOUNCEMENT */}
-              <div className="section-title">// envoyer une annonce</div>
-              <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1.1rem 1.25rem', marginBottom:'1.75rem' }}>
-                <textarea
-                  style={{ width:'100%', background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'10px 14px', color:'var(--text)', fontSize:'0.85rem', fontFamily:'Outfit,sans-serif', outline:'none', resize:'vertical', minHeight:70, marginBottom:8 }}
-                  placeholder="Message de l'annonce... (max 200 caractères)"
-                  maxLength={200}
-                  value={annText}
-                  onChange={e => setAnnText(e.target.value)}
-                />
-                <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
-                  <button
-                    onClick={sendAnnouncement}
-                    disabled={!annText.trim() || annSending}
-                    style={{ background: annText.trim() ? 'rgba(79,142,247,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${annText.trim() ? 'rgba(79,142,247,0.3)' : 'var(--border)'}`, color: annText.trim() ? 'var(--accent2)' : 'var(--text3)', borderRadius:7, padding:'7px 16px', fontSize:'0.78rem', fontWeight:600, cursor: annText.trim() ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif' }}
-                  >
-                    {annSending ? 'Envoi...' : '📢 Envoyer à tous les utilisateurs'}
-                  </button>
-                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'var(--text3)' }}>{annText.length} / 200</span>
-                  {annResult && <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.68rem', color:'var(--teal2)' }}>{annResult}</span>}
-                </div>
-              </div>
+            <div className="ad-section">
+              <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Totaux plateforme</span></div>
+              <StatStrip items={[
+                { value: stats?.pendingDocs ?? '—', label: 'Total documents' },
+                { value: stats?.totalUsers ?? '—', label: 'Utilisateurs' },
+                { value: stats?.pendingMods ?? '—', label: 'Modules en attente' },
+                { value: stats?.pendingSchools ?? '—', label: 'Écoles demandées' },
+              ]} />
+            </div>
 
-              {/* MONTHLY REPORT */}
-              <div className="section-title">// rapport — {new Date().toLocaleDateString('fr-MA',{month:'long',year:'numeric'})}</div>
-              <div className="report-grid">
-                <div className="report-card">
-                  <div className="report-val">{stats?.docsThisMonth ?? '—'}</div>
-                  <div className="report-label">Documents ce mois</div>
-                  {stats && <div className={`report-delta ${stats.docsThisMonth >= stats.docsLastMonth ? 'delta-up':'delta-flat'}`}>
-                    {stats.docsLastMonth > 0 ? `vs ${stats.docsLastMonth} le mois dernier` : 'premier mois'}
-                  </div>}
-                </div>
-                <div className="report-card">
-                  <div className="report-val">{stats?.usersThisMonth ?? '—'}</div>
-                  <div className="report-label">Nouveaux utilisateurs</div>
-                  <div className="report-delta delta-flat">ce mois-ci</div>
-                </div>
-                <div className="report-card">
-                  <div className="report-val" style={{color:'var(--text3)'}}>—</div>
-                  <div className="report-label">Revenus publicitaires</div>
-                  <div className="report-delta delta-flat">fonctionnalité à venir</div>
-                </div>
-                <div className="report-card">
-                  <div className="report-val" style={{color:'var(--text3)'}}>—</div>
-                  <div className="report-label">Abonnements premium</div>
-                  <div className="report-delta delta-flat">fonctionnalité à venir</div>
-                </div>
-              </div>
-
-              {/* STATS TOTALS */}
-              <div className="section-title">// totaux plateforme</div>
-              <div className="stats-grid" style={{marginBottom:'2rem'}}>
-                <div className="stat-card"><div className="stat-val blue">{stats?.pendingDocs ?? '—'}</div><div className="stat-label">Total documents</div><div className="stat-sub">uploadés</div></div>
-                <div className="stat-card"><div className="stat-val blue">{stats?.totalUsers ?? '—'}</div><div className="stat-label">Utilisateurs</div><div className="stat-sub">inscrits</div></div>
-                <div className="stat-card"><div className={`stat-val ${stats?.pendingMods > 0 ? 'yellow':'green'}`}>{stats?.pendingMods ?? '—'}</div><div className="stat-label">Modules en attente</div><div className="stat-sub">à approuver</div></div>
-                <div className="stat-card"><div className={`stat-val ${stats?.pendingSchools > 0 ? 'yellow':'green'}`}>{stats?.pendingSchools ?? '—'}</div><div className="stat-label">Écoles demandées</div><div className="stat-sub">à examiner</div></div>
-              </div>
-
-              {/* TWO COLUMNS: top users + recent activity */}
-              <div className="overview-cols">
-                {/* TOP 10 */}
-                <div>
-                  <div className="overview-col-title">// top 10 contributeurs</div>
-                  <div className="table-wrap">
-                    <table className="table">
+            <div className="ad-cols">
+              <div>
+                <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Top 10 contributeurs</span></div>
+                {topUsers.length === 0 ? <EmptyState icon="user" title="Aucun utilisateur" /> : (
+                  <div className="qz-table-wrap">
+                    <table className="qz-table">
                       <thead><tr><th>#</th><th>Utilisateur</th><th>Points</th><th>Uploads</th><th>Niveau</th></tr></thead>
                       <tbody>
                         {topUsers.map((u, i) => {
-                          const pts = u.points || 0
-                          const rank = pts >= 600 ? {l:'Légende',c:'rank-legende'} : pts >= 300 ? {l:'Senpai',c:'rank-senpai'} : pts >= 100 ? {l:'Contributeur',c:'rank-contrib'} : {l:'Étudiant',c:'rank-etudiant'}
+                          const level = getLevel(u.points || 0)
                           const isExpanded = expandedContrib === u.id
                           const docs = contribDocs[u.id]
                           const isLoadingDocs = contribLoading === u.id
-                          const DOC_LABELS = { cours:'Cours', td:'TD', tp:'TP', exam:'Exam', résumé:'Résumé', autre:'Autre' }
                           return (
                             <Fragment key={u.id}>
-                              <tr style={{cursor:'pointer'}} onClick={() => toggleContrib(u.id)}>
-                                <td className="table-mono" style={{color: i===0?'#F59E0B':i===1?'#94A3B8':i===2?'#CD7F32':'var(--text3)', fontWeight:i<3?700:400}}>
-                                  {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`}
-                                </td>
+                              <tr style={{ cursor: 'pointer' }} onClick={() => toggleContrib(u.id)}>
+                                <td className="qz-table-mono">#{i + 1}</td>
                                 <td>
-                                  <div className="table-name">{u.name || 'Anonyme'}</div>
-                                  <div className="table-mono" style={{color:'var(--text3)'}}>{u.email}</div>
+                                  <div className="qz-table-name">{u.name || 'Anonyme'}</div>
+                                  <div className="qz-table-mono">{u.email}</div>
                                 </td>
-                                <td className="table-mono" style={{color:'var(--accent2)'}}>{pts}</td>
-                                <td className="table-mono">{u.uploads_count || 0}</td>
+                                <td className="qz-table-mono">{u.points || 0}</td>
+                                <td className="qz-table-mono">{u.uploads_count || 0}</td>
                                 <td>
-                                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                                    <span className={`rank-pill ${rank.c}`}>{rank.l}</span>
-                                    <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--text3)',display:'inline-block',transition:'transform 0.15s',transform:isExpanded?'rotate(90deg)':'rotate(0)'}}>▶</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                                    <Badge tone={LEVEL_TONE[level]}>{level}</Badge>
+                                    <span style={{ display: 'inline-flex', transform: isExpanded ? 'rotate(180deg)' : 'none', color: 'var(--text-subtle)' }}><Icon name="down" size={14} /></span>
                                   </div>
                                 </td>
                               </tr>
                               {isExpanded && (
                                 <tr>
-                                  <td colSpan={5} style={{padding:0,background:'rgba(79,142,247,0.03)',borderBottom:'1px solid var(--border)'}}>
-                                    <div style={{padding:'10px 20px'}}>
-                                      {isLoadingDocs ? (
-                                        <div className="table-mono" style={{color:'var(--text3)'}}>Chargement...</div>
-                                      ) : !docs || docs.length === 0 ? (
-                                        <div className="table-mono" style={{color:'var(--text3)'}}>// aucun upload</div>
-                                      ) : (
-                                        <div style={{display:'flex',flexDirection:'column',gap:5,maxHeight:220,overflowY:'auto'}}>
+                                  <td colSpan={5} style={{ padding: 0, background: 'var(--surface-2)' }}>
+                                    <div style={{ padding: 'var(--space-3) var(--space-5)' }}>
+                                      {isLoadingDocs ? <span className="t-mono qz-subtle">Chargement…</span> :
+                                       !docs || docs.length === 0 ? <span className="t-mono qz-subtle">Aucun upload</span> : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 220, overflowY: 'auto' }}>
                                           {docs.map((d, j) => (
-                                            <div key={j} style={{display:'flex',alignItems:'center',gap:10}}>
-                                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',background:'rgba(79,142,247,0.1)',color:'var(--accent2)',border:'1px solid rgba(79,142,247,0.2)',borderRadius:3,padding:'1px 6px',minWidth:48,textAlign:'center',flexShrink:0}}>
-                                                {DOC_LABELS[d.doc_type] || d.doc_type || '?'}
-                                              </span>
-                                              <span style={{fontSize:'0.78rem',color:'var(--text)',flex:1}}>{d.modules?.name || '—'}</span>
-                                              <span className="table-mono" style={{color:'var(--text3)',fontSize:'0.68rem',flexShrink:0}}>{fmt(d.created_at)}</span>
+                                            <div key={j} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                              <Badge>{DOC_LABELS[d.doc_type] || d.doc_type || '?'}</Badge>
+                                              <span className="t-body-sm" style={{ flex: 1 }}>{d.modules?.name || '—'}</span>
+                                              <span className="t-mono qz-subtle">{fmt(d.created_at)}</span>
                                             </div>
                                           ))}
                                         </div>
@@ -1016,701 +758,498 @@ export default function Admin() {
                             </Fragment>
                           )
                         })}
-                        {topUsers.length === 0 && <tr><td colSpan={5} className="empty">// aucun utilisateur</td></tr>}
                       </tbody>
                     </table>
                   </div>
-                </div>
+                )}
+              </div>
 
-                {/* RECENT ACTIVITY */}
-                <div>
-                  <div className="overview-col-title">// activité récente des utilisateurs</div>
-                  <div className="feed">
-                    {activityFeed.map((item, i) => {
-                      const typeStyle = item.type === 'document'
-                        ? { bg:'rgba(74,222,128,0.1)', color:'#4ADE80', border:'rgba(74,222,128,0.25)', label:'DOC' }
-                        : item.type === 'school'
-                        ? { bg:'rgba(79,142,247,0.1)', color:'#7BB3FF', border:'rgba(79,142,247,0.25)', label:'ÉCOLE' }
-                        : item.type === 'filiere'
-                        ? { bg:'rgba(79,142,247,0.1)', color:'#5EEAD4', border:'rgba(79,142,247,0.25)', label:'FILIÈRE' }
-                        : { bg:'rgba(251,211,77,0.1)', color:'#FBD34D', border:'rgba(251,211,77,0.25)', label:'MODULE' }
-                      return (
-                        <div key={i} className="feed-item">
-                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.55rem', fontWeight:700, padding:'1px 5px', borderRadius:3, background:typeStyle.bg, color:typeStyle.color, border:`1px solid ${typeStyle.border}`, flexShrink:0 }}>{typeStyle.label}</span>
-                          <div className="feed-info">
-                            <div className="feed-main">{item.label}</div>
-                            <div className="feed-sub">{item.sub}</div>
-                          </div>
-                          <div className="feed-time">{fmt(item.created_at)}</div>
+              <div>
+                <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Activité récente</span></div>
+                {activityFeed.length === 0 ? <EmptyState icon="inbox" title="Aucune activité récente" /> : (
+                  <div className="ad-feed">
+                    {activityFeed.map((item, i) => (
+                      <div key={i} className="ad-feed-item">
+                        <Badge tone={FEED_TONE[item.type]}>{FEED_LABEL[item.type]}</Badge>
+                        <div className="ad-feed-main">
+                          <div className="t-body-sm" style={{ fontWeight: 550 }}>{item.label}</div>
+                          <div className="t-mono qz-subtle">{item.sub}</div>
                         </div>
-                      )
-                    })}
-                    {activityFeed.length === 0 && <div className="empty">// aucune activité récente</div>}
+                        <span className="t-mono qz-subtle">{fmt(item.created_at)}</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                )}
               </div>
+            </div>
 
-              {/* QUICK ACTIONS */}
-              {(stats?.pendingMods > 0 || stats?.pendingSchools > 0) && (
-                <>
-                  <div className="section-title">// actions requises</div>
-                  <div style={{display:'flex',gap:'10px',flexWrap:'wrap'}}>
-                    {stats?.pendingMods   > 0 && <button className="act-btn act-rename" style={{padding:'10px 20px',fontSize:'0.82rem'}} onClick={() => setActiveTab('modules')}>Traiter {stats.pendingMods} module{stats.pendingMods>1?'s':''}</button>}
-                    {stats?.pendingSchools > 0 && <button className="act-btn act-rename" style={{padding:'10px 20px',fontSize:'0.82rem'}} onClick={() => setActiveTab('schools')}>Voir {stats.pendingSchools} école{stats.pendingSchools>1?'s':''}</button>}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-
-          {/* DOCUMENTS */}
-          {activeTab === 'documents' && (
-            <>
-              <div className="section-title">// tous les documents uploadés</div>
-              <div style={{display:'flex', gap:8, marginBottom:'1rem'}}>
-                {[{k:'all',l:'Tous'},{k:'reported',l:'🚩 Signalés'},{k:'recent',l:'Récents'}].map(f => (
-                  <button key={f.k} onClick={() => setDocFilter(f.k)}
-                    style={{ background: docFilter===f.k ? 'rgba(79,142,247,0.15)' : 'none', border: `1px solid ${docFilter===f.k ? 'rgba(79,142,247,0.3)' : '#1C2A45'}`, color: docFilter===f.k ? '#7BB3FF' : '#4A5568', borderRadius:7, padding:'6px 14px', fontSize:'0.78rem', cursor:'pointer', fontFamily:'Outfit', transition:'all 0.15s' }}
-                  >{f.l}</button>
-                ))}
+            {(stats?.pendingMods > 0 || stats?.pendingSchools > 0) && (
+              <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap', marginTop: 'var(--space-6)' }}>
+                {stats?.pendingMods > 0 && <Button variant="secondary" onClick={() => setActiveTab('modules')}>Traiter {stats.pendingMods} module{stats.pendingMods > 1 ? 's' : ''}</Button>}
+                {stats?.pendingSchools > 0 && <Button variant="secondary" onClick={() => setActiveTab('schools')}>Voir {stats.pendingSchools} école{stats.pendingSchools > 1 ? 's' : ''}</Button>}
               </div>
-              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               pendingDocs.length === 0 ? <div className="empty">// aucun document trouvé</div> : (
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr>
-                        <th>Document</th><th>Module</th><th>Uploadé par</th><th>Date</th><th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pendingDocs.map(d => (
-                        <tr key={d.id}>
-                          <td>
-                            <div className="table-name">{d.doc_type?.toUpperCase()} — {d.academic_year}</div>
-                            <div className="table-mono" style={{color:'var(--text3)'}}>{d.pages_count} page{d.pages_count>1?'s':''} · {d.file_type}</div>
-                            {d.report_count > 0 && (
-                              <div style={{ display:'inline-flex', alignItems:'center', gap:4, marginTop:4, background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:5, padding:'2px 8px', fontSize:'0.7rem', color:'#F87171', fontFamily:'DM Mono,monospace' }}>
-                                🚩 {d.report_count} signalement{d.report_count>1?'s':''}
+            )}
+          </>
+        )}
+
+        {activeTab === 'documents' && (
+          <>
+            <div className="ad-filters">
+              {[{ k: 'all', l: 'Tous' }, { k: 'reported', l: 'Signalés' }, { k: 'recent', l: 'Récents' }].map(f => (
+                <Chip key={f.k} selected={docFilter === f.k} onClick={() => setDocFilter(f.k)}>{f.l}</Chip>
+              ))}
+            </div>
+            {loading ? <Skeleton height={200} /> :
+             pendingDocs.length === 0 ? <EmptyState icon="flag" title="Aucun document trouvé" /> : (
+              <div className="qz-table-wrap">
+                <table className="qz-table">
+                  <thead><tr><th>Document</th><th>Module</th><th>Uploadé par</th><th>Date</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {pendingDocs.map(d => (
+                      <tr key={d.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
+                            <DocType type={d.doc_type} size="lg" />
+                            <div>
+                              <div className="qz-table-name">{d.academic_year}</div>
+                              <div className="qz-table-mono">{d.pages_count} page{d.pages_count > 1 ? 's' : ''} · {d.file_type}</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+                                {d.report_count > 0 && <Badge tone="danger" icon="flag">{d.report_count} signalement{d.report_count > 1 ? 's' : ''}</Badge>}
+                                {d.is_flagged && d.flag_reason && <Badge tone="warning" icon="alert">{d.flag_reason}</Badge>}
                               </div>
-                            )}
-                            {d.is_flagged && d.flag_reason && (
-                              <div style={{ display:'inline-flex', alignItems:'center', gap:4, marginTop:4, background:'rgba(251,211,77,0.1)', border:'1px solid rgba(251,211,77,0.3)', borderRadius:5, padding:'2px 8px', fontSize:'0.68rem', color:'#FBD34D', fontFamily:'DM Mono,monospace' }}>
-                                🔍 {d.flag_reason}
-                              </div>
-                            )}
-                          </td>
-                          <td>
-                            <div>{d.module_name}</div>
-                            <div className="table-mono" style={{color:'var(--text3)'}}>{d.fac_name}</div>
-                          </td>
-                          <td className="table-mono">{d.uploader_name || 'Anonyme'}</td>
-                          <td className="table-mono">{fmt(d.created_at)}</td>
-                          <td>
-                            <div className="actions">
-                              {d.files?.[0] && <a href={d.files[0]} target="_blank" rel="noreferrer"><button className="act-btn act-view">Voir</button></a>}
-                              <button className="act-btn act-approve" onClick={() => verifyDoc(d.id)}>Approuver</button>
-                              <button className="act-btn act-rename" onClick={() => { setMovingDocId(movingDocId === d.id ? null : d.id); setMoveSearch(''); setMoveResults([]); setMoveSelId(null) }}>Déplacer</button>
-                              <button className="act-btn act-reject" onClick={() => handleDeleteDoc(d)}>Supprimer</button>
-                              {d.report_count > 0 && (
-                                <button className="act-btn act-rename" onClick={() => handleIgnoreReports(d.id)}>Ignorer</button>
-                              )}
                             </div>
-                            {movingDocId === d.id && (
-                              <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(79,142,247,0.05)', border:'1px solid rgba(79,142,247,0.2)', borderRadius:8 }}>
-                                <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--accent2)', marginBottom:6 }}>// déplacer vers un autre module</div>
-                                <input
-                                  style={{ width:'100%', background:'var(--s2)', border:'1px solid var(--border)', borderRadius:6, padding:'6px 10px', color:'var(--text)', fontSize:'0.78rem', fontFamily:'Outfit,sans-serif', outline:'none', marginBottom:6 }}
-                                  placeholder="Recherche module (min 2 chars)..."
-                                  value={moveSearch}
-                                  onChange={e => { const v = e.target.value; setMoveSearch(v); setMoveSelId(null); clearTimeout(moveDebounceRef.current); moveDebounceRef.current = setTimeout(() => searchModules(v), 500) }}
-                                />
-                                {moveResults.length > 0 && (
-                                  <div style={{ display:'flex', flexDirection:'column', gap:3, marginBottom:6 }}>
-                                    {moveResults.map(m => (
-                                      <div key={m.id}
-                                        onClick={() => setMoveSelId(m.id)}
-                                        style={{ padding:'5px 8px', borderRadius:5, cursor:'pointer', fontSize:'0.76rem', background: moveSelId === m.id ? 'rgba(79,142,247,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${moveSelId === m.id ? 'rgba(79,142,247,0.4)' : 'transparent'}`, color: moveSelId === m.id ? 'var(--accent2)' : 'var(--text2)' }}>
-                                        {m.name}
-                                        {m.filieres?.name && <span style={{ color:'var(--text3)', fontSize:'0.68rem', marginLeft:6, fontFamily:'DM Mono,monospace' }}>{m.filieres.name}{m.filieres.semester ? ` · S${m.filieres.semester}` : ''}</span>}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                                <button
-                                  disabled={!moveSelId || moveBusy}
-                                  onClick={() => moveDoc(d.id, moveSelId)}
-                                  style={{ background: moveSelId ? 'rgba(79,142,247,0.15)' : 'rgba(255,255,255,0.03)', border:`1px solid ${moveSelId ? 'rgba(79,142,247,0.3)' : 'var(--border)'}`, color: moveSelId ? 'var(--accent2)' : 'var(--text3)', borderRadius:6, padding:'5px 12px', fontSize:'0.76rem', fontWeight:600, cursor: moveSelId ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif' }}>
-                                  {moveBusy ? 'Déplacement...' : 'Confirmer'}
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* MODULES */}
-          {activeTab === 'modules' && (
-            <>
-              <div className="section-title">// modules (100 derniers)</div>
-              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               pendingMods.length === 0 ? <div className="empty">// aucun module trouvé</div> : (
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr><th>Module</th><th>Filière</th><th>Semestre</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                      {pendingMods.map(m => (
-                        <tr key={m.id}>
-                          <td>
-                            {renamingId === m.id ? (
-                              <input className="rename-input" value={renameVal} onChange={e => setRenameVal(e.target.value)} placeholder="Nouveau nom..."/>
-                            ) : (
-                              <span className="table-name">{m.name}</span>
-                            )}
-                          </td>
-                          <td>
-                            <div>{m.filieres?.name || '—'}</div>
-                            <div className="table-mono" style={{color:'var(--text3)'}}>{m.filieres?.faculties?.universities?.name || '—'}</div>
-                          </td>
-                          <td className="table-mono">{m.semester}</td>
-                          <td>
-                            <div className="actions">
-                              {renamingId === m.id ? (
-                                <>
-                                  <button className="act-btn act-approve" onClick={() => renameMod(m)}>Sauvegarder</button>
-                                  <button className="act-btn act-view" onClick={() => { setRenamingId(null); setRenameVal(''); }}>Annuler</button>
-                                </>
-                              ) : (
-                                <>
-                                  <button className="act-btn act-rename" onClick={() => { setRenamingId(m.id); setRenameVal(m.name); }}>Renommer</button>
-                                  <button className="act-btn act-reject" onClick={() => rejectMod(m)}>Supprimer</button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* SCHOOLS */}
-          {activeTab === 'schools' && (
-            <>
-              <div className="section-title">// universités</div>
-              {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               uniList.length === 0 ? <div className="empty">// aucune université enregistrée</div> : (
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr><th>Nom</th><th>Ville</th><th>Type</th><th>Ajouté le</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                      {uniList.map(u => (
-                        <tr key={u.id}>
-                          <td>
-                            <div style={{display:'flex',alignItems:'center',gap:8}}>
-                              {isNew(u.created_at) && <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.55rem',background:'rgba(74,222,128,0.12)',color:'#4ADE80',border:'1px solid rgba(74,222,128,0.25)',borderRadius:3,padding:'1px 5px',whiteSpace:'nowrap'}}>NEW</span>}
-                              {renamingUni === u.id ? (
-                                <input value={renameUniV} onChange={e => setRenameUniV(e.target.value)}
-                                  style={{background:'var(--s2)',border:'1px solid var(--accent)',borderRadius:6,padding:'4px 8px',color:'var(--text)',fontSize:'0.8rem',fontFamily:'Outfit,sans-serif',minWidth:160}}
-                                  onKeyDown={e => e.key === 'Enter' && renameUni(u.id)} autoFocus />
-                              ) : (
-                                <div className="table-name">{u.name}</div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="table-mono">{u.city || '—'}</td>
-                          <td className="table-mono">{u.type || '—'}</td>
-                          <td className="table-mono">{fmt(u.created_at)}</td>
-                          <td>
-                            <div className="actions">
-                              {renamingUni === u.id ? (
-                                <>
-                                  <button className="act-btn act-approve" onClick={() => renameUni(u.id)}>Sauvegarder</button>
-                                  <button className="act-btn" onClick={() => setRenamingUni(null)}>Annuler</button>
-                                </>
-                              ) : (
-                                <>
-                                  <button className="act-btn" onClick={() => { setRenamingUni(u.id); setRenameUniV(u.name) }}>Renommer</button>
-                                  <button className="act-btn act-reject" onClick={() => deleteUni(u)}>Supprimer</button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              <div className="section-title" style={{marginTop:'1.5rem'}}>// facultés / écoles</div>
-              {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               facList.length === 0 ? <div className="empty">// aucune faculté enregistrée</div> : (
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr><th>Nom</th><th>Université</th><th>Ajouté le</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                      {facList.map(f => (
-                        <tr key={f.id}>
-                          <td>
-                            <div style={{display:'flex',alignItems:'center',gap:8}}>
-                              {isNew(f.created_at) && <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.55rem',background:'rgba(74,222,128,0.12)',color:'#4ADE80',border:'1px solid rgba(74,222,128,0.25)',borderRadius:3,padding:'1px 5px',whiteSpace:'nowrap'}}>NEW</span>}
-                              {renamingFac === f.id ? (
-                                <input value={renameFacV} onChange={e => setRenameFacV(e.target.value)}
-                                  style={{background:'var(--s2)',border:'1px solid var(--accent)',borderRadius:6,padding:'4px 8px',color:'var(--text)',fontSize:'0.8rem',fontFamily:'Outfit,sans-serif',minWidth:160}}
-                                  onKeyDown={e => e.key === 'Enter' && renameFac(f.id)} autoFocus />
-                              ) : (
-                                <div className="table-name">{f.name}</div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="table-mono">{f.universities?.name || '—'}</td>
-                          <td className="table-mono">{fmt(f.created_at)}</td>
-                          <td>
-                            <div className="actions">
-                              {renamingFac === f.id ? (
-                                <>
-                                  <button className="act-btn act-approve" onClick={() => renameFac(f.id)}>Sauvegarder</button>
-                                  <button className="act-btn" onClick={() => setRenamingFac(null)}>Annuler</button>
-                                </>
-                              ) : (
-                                <>
-                                  <button className="act-btn" onClick={() => { setRenamingFac(f.id); setRenameFacV(f.name) }}>Renommer</button>
-                                  <button className="act-btn act-reject" onClick={() => deleteFac(f)}>Supprimer</button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* USERS */}
-          {activeTab === 'users' && (
-            <>
-              <div className="section-title">// gestion des utilisateurs</div>
-              {loading ? Array(5).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               users.length === 0 ? <div className="empty">// aucun utilisateur</div> : (
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr><th>Utilisateur</th><th>Points</th><th>Uploads</th><th>Inscrit le</th><th>Statut</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                      {users.map(u => (
-                        <tr key={u.id}>
-                          <td
-                            style={{cursor:'pointer'}}
-                            onClick={() => window.open('/user/' + u.id, '_blank')}
-                          >
-                            <div style={{display:'flex',alignItems:'center',gap:7,flexWrap:'wrap'}}>
-                              <span className="table-name" style={{textDecoration:'underline',textDecorationColor:'rgba(79,142,247,0.3)'}}>{u.name || 'Sans nom'}</span>
-                              {u.is_moderator && !u.is_admin && (
-                                <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',fontWeight:700,padding:'1px 6px',borderRadius:3,background:'rgba(79,142,247,0.1)',color:'var(--teal2)',border:'1px solid rgba(79,142,247,0.25)'}}>MOD</span>
-                              )}
-                            </div>
-                            <div className="table-mono" style={{color:'var(--text3)'}}>{u.email}</div>
-                          </td>
-                          <td className="table-mono">{u.points || 0}</td>
-                          <td className="table-mono">{u.uploads_count || 0}</td>
-                          <td className="table-mono">{fmt(u.created_at)}</td>
-                          <td>
-                            <span className={`badge ${u.is_admin ? 'badge-approved' : u.is_banned ? 'badge-flagged' : 'badge-verified'}`}>
-                              {u.is_admin ? 'ADMIN' : u.is_banned ? 'BANNI' : 'ACTIF'}
-                            </span>
-                          </td>
-                          <td>
-                            <div className="actions">
-                              <button
-                                className="act-btn act-view"
-                                onClick={() => window.open('/user/' + u.id, '_blank')}>
-                                Voir profil
-                              </button>
-                              {!u.is_admin && (
-                                <button
-                                  className="act-btn"
-                                  style={u.is_moderator ? {background:'rgba(79,142,247,0.1)',color:'var(--teal2)',border:'1px solid rgba(79,142,247,0.25)'} : {background:'rgba(79,142,247,0.05)',color:'var(--text3)',border:'1px solid var(--border)'}}
-                                  onClick={() => toggleModerator(u.id, u.is_moderator)}>
-                                  {u.is_moderator ? 'Retirer MOD' : '+ MOD'}
-                                </button>
-                              )}
-                              {!u.is_admin && u.is_banned && (
-                                <button className="act-btn act-approve" onClick={() => unbanUser(u.id)}>Débannir</button>
-                              )}
-                              {!u.is_admin && !u.is_banned && (
-                                <button className="act-btn act-ban" onClick={() => setBanningId(banningId === u.id ? null : u.id)}>Bannir</button>
-                              )}
-                            </div>
-                            {banningId === u.id && (
-                              <div style={{ marginTop:8, padding:'10px 12px', background:'rgba(248,113,113,0.04)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:8 }}>
-                                <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--red)', marginBottom:8 }}>// durée du bannissement</div>
-                                <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:8 }}>
-                                  {[{k:'24h',l:'24 heures'},{k:'7d',l:'7 jours'},{k:'30d',l:'30 jours'},{k:'perm',l:'Permanent'}].map(opt => (
-                                    <button key={opt.k} onClick={() => setBanDuration(opt.k)}
-                                      style={{ padding:'4px 10px', borderRadius:5, fontSize:'0.72rem', cursor:'pointer', background: banDuration===opt.k ? 'rgba(248,113,113,0.2)' : 'rgba(255,255,255,0.03)', border:`1px solid ${banDuration===opt.k ? 'rgba(248,113,113,0.5)' : 'var(--border)'}`, color: banDuration===opt.k ? 'var(--red)' : 'var(--text3)', fontFamily:'DM Mono,monospace' }}>
-                                      {opt.l}
-                                    </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div>{d.module_name}</div>
+                          <div className="qz-table-mono">{d.fac_name}</div>
+                        </td>
+                        <td className="qz-table-mono">{d.uploader_name || 'Anonyme'}</td>
+                        <td className="qz-table-mono">{fmt(d.created_at)}</td>
+                        <td>
+                          <div className="qz-table-actions">
+                            {d.files?.[0] && <Button as="a" href={d.files[0]} target="_blank" rel="noreferrer" variant="secondary" size="sm" icon="eye">Voir</Button>}
+                            <Button variant="secondary" size="sm" icon="check" onClick={() => verifyDoc(d.id)}>Approuver</Button>
+                            <Button variant="ghost" size="sm" onClick={() => { setMovingDocId(movingDocId === d.id ? null : d.id); setMoveSearch(''); setMoveResults([]); setMoveSelId(null) }}>Déplacer</Button>
+                            <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => handleDeleteDoc(d)}>Supprimer</Button>
+                            {d.report_count > 0 && <Button variant="ghost" size="sm" onClick={() => handleIgnoreReports(d.id)}>Ignorer</Button>}
+                          </div>
+                          {movingDocId === d.id && (
+                            <div className="ad-move-panel">
+                              <span className="t-eyebrow qz-subtle">Déplacer vers un autre module</span>
+                              <Input placeholder="Recherche module (min 2 chars)..." value={moveSearch}
+                                onChange={e => { const v = e.target.value; setMoveSearch(v); setMoveSelId(null); clearTimeout(moveDebounceRef.current); moveDebounceRef.current = setTimeout(() => searchModules(v), 500) }} />
+                              {moveResults.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  {moveResults.map(m => (
+                                    <div key={m.id} className="ad-move-result" onClick={() => setMoveSelId(m.id)}
+                                      style={{ background: moveSelId === m.id ? 'var(--brand-soft)' : 'var(--surface)', color: moveSelId === m.id ? 'var(--brand-text)' : 'var(--text-muted)' }}>
+                                      {m.name}
+                                      {m.filieres?.name && <span className="t-mono qz-subtle" style={{ marginLeft: 6 }}>{m.filieres.name}{m.filieres.semester ? ` · S${m.filieres.semester}` : ''}</span>}
+                                    </div>
                                   ))}
                                 </div>
-                                <input
-                                  style={{ width:'100%', background:'var(--s2)', border:'1px solid var(--border)', borderRadius:6, padding:'6px 10px', color:'var(--text)', fontSize:'0.78rem', fontFamily:'Outfit,sans-serif', outline:'none', marginBottom:8 }}
-                                  placeholder="Raison (optionnel)..."
-                                  value={banReason}
-                                  onChange={e => setBanReason(e.target.value)}
-                                />
-                                <button onClick={() => confirmBan(u)} disabled={banBusy}
-                                  style={{ background:'rgba(248,113,113,0.12)', border:'1px solid rgba(248,113,113,0.3)', color:'var(--red)', borderRadius:6, padding:'5px 14px', fontSize:'0.76rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif' }}>
-                                  {banBusy ? 'Bannissement...' : 'Confirmer le bannissement'}
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* SENPAI MODERATION */}
-          {activeTab === 'senpai' && (
-            <>
-              <div className="section-title">// senpai zone — 100 derniers posts</div>
-              {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel" style={{height:100}}/>) :
-               flaggedPosts.length === 0 ? (
-                <div className="empty">// aucun post trouvé</div>
-               ) : (
-                <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                  {flaggedPosts.map(post => {
-                    const TYPE_COLORS = {
-                      survival_guide:'#4F8EF7', cheat_code:'#FBD34D',
-                      timeline:'#4ADE80', red_flag:'#F87171', path_review:'#C4B5FD',
-                    }
-                    const TYPE_LABELS = {
-                      survival_guide:'Guide de survie', cheat_code:'Cheat Code',
-                      timeline:'Timeline', red_flag:'Red Flag', path_review:'Bilan de parcours',
-                    }
-                    const color = TYPE_COLORS[post.post_type] || '#94A3B8'
-                    return (
-                      <div key={post.id} style={{ background:'var(--surface)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:10, padding:'1rem 1.25rem' }}>
-                        <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:12, marginBottom:10 }}>
-                          <div style={{ flex:1 }}>
-                            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6, flexWrap:'wrap' }}>
-                              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color, background:`${color}18`, padding:'2px 8px', borderRadius:4, border:`1px solid ${color}33` }}>
-                                {TYPE_LABELS[post.post_type] || post.post_type}
-                              </span>
-                              {post.is_anonymous && (
-                                <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#94A3B8', background:'rgba(148,163,184,0.08)', padding:'2px 8px', borderRadius:4, border:'1px solid rgba(148,163,184,0.15)' }}>🎭 Anonyme</span>
                               )}
-                              {!post.is_approved && <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#F87171', background:'rgba(248,113,113,0.08)', padding:'2px 8px', borderRadius:4, border:'1px solid rgba(248,113,113,0.2)' }}>⚠ Signalé</span>}
+                              <Button variant="secondary" size="sm" disabled={!moveSelId || moveBusy} onClick={() => moveDoc(d.id, moveSelId)}>{moveBusy ? 'Déplacement…' : 'Confirmer'}</Button>
                             </div>
-                            <div style={{ fontSize:'0.92rem', fontWeight:700, color:'#fff', marginBottom:4 }}>{post.title}</div>
-                            <div style={{ fontSize:'0.78rem', color:'#94A3B8', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:3, WebkitBoxOrient:'vertical', overflow:'hidden', marginBottom:8 }}>
-                              {post.content}
-                            </div>
-                            <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568' }}>
-                              Par : {post.user_profiles?.name || '—'} · {post.user_profiles?.email || '—'} · {fmt(post.created_at)}
-                            </div>
-                          </div>
-                          <div style={{ display:'flex', flexDirection:'column', gap:6, flexShrink:0 }}>
-                            <button className="act-btn act-ban" onClick={() => deletePost(post)}>✕ Supprimer</button>
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-               )}
-            </>
-          )}
-
-          {/* FILIÈRES */}
-          {activeTab === 'filieres' && (
-            <>
-              <div className="section-title">// filières</div>
-              {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               filiereList.length === 0 ? <div className="empty">// aucune filière enregistrée</div> : (
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr><th>Filière</th><th>Faculté / Université</th><th>Semestres</th><th>Ajouté le</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                      {filiereList.map(f => (
-                        <tr key={f.id}>
-                          <td>
-                            <div style={{display:'flex',alignItems:'center',gap:8}}>
-                              {isNew(f.created_at) && <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.55rem',background:'rgba(74,222,128,0.12)',color:'#4ADE80',border:'1px solid rgba(74,222,128,0.25)',borderRadius:3,padding:'1px 5px',whiteSpace:'nowrap'}}>NEW</span>}
-                              {renamingFil === f.id ? (
-                                <input value={renameFilV} onChange={e => setRenameFilV(e.target.value)}
-                                  style={{background:'var(--s2)',border:'1px solid var(--accent)',borderRadius:6,padding:'4px 8px',color:'var(--text)',fontSize:'0.8rem',fontFamily:'Outfit,sans-serif',minWidth:160}}
-                                  onKeyDown={e => e.key === 'Enter' && renameFil(f.id)} autoFocus />
-                              ) : (
-                                <div className="table-name">{f.name}</div>
-                              )}
-                            </div>
-                          </td>
-                          <td>
-                            <div>{f.faculties?.name || '—'}</div>
-                            <div className="table-mono" style={{color:'var(--text3)'}}>{f.faculties?.universities?.name || '—'}</div>
-                          </td>
-                          <td className="table-mono">{f.total_semesters ?? '—'}</td>
-                          <td className="table-mono">{fmt(f.created_at)}</td>
-                          <td>
-                            <div className="actions">
-                              {renamingFil === f.id ? (
-                                <>
-                                  <button className="act-btn act-approve" onClick={() => renameFil(f.id)}>Sauvegarder</button>
-                                  <button className="act-btn" onClick={() => setRenamingFil(null)}>Annuler</button>
-                                </>
-                              ) : (
-                                <>
-                                  <button className="act-btn" onClick={() => { setRenamingFil(f.id); setRenameFilV(f.name) }}>Renommer</button>
-                                  <button className="act-btn act-reject" onClick={() => deleteFil(f)}>Supprimer</button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* MESSAGES */}
-          {activeTab === 'messages' && (
-            <>
-              <div className="section-title">// messages des utilisateurs</div>
-              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel" style={{height:56}}/>) : (
-                <div className="msg-layout" style={{ height:'calc(100vh - 170px)', minHeight:400 }}>
-
-                  {/* Left panel — conversation list */}
-                  <div className="msg-left">
-                    <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--text3)', letterSpacing:'1.5px' }}>
-                      // CONVERSATIONS
-                    </div>
-                    {msgSenders.length === 0 && (
-                      <div className="empty" style={{padding:'3rem 1rem'}}>// aucun message</div>
-                    )}
-                    {msgSenders.map(s => {
-                      const initial = (s.name || '?')[0].toUpperCase()
-                      const isSelected = selectedMsgUser?.id === s.id
-                      const colors = ['#4F8EF7','#4F8EF7','#F59E0B','#C4B5FD','#4ADE80','#F87171']
-                      const color = colors[s.id.charCodeAt(0) % colors.length]
-                      return (
-                        <div key={s.id} onClick={() => loadThread(s)}
-                          style={{
-                            display:'flex', alignItems:'center', gap:10, padding:'12px 14px', cursor:'pointer',
-                            background: isSelected ? 'rgba(79,142,247,0.08)' : 'transparent',
-                            borderLeft: isSelected ? '3px solid var(--accent)' : '3px solid transparent',
-                            transition:'all 0.15s',
-                          }}
-                        >
-                          <div style={{ width:36, height:36, borderRadius:'50%', background:`${color}22`, border:`1px solid ${color}44`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.82rem', fontWeight:700, color, flexShrink:0 }}>
-                            {initial}
-                          </div>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
-                              <span style={{ fontSize:'0.82rem', fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.name}</span>
-                              {s.unread > 0 && (
-                                <span style={{ background:'var(--red)', color:'#fff', borderRadius:10, padding:'1px 6px', fontSize:'0.58rem', fontWeight:700, flexShrink:0, marginLeft:6, fontFamily:'DM Mono,monospace' }}>
-                                  {s.unread}
-                                </span>
-                              )}
-                            </div>
-                            <div style={{ fontSize:'0.72rem', color:'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                              {s.lastMsg?.slice(0, 42) || '—'}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* Right panel — thread */}
-                  <div className="msg-right">
-                    {!selectedMsgUser ? (
-                      <div style={{ margin:'auto', textAlign:'center', color:'var(--text3)', fontFamily:'DM Mono,monospace', fontSize:'0.72rem' }}>
-                        💬 Sélectionne une conversation
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10, flexShrink:0, background:'var(--s2)' }}>
-                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--accent2)', letterSpacing:'1px' }}>
-                            // {selectedMsgUser.name}
-                          </span>
-                        </div>
-                        <div style={{ flex:1, overflowY:'auto', padding:'14px 16px', display:'flex', flexDirection:'column', gap:8 }}>
-                          {msgThread.length === 0 && (
-                            <div style={{ margin:'auto', fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--text3)' }}>chargement...</div>
                           )}
-                          {msgThread.map(m => {
-                            const fromAdmin = m.sender_id === ADMIN_ID
-                            return (
-                              <div key={m.id} style={{ display:'flex', justifyContent: fromAdmin ? 'flex-end' : 'flex-start' }}>
-                                <div style={{
-                                  maxWidth:'72%', padding:'8px 12px',
-                                  borderRadius: fromAdmin ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
-                                  background: fromAdmin ? 'rgba(79,142,247,0.18)' : 'var(--s2)',
-                                  border: `1px solid ${fromAdmin ? 'rgba(79,142,247,0.35)' : 'var(--border)'}`,
-                                }}>
-                                  {fromAdmin && (
-                                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.56rem', color:'var(--accent2)', marginBottom:4 }}>Vous</div>
-                                  )}
-                                  <div style={{ fontSize:'0.82rem', color:'var(--text)', lineHeight:1.55, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{m.content}</div>
-                                  <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'var(--text3)', marginTop:4, textAlign: fromAdmin ? 'right' : 'left' }}>{fmt(m.created_at)}</div>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                        <div style={{ padding:'10px 12px', borderTop:'1px solid var(--border)', display:'flex', gap:8, flexShrink:0 }}>
-                          <input
-                            value={replyText}
-                            onChange={e => setReplyText(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
-                            placeholder="Répondre..."
-                            style={{ flex:1, background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 12px', color:'var(--text)', fontSize:'0.82rem', fontFamily:'Outfit,sans-serif', outline:'none', transition:'border-color 0.15s' }}
-                            onFocus={e => e.target.style.borderColor='rgba(79,142,247,0.4)'}
-                            onBlur={e => e.target.style.borderColor='var(--border)'}
-                          />
-                          <button onClick={sendReply} disabled={!replyText.trim() || replySending}
-                            style={{ background: replyText.trim() ? 'var(--accent)' : 'var(--border)', color:'#fff', border:'none', borderRadius:8, padding:'8px 16px', fontSize:'0.8rem', fontWeight:600, cursor: replyText.trim() ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}>
-                            {replySending ? '...' : 'Envoyer'}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
 
-          {/* ANALYTICS */}
-          {activeTab === 'analytics' && (
-            <>
-              <div className="section-title">// analytiques plateforme</div>
-              {loading ? Array(6).fill(0).map((_,i) => <div key={i} className="skel" style={{height:80,marginBottom:8}}/>) : analytics ? (
-                <>
-                  {/* HEALTH GRID */}
-                  <div className="section-title" style={{marginTop:0}}>// santé plateforme</div>
-                  <div className="stats-grid" style={{marginBottom:'1.5rem'}}>
-                    <div className="stat-card"><div className="stat-val blue">{analytics.totalDocs}</div><div className="stat-label">Documents total</div></div>
-                    <div className="stat-card"><div className="stat-val blue">{analytics.totalUsers}</div><div className="stat-label">Utilisateurs</div></div>
-                    <div className="stat-card"><div className="stat-val blue">{analytics.totalDownloads}</div><div className="stat-label">Téléchargements total</div></div>
-                    <div className="stat-card"><div className={`stat-val ${analytics.flaggedDocs > 0 ? 'red' : 'green'}`}>{analytics.flaggedDocs}</div><div className="stat-label">Docs signalés</div></div>
-                    <div className="stat-card"><div className="stat-val green">+{analytics.newUsers7d}</div><div className="stat-label">Nouveaux users (7j)</div></div>
-                    <div className="stat-card"><div className="stat-val green">+{analytics.newDocs7d}</div><div className="stat-label">Nouveaux docs (7j)</div></div>
-                    <div className="stat-card"><div className="stat-val blue">{analytics.activeUploaders}</div><div className="stat-label">Uploadeurs actifs</div></div>
-                  </div>
-
-                  {/* GROWTH CHARTS */}
-                  <div className="an-grid2">
-                    {[
-                      { label:'// inscriptions (30j)', data: analytics.usersPerDay, color:'var(--accent)' },
-                      { label:'// uploads (30j)', data: analytics.docsPerDay, color:'var(--teal)' },
-                    ].map(({ label, data, color }) => {
-                      const max = Math.max(...(data.map(d => Number(d.count))), 1)
-                      return (
-                        <div key={label} style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1rem 1.25rem' }}>
-                          <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'var(--text3)', letterSpacing:'1px', marginBottom:'0.75rem' }}>{label}</div>
-                          {data.length === 0 ? (
-                            <div style={{ color:'var(--text3)', fontFamily:'DM Mono,monospace', fontSize:'0.68rem', textAlign:'center', padding:'1rem 0' }}>// pas encore de données</div>
+        {activeTab === 'modules' && (
+          loading ? <Skeleton height={200} /> :
+          pendingMods.length === 0 ? <EmptyState icon="bookmark" title="Aucun module trouvé" /> : (
+            <div className="qz-table-wrap">
+              <table className="qz-table">
+                <thead><tr><th>Module</th><th>Filière</th><th>Semestre</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {pendingMods.map(m => (
+                    <tr key={m.id}>
+                      <td>
+                        {renamingId === m.id ? (
+                          <Input value={renameVal} onChange={e => setRenameVal(e.target.value)} placeholder="Nouveau nom..." />
+                        ) : (
+                          <span className="qz-table-name">{m.name}</span>
+                        )}
+                      </td>
+                      <td>
+                        <div>{m.filieres?.name || '—'}</div>
+                        <div className="qz-table-mono">{m.filieres?.faculties?.universities?.name || '—'}</div>
+                      </td>
+                      <td className="qz-table-mono">{m.semester}</td>
+                      <td>
+                        <div className="qz-table-actions">
+                          {renamingId === m.id ? (
+                            <>
+                              <Button variant="secondary" size="sm" icon="check" onClick={() => renameMod(m)}>Sauvegarder</Button>
+                              <Button variant="ghost" size="sm" onClick={() => { setRenamingId(null); setRenameVal('') }}>Annuler</Button>
+                            </>
                           ) : (
-                            <div style={{ display:'flex', alignItems:'flex-end', gap:3, height:60 }}>
-                              {data.map((d, i) => (
-                                <div key={i} title={`${d.date}: ${d.count}`} style={{ flex:1, background:color, borderRadius:'2px 2px 0 0', opacity:0.7, minHeight:2, height:`${Math.round((Number(d.count) / max) * 60)}px`, transition:'height 0.3s' }} />
-                              ))}
-                            </div>
+                            <>
+                              <Button variant="ghost" size="sm" onClick={() => { setRenamingId(m.id); setRenameVal(m.name) }}>Renommer</Button>
+                              <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => rejectMod(m)}>Supprimer</Button>
+                            </>
                           )}
                         </div>
-                      )
-                    })}
-                  </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
 
-                  {/* TOP MODULES + TOP UPLOADERS */}
-                  <div className="an-grid2">
-                    {/* Top modules */}
-                    <div>
-                      <div className="section-title">// top modules téléchargés</div>
-                      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1rem 1.25rem' }}>
-                        {analytics.topModules.length === 0
-                          ? <div className="empty" style={{padding:'1rem 0'}}>// pas de données</div>
-                          : analytics.topModules.map((m, i) => (
-                            <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-                              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color: i===0?'#F59E0B':i===1?'#94A3B8':i===2?'#CD7F32':'var(--text3)', width:20, textAlign:'right', flexShrink:0 }}>
-                                {i===0?'🥇':i===1?'🥈':i===2?'🥉':`#${i+1}`}
-                              </span>
-                              <div style={{ flex:1, minWidth:0 }}>
-                                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
-                                  <span style={{ fontSize:'0.78rem', fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.name}</span>
-                                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--accent2)', flexShrink:0, marginLeft:8 }}>{m.total} DL</span>
-                                </div>
-                                <div style={{ height:4, background:'var(--border)', borderRadius:2, overflow:'hidden' }}>
-                                  <div style={{ height:'100%', background:`linear-gradient(90deg,var(--accent),var(--teal))`, width:`${Math.round((m.total / (analytics.topModules[0]?.total || 1)) * 100)}%`, borderRadius:2 }} />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
+        {activeTab === 'schools' && (
+          <>
+            <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Universités</span></div>
+            {loading ? <Skeleton height={160} /> :
+             uniList.length === 0 ? <EmptyState icon="shield" title="Aucune université enregistrée" /> : (
+              <div className="qz-table-wrap" style={{ marginBottom: 'var(--space-6)' }}>
+                <table className="qz-table">
+                  <thead><tr><th>Nom</th><th>Ville</th><th>Type</th><th>Ajouté le</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {uniList.map(u => (
+                      <tr key={u.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                            {isNew(u.created_at) && <Badge tone="success">Nouveau</Badge>}
+                            {renamingUni === u.id ? (
+                              <Input value={renameUniV} onChange={e => setRenameUniV(e.target.value)} onKeyDown={e => e.key === 'Enter' && renameUni(u.id)} autoFocus />
+                            ) : (
+                              <span className="qz-table-name">{u.name}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="qz-table-mono">{u.city || '—'}</td>
+                        <td className="qz-table-mono">{u.type || '—'}</td>
+                        <td className="qz-table-mono">{fmt(u.created_at)}</td>
+                        <td>
+                          <div className="qz-table-actions">
+                            {renamingUni === u.id ? (
+                              <>
+                                <Button variant="secondary" size="sm" icon="check" onClick={() => renameUni(u.id)}>Sauvegarder</Button>
+                                <Button variant="ghost" size="sm" onClick={() => setRenamingUni(null)}>Annuler</Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button variant="ghost" size="sm" onClick={() => { setRenamingUni(u.id); setRenameUniV(u.name) }}>Renommer</Button>
+                                <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => deleteUni(u)}>Supprimer</Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
-                    {/* Top uploaders */}
-                    <div>
-                      <div className="section-title">// top uploadeurs</div>
-                      <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10, padding:'1rem 1.25rem' }}>
-                        {(analytics.topUploaders || []).length === 0
-                          ? <div className="empty" style={{padding:'1rem 0'}}>// pas de données</div>
-                          : (analytics.topUploaders || []).map((u, i) => (
-                            <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-                              <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--text3)', width:20, textAlign:'right', flexShrink:0 }}>#{i+1}</span>
-                              <div style={{ flex:1, minWidth:0 }}>
-                                <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
-                                  <span style={{ fontSize:'0.78rem', fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{u.name}</span>
-                                  <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--teal)', flexShrink:0, marginLeft:8 }}>{u.uploads} docs · {u.points}pts</span>
-                                </div>
-                                <div style={{ height:4, background:'var(--border)', borderRadius:2, overflow:'hidden' }}>
-                                  <div style={{ height:'100%', background:'var(--teal)', width:`${Math.round((u.uploads / ((analytics.topUploaders[0]?.uploads) || 1)) * 100)}%`, borderRadius:2 }} />
-                                </div>
-                              </div>
+            <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Facultés / écoles</span></div>
+            {loading ? <Skeleton height={160} /> :
+             facList.length === 0 ? <EmptyState icon="shield" title="Aucune faculté enregistrée" /> : (
+              <div className="qz-table-wrap">
+                <table className="qz-table">
+                  <thead><tr><th>Nom</th><th>Université</th><th>Ajouté le</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {facList.map(f => (
+                      <tr key={f.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                            {isNew(f.created_at) && <Badge tone="success">Nouveau</Badge>}
+                            {renamingFac === f.id ? (
+                              <Input value={renameFacV} onChange={e => setRenameFacV(e.target.value)} onKeyDown={e => e.key === 'Enter' && renameFac(f.id)} autoFocus />
+                            ) : (
+                              <span className="qz-table-name">{f.name}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="qz-table-mono">{f.universities?.name || '—'}</td>
+                        <td className="qz-table-mono">{fmt(f.created_at)}</td>
+                        <td>
+                          <div className="qz-table-actions">
+                            {renamingFac === f.id ? (
+                              <>
+                                <Button variant="secondary" size="sm" icon="check" onClick={() => renameFac(f.id)}>Sauvegarder</Button>
+                                <Button variant="ghost" size="sm" onClick={() => setRenamingFac(null)}>Annuler</Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button variant="ghost" size="sm" onClick={() => { setRenamingFac(f.id); setRenameFacV(f.name) }}>Renommer</Button>
+                                <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => deleteFac(f)}>Supprimer</Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'users' && (
+          loading ? <Skeleton height={200} /> :
+          users.length === 0 ? <EmptyState icon="user" title="Aucun utilisateur" /> : (
+            <div className="qz-table-wrap">
+              <table className="qz-table">
+                <thead><tr><th>Utilisateur</th><th>Points</th><th>Uploads</th><th>Inscrit le</th><th>Statut</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {users.map(u => (
+                    <Fragment key={u.id}>
+                      <tr>
+                        <td style={{ cursor: 'pointer' }} onClick={() => window.open('/user/' + u.id, '_blank')}>
+                          <div className="ad-user-row">
+                            <span className="qz-table-name">{u.name || 'Sans nom'}</span>
+                            {u.is_moderator && !u.is_admin && <Badge tone="accent">Mod</Badge>}
+                          </div>
+                          <div className="qz-table-mono">{u.email}</div>
+                        </td>
+                        <td className="qz-table-mono">{u.points || 0}</td>
+                        <td className="qz-table-mono">{u.uploads_count || 0}</td>
+                        <td className="qz-table-mono">{fmt(u.created_at)}</td>
+                        <td><Badge tone={u.is_admin ? 'brand' : u.is_banned ? 'danger' : 'success'}>{u.is_admin ? 'Admin' : u.is_banned ? 'Banni' : 'Actif'}</Badge></td>
+                        <td>
+                          <div className="qz-table-actions">
+                            <Button variant="ghost" size="sm" onClick={() => window.open('/user/' + u.id, '_blank')}>Voir profil</Button>
+                            {!u.is_admin && <Button variant={u.is_moderator ? 'secondary' : 'ghost'} size="sm" onClick={() => toggleModerator(u.id, u.is_moderator)}>{u.is_moderator ? 'Retirer mod' : '+ Modérateur'}</Button>}
+                            {!u.is_admin && u.is_banned && <Button variant="secondary" size="sm" onClick={() => unbanUser(u.id)}>Débannir</Button>}
+                            {!u.is_admin && !u.is_banned && <Button variant="danger-ghost" size="sm" onClick={() => setBanningId(banningId === u.id ? null : u.id)}>Bannir</Button>}
+                          </div>
+                        </td>
+                      </tr>
+                      {banningId === u.id && (
+                        <tr>
+                          <td colSpan={6} style={{ padding: 0, background: 'var(--surface-2)' }}>
+                            <div className="ad-ban-form" style={{ margin: 'var(--space-3) var(--space-5)' }}>
+                              <Select value={banDuration} onChange={e => setBanDuration(e.target.value)} options={[
+                                { value: '24h', label: '24 heures' }, { value: '7d', label: '7 jours' }, { value: '30d', label: '30 jours' }, { value: 'perm', label: 'Permanent' },
+                              ]} />
+                              <div className="ad-ban-reason"><Input placeholder="Raison (optionnel)" value={banReason} onChange={e => setBanReason(e.target.value)} /></div>
+                              <Button variant="danger-ghost" disabled={banBusy} onClick={() => confirmBan(u)}>{banBusy ? '...' : 'Confirmer le bannissement'}</Button>
                             </div>
-                          ))}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
+
+        {activeTab === 'senpai' && (
+          loading ? <Skeleton height={200} /> :
+          flaggedPosts.length === 0 ? <EmptyState icon="message" title="Aucun post trouvé" /> : (
+            <div className="ad-list">
+              {flaggedPosts.map(post => (
+                <Card key={post.id}>
+                  <div className="ad-post">
+                    <div className="ad-post-body">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-2)' }}>
+                        <Badge tone={TYPE_TONES[post.post_type] || 'neutral'}>{TYPE_LABELS[post.post_type] || post.post_type}</Badge>
+                        {post.is_anonymous && <Badge>Anonyme</Badge>}
+                        {!post.is_approved && <Badge tone="danger" icon="alert">Signalé</Badge>}
                       </div>
+                      <h3 className="t-h3" style={{ marginBottom: 4 }}>{post.title}</h3>
+                      <p className="t-body-sm qz-muted" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 'var(--space-2)' }}>{post.content}</p>
+                      <span className="t-mono qz-subtle">Par : {post.user_profiles?.name || '—'} · {post.user_profiles?.email || '—'} · {fmt(post.created_at)}</span>
+                    </div>
+                    <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => deletePost(post)}>Supprimer</Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )
+        )}
+
+        {activeTab === 'filieres' && (
+          loading ? <Skeleton height={200} /> :
+          filiereList.length === 0 ? <EmptyState icon="file" title="Aucune filière enregistrée" /> : (
+            <div className="qz-table-wrap">
+              <table className="qz-table">
+                <thead><tr><th>Filière</th><th>Faculté / Université</th><th>Semestres</th><th>Ajouté le</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {filiereList.map(f => (
+                    <tr key={f.id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                          {isNew(f.created_at) && <Badge tone="success">Nouveau</Badge>}
+                          {renamingFil === f.id ? (
+                            <Input value={renameFilV} onChange={e => setRenameFilV(e.target.value)} onKeyDown={e => e.key === 'Enter' && renameFil(f.id)} autoFocus />
+                          ) : (
+                            <span className="qz-table-name">{f.name}</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div>{f.faculties?.name || '—'}</div>
+                        <div className="qz-table-mono">{f.faculties?.universities?.name || '—'}</div>
+                      </td>
+                      <td className="qz-table-mono">{f.total_semesters ?? '—'}</td>
+                      <td className="qz-table-mono">{fmt(f.created_at)}</td>
+                      <td>
+                        <div className="qz-table-actions">
+                          {renamingFil === f.id ? (
+                            <>
+                              <Button variant="secondary" size="sm" icon="check" onClick={() => renameFil(f.id)}>Sauvegarder</Button>
+                              <Button variant="ghost" size="sm" onClick={() => setRenamingFil(null)}>Annuler</Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button variant="ghost" size="sm" onClick={() => { setRenamingFil(f.id); setRenameFilV(f.name) }}>Renommer</Button>
+                              <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => deleteFil(f)}>Supprimer</Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        )}
+
+        {activeTab === 'messages' && (
+          loading ? <Skeleton height={200} /> : (
+            <div className="ad-msg-layout">
+              <div className="ad-msg-left">
+                <div className="t-eyebrow qz-subtle" style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--border)' }}>Conversations</div>
+                {msgSenders.length === 0 && <div style={{ padding: 'var(--space-8) var(--space-4)' }}><EmptyState icon="inbox" title="Aucun message" /></div>}
+                {msgSenders.map(s => (
+                  <div key={s.id} className="qz-inbox-row" onClick={() => loadThread(s)} style={{ background: selectedMsgUser?.id === s.id ? 'var(--surface-2)' : undefined }}>
+                    <Avatar name={s.name} size="sm" />
+                    <div className="qz-inbox-row__main">
+                      <div className="qz-inbox-row__top">
+                        <span className="qz-inbox-row__name">{s.name}</span>
+                        {s.unread > 0 && <span className="qz-inbox-row__unread">{s.unread}</span>}
+                      </div>
+                      <p className="qz-inbox-row__preview">{s.lastMsg?.slice(0, 42) || '—'}</p>
                     </div>
                   </div>
-                </>
-              ) : !loading && <div className="empty">// données non disponibles</div>}
+                ))}
+              </div>
+              <div className="ad-msg-right">
+                {!selectedMsgUser ? (
+                  <div className="ad-msg-empty"><span className="t-mono qz-subtle">Sélectionne une conversation</span></div>
+                ) : (
+                  <>
+                    <div className="ad-msg-head"><span className="t-eyebrow qz-subtle">{selectedMsgUser.name}</span></div>
+                    <div className="qz-chat__body ad-msg-thread">
+                      {msgThread.length === 0 && <span className="t-mono qz-subtle" style={{ margin: 'auto' }}>Chargement…</span>}
+                      {msgThread.map(m => {
+                        const fromAdmin = m.sender_id === ADMIN_ID
+                        return (
+                          <div key={m.id} style={{ display: 'flex', justifyContent: fromAdmin ? 'flex-end' : 'flex-start' }}>
+                            <div className={`qz-bubble qz-bubble--${fromAdmin ? 'out' : 'in'}`}>
+                              {fromAdmin && <div className="t-caption qz-subtle" style={{ marginBottom: 4 }}>Vous</div>}
+                              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</div>
+                              <time>{fmt(m.created_at)}</time>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="ad-msg-compose">
+                      <Input
+                        value={replyText}
+                        onChange={e => setReplyText(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
+                        placeholder="Répondre..."
+                      />
+                      <Button variant="primary" icon="send" iconOnly aria-label="Envoyer" onClick={sendReply} disabled={!replyText.trim() || replySending} loading={replySending} />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )
+        )}
+
+        {activeTab === 'analytics' && (
+          loading ? <Skeleton height={300} /> : analytics ? (
+            <>
+              <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Santé plateforme</span></div>
+              <StatStrip items={[
+                { value: analytics.totalDocs, label: 'Documents total' },
+                { value: analytics.totalUsers, label: 'Utilisateurs' },
+                { value: analytics.totalDownloads, label: 'Téléchargements total' },
+                { value: analytics.flaggedDocs, label: 'Docs signalés' },
+                { value: '+' + analytics.newUsers7d, label: 'Nouveaux users (7j)' },
+                { value: '+' + analytics.newDocs7d, label: 'Nouveaux docs (7j)' },
+                { value: analytics.activeUploaders, label: 'Uploadeurs actifs' },
+              ]} />
+
+              <div className="ad-charts" style={{ marginTop: 'var(--space-6)' }}>
+                {[
+                  { label: 'Inscriptions (30j)', data: analytics.usersPerDay },
+                  { label: 'Uploads (30j)', data: analytics.docsPerDay },
+                ].map(({ label, data }) => {
+                  const max = Math.max(...(data.map(d => Number(d.count))), 1)
+                  return (
+                    <div className="ad-chart-card" key={label}>
+                      <span className="t-eyebrow qz-subtle">{label}</span>
+                      {data.length === 0 ? (
+                        <div style={{ padding: 'var(--space-4) 0' }}><span className="t-mono qz-subtle">Pas encore de données</span></div>
+                      ) : (
+                        <div className="ad-bars" style={{ marginTop: 'var(--space-3)' }}>
+                          {data.map((d, i) => (
+                            <div key={i} className="ad-bar" title={`${d.date}: ${d.count}`} style={{ height: `${Math.round((Number(d.count) / max) * 60)}px` }} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <div className="ad-charts">
+                <div>
+                  <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Top modules téléchargés</span></div>
+                  <Card>
+                    {analytics.topModules.length === 0 ? <EmptyState icon="bookmark" title="Pas de données" /> : analytics.topModules.map((m, i) => (
+                      <div className="ad-rank-row" key={i}>
+                        <span className="ad-rank-num">#{i + 1}</span>
+                        <div className="ad-rank-body">
+                          <div className="ad-rank-top"><span className="ad-rank-name">{m.name}</span><span className="ad-rank-val">{m.total} DL</span></div>
+                          <ProgressBar value={Math.round((m.total / (analytics.topModules[0]?.total || 1)) * 100)} />
+                        </div>
+                      </div>
+                    ))}
+                  </Card>
+                </div>
+                <div>
+                  <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Top uploadeurs</span></div>
+                  <Card>
+                    {(analytics.topUploaders || []).length === 0 ? <EmptyState icon="user" title="Pas de données" /> : (analytics.topUploaders || []).map((u, i) => (
+                      <div className="ad-rank-row" key={i}>
+                        <span className="ad-rank-num">#{i + 1}</span>
+                        <div className="ad-rank-body">
+                          <div className="ad-rank-top"><span className="ad-rank-name">{u.name}</span><span className="ad-rank-val">{u.uploads} docs · {u.points} pts</span></div>
+                          <ProgressBar value={Math.round((u.uploads / ((analytics.topUploaders[0]?.uploads) || 1)) * 100)} />
+                        </div>
+                      </div>
+                    ))}
+                  </Card>
+                </div>
+              </div>
             </>
-          )}
+          ) : <EmptyState icon="up" title="Données non disponibles" />
+        )}
+      </PanelLayout>
 
-        </main>
-      </div>
       {modal && <ConfirmModal {...modal} onCancel={modal.onCancel !== undefined ? modal.onCancel : () => setModal(null)} />}
     </div>
   )

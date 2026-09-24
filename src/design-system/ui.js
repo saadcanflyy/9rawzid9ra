@@ -121,11 +121,12 @@ import React from 'react';
 
   /* ---- Tabs ---- */
   function Tabs(props) {
+    var controlled = props.value !== undefined;
     var init = props.value || (props.items && props.items[0] && props.items[0].id);
-    var st = useState(init); var cur = st[0]; var set = st[1];
+    var st = useState(init); var cur = controlled ? props.value : st[0]; var set = st[1];
     return h('div', { className: cx('qz-tabs', props.variant === 'pill' && 'qz-tabs--pill'), role: 'tablist', 'aria-label': props.label },
       (props.items || []).map(function (it) {
-        return h('button', { key: it.id, className: 'qz-tab', role: 'tab', type: 'button', 'aria-selected': cur === it.id ? 'true' : 'false', onClick: function () { set(it.id); if (props.onChange) props.onChange(it.id); } },
+        return h('button', { key: it.id, className: 'qz-tab', role: 'tab', type: 'button', 'aria-selected': cur === it.id ? 'true' : 'false', onClick: function () { if (!controlled) set(it.id); if (props.onChange) props.onChange(it.id); } },
           it.label, it.count != null ? h('span', { className: 'qz-count' }, it.count) : null);
       }));
   }

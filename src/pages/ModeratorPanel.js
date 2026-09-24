@@ -2,149 +2,43 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import ConfirmModal from '../components/ConfirmModal'
+import PanelLayout from '../components/PanelLayout'
+import { Button, Input, Select, Badge, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, Banner } from '../design-system/ui'
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  :root {
-    --bg:#02040A; --surface:#070C18; --s2:#0C1222; --s3:#111827;
-    --border:#1C2A45; --borderhi:#2D4A7A;
-    --accent:#4F8EF7; --accent2:#7BB3FF; --teal:#2DD4BF; --teal2:#5EEAD4;
-    --red:#F87171; --yellow:#FBD34D; --green:#4ADE80;
-    --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
-  }
-
-  html,body { background:var(--bg); font-family:'Outfit',sans-serif; min-height:100vh; }
-  .page { min-height:100vh; display:flex; flex-direction:column; }
-
-  /* NAV */
-  .nav {
-    position:sticky; top:0; z-index:100; height:58px;
-    display:flex; align-items:center; justify-content:space-between; padding:0 2rem;
-    background:rgba(2,4,10,0.95); backdrop-filter:blur(32px); border-bottom:1px solid var(--border);
-  }
-  .nav-left { display:flex; align-items:center; gap:1.5rem; }
-  .logo { display:flex; align-items:center; gap:10px; cursor:pointer; }
-  .logo-box { width:28px; height:28px; border-radius:6px; background:linear-gradient(135deg,var(--accent),var(--teal)); }
-  .logo-text { font-family:'DM Mono',monospace; font-size:0.88rem; color:var(--white); }
-  .logo-text b { color:var(--accent2); font-weight:500; }
-  .nav-divider { width:1px; height:20px; background:var(--border); }
-  .mod-badge {
-    font-family:'DM Mono',monospace; font-size:0.62rem;
-    background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.25);
-    color:var(--teal2); padding:3px 10px; border-radius:4px; letter-spacing:1px;
-  }
-  .nav-right { display:flex; gap:8px; align-items:center; }
-  .nav-user { font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text3); }
-  .btn-ghost { background:none; border:1px solid var(--border); color:var(--text2); padding:5px 14px; border-radius:7px; font-size:0.8rem; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; }
-  .btn-ghost:hover { border-color:var(--borderhi); color:var(--text); }
-
-  /* LAYOUT */
-  .layout { display:flex; flex:1; height:calc(100vh - 58px); overflow:hidden; }
-
-  /* SIDEBAR */
-  .sidebar { width:220px; flex-shrink:0; border-right:1px solid var(--border); background:var(--surface); padding:1.25rem; }
-  .sidebar-title { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--teal2); letter-spacing:2px; text-transform:uppercase; margin-bottom:1rem; }
-  .nav-item {
-    display:flex; align-items:center; justify-content:space-between;
-    padding:9px 12px; border-radius:8px; cursor:pointer; transition:all 0.15s;
-    margin-bottom:3px; border:1px solid transparent;
-  }
-  .nav-item:hover { background:var(--s2); }
-  .nav-item.active { background:rgba(79,142,247,0.06); border-color:rgba(79,142,247,0.15); }
-  .nav-item-left { display:flex; align-items:center; gap:8px; }
-  .nav-item-icon { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); width:16px; }
-  .nav-item.active .nav-item-icon { color:var(--teal2); }
-  .nav-item-label { font-size:0.82rem; color:var(--text2); font-weight:500; }
-  .nav-item.active .nav-item-label { color:var(--white); }
-  .nav-badge {
-    font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:700;
-    background:rgba(248,113,113,0.15); color:var(--red); border:1px solid rgba(248,113,113,0.2);
-    padding:1px 7px; border-radius:4px; min-width:20px; text-align:center;
-  }
-  .nav-badge.yellow { background:rgba(251,211,77,0.1); color:var(--yellow); border-color:rgba(251,211,77,0.2); }
-
-  /* MAIN */
-  .main { flex:1; overflow-y:auto; padding:1.75rem 2rem; }
-  .section-title { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--teal2); letter-spacing:2px; text-transform:uppercase; margin-bottom:1.25rem; }
-
-  /* TABLE */
-  .table-wrap { overflow-x:auto; border-radius:10px; border:1px solid var(--border); }
-  .table { width:100%; border-collapse:collapse; }
-  .table th { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); text-transform:uppercase; letter-spacing:1px; padding:10px 14px; text-align:left; background:var(--s2); border-bottom:1px solid var(--border); }
-  .table td { padding:11px 14px; border-bottom:1px solid rgba(28,42,69,0.5); vertical-align:middle; }
-  .table tr:last-child td { border-bottom:none; }
-  .table tr:hover td { background:rgba(255,255,255,0.012); }
-  .table-name { font-size:0.82rem; font-weight:600; color:var(--text); }
-  .table-mono { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text2); }
-
-  /* ACTIONS */
-  .actions { display:flex; gap:6px; flex-wrap:wrap; }
-  .act-btn { border:none; border-radius:6px; padding:4px 10px; font-size:0.72rem; font-weight:600; cursor:pointer; font-family:'DM Mono',monospace; transition:all 0.15s; }
-  .act-view    { background:rgba(79,142,247,0.08); color:var(--accent2); border:1px solid rgba(79,142,247,0.2); }
-  .act-view:hover { background:rgba(79,142,247,0.15); }
-  .act-approve { background:rgba(74,222,128,0.08); color:var(--green); border:1px solid rgba(74,222,128,0.2); }
-  .act-approve:hover { background:rgba(74,222,128,0.15); }
-  .act-reject  { background:rgba(248,113,113,0.08); color:var(--red); border:1px solid rgba(248,113,113,0.2); }
-  .act-reject:hover { background:rgba(248,113,113,0.15); }
-  .act-rename  { background:rgba(251,211,77,0.08); color:var(--yellow); border:1px solid rgba(251,211,77,0.2); }
-  .act-rename:hover { background:rgba(251,211,77,0.15); }
-
-  /* BADGES */
-  .badge { font-family:'DM Mono',monospace; font-size:0.6rem; padding:2px 8px; border-radius:4px; font-weight:700; letter-spacing:0.5px; }
-  .badge-pending  { background:rgba(251,211,77,0.1); color:var(--yellow); border:1px solid rgba(251,211,77,0.2); }
-  .badge-approved { background:rgba(74,222,128,0.1); color:var(--green); border:1px solid rgba(74,222,128,0.2); }
-  .badge-rejected { background:rgba(248,113,113,0.1); color:var(--red); border:1px solid rgba(248,113,113,0.2); }
-  .badge-verified { background:rgba(79,142,247,0.1); color:var(--accent2); border:1px solid rgba(79,142,247,0.2); }
-  .badge-flagged  { background:rgba(248,113,113,0.1); color:var(--red); border:1px solid rgba(248,113,113,0.2); }
-
-  /* STAT CARDS */
-  .stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-bottom:1.75rem; }
-  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1rem 1.25rem; }
-  .stat-n { font-size:1.6rem; font-weight:700; color:var(--white); font-family:'DM Mono',monospace; line-height:1; margin-bottom:4px; }
-  .stat-l { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; }
-
-  /* SKEL */
-  .skel { background:linear-gradient(90deg,var(--surface) 25%,var(--s2) 50%,var(--surface) 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; border-radius:8px; height:48px; margin-bottom:8px; }
-  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  .empty { font-family:'DM Mono',monospace; font-size:0.75rem; color:var(--text3); padding:2rem; text-align:center; }
-
-  /* DENIED */
-  .denied { text-align:center; padding:3rem; }
-  .denied-code { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); letter-spacing:2px; margin-bottom:1rem; }
-  .denied-title { font-size:1.4rem; font-weight:700; color:var(--white); margin-bottom:0.5rem; }
-  .denied-desc { font-size:0.85rem; color:var(--text2); }
-
-  /* MODULE ADD FORM */
-  .add-mod-form { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:1.25rem; margin-bottom:1.25rem; }
-  .add-mod-row { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; }
-  .field-label { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px; }
-  .field-input { background:var(--s2); border:1px solid var(--border); border-radius:7px; padding:8px 12px; color:var(--text); font-size:0.82rem; font-family:'Outfit',sans-serif; outline:none; transition:border-color 0.15s; }
-  .field-input:focus { border-color:var(--teal); }
-  .field-input::placeholder { color:var(--text3); }
-  .rename-input { background:var(--s2); border:1px solid var(--teal); border-radius:6px; padding:5px 10px; color:var(--text); font-size:0.8rem; font-family:'Outfit',sans-serif; outline:none; width:200px; }
-
-  /* OVERVIEW GRID */
-  .overview-cols { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
-  .overview-col-title { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:0.85rem; }
-
-  /* MESSAGES RESPONSIVE */
-  .msg-layout { display:flex; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
-  .msg-left   { width:280px; flex-shrink:0; border-right:1px solid var(--border); display:flex; flex-direction:column; background:var(--surface); overflow-y:auto; }
-  .msg-right  { flex:1; display:flex; flex-direction:column; background:var(--surface); overflow:hidden; min-width:0; }
-  @media(max-width:700px) {
-    .msg-layout { flex-direction:column; height:auto !important; }
-    .msg-left   { width:100%; max-height:220px; border-right:none; border-bottom:1px solid var(--border); }
-    .msg-right  { min-height:320px; }
-  }
-
-  @media(max-width:900px) {
-    .layout { flex-direction:column; height:auto; overflow:visible; }
-    .sidebar { width:100%; height:auto; border-right:none; border-bottom:1px solid var(--border); display:flex; flex-wrap:wrap; gap:4px; padding:0.75rem; }
-    .sidebar-title { display:none; }
-    .overview-cols { grid-template-columns:1fr; }
+  .mp-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-4); }
+  .mp-add-form { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-5); }
+  .mp-field { width: 200px; }
+  .mp-search { max-width: 320px; margin-bottom: var(--space-4); }
+  .mp-list { display: flex; flex-direction: column; gap: var(--space-3); }
+  .mp-post { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); }
+  .mp-post-body { flex: 1; min-width: 0; }
+  .mp-post-actions { display: flex; flex-direction: column; gap: var(--space-2); flex-shrink: 0; }
+  .mp-user-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-2); }
+  .mp-user-meta { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .mp-ban-form { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-top: var(--space-3); padding: var(--space-3); background: var(--surface-2); border-radius: var(--radius-md); }
+  .mp-ban-reason { flex: 1; min-width: 160px; }
+  .mp-msg-layout { display: flex; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; height: calc(100vh - 260px); min-height: 420px; }
+  .mp-msg-left { width: 280px; flex-shrink: 0; border-right: 1px solid var(--border); overflow-y: auto; background: var(--surface); }
+  .mp-msg-right { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--surface); }
+  .mp-msg-empty { margin: auto; }
+  .mp-msg-head { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); background: var(--surface-2); }
+  .mp-msg-thread { flex: 1; overflow-y: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+  .mp-msg-compose { display: flex; gap: var(--space-2); padding: var(--space-3); border-top: 1px solid var(--border); flex-shrink: 0; }
+  .mp-msg-compose .qz-field { flex: 1; }
+  @media (max-width: 700px) {
+    .mp-msg-layout { flex-direction: column; height: auto; }
+    .mp-msg-left { width: 100%; max-height: 220px; border-bottom: 1px solid var(--border); }
+    .mp-msg-right { min-height: 320px; }
   }
 `
+
+const TYPE_TONES = { survival_guide: 'brand', cheat_code: 'warning', timeline: 'success', red_flag: 'danger', path_review: 'accent' }
+const TYPE_LABELS = { survival_guide: 'Guide de survie', cheat_code: 'Cheat Code', timeline: 'Timeline', red_flag: 'Red Flag', path_review: 'Bilan de parcours' }
+const LEVEL_TONE = { Légende: 'founder', Senpai: 'accent', Contributeur: 'brand', Étudiant: 'neutral' }
+const RT_LABEL = { independent: 'École indép.', faculty: 'Faculté', university_with_faculties: 'Université' }
+const RT_TONE = { independent: 'brand', faculty: 'accent', university_with_faculties: 'warning' }
+const STATUS_TONE = { pending: 'warning', approved: 'success', rejected: 'danger' }
 
 export default function ModeratorPanel() {
   const navigate = useNavigate()
@@ -324,7 +218,7 @@ export default function ModeratorPanel() {
     setUsers(prev => prev.map(x => x.id === id ? { ...x, is_banned: false, banned_until: null, ban_reason: null } : x))
   }
 
-  const getLevel = (pts) => pts >= 600 ? {l:'Légende',c:'rank-legende'} : pts >= 300 ? {l:'Senpai',c:'rank-senpai'} : pts >= 100 ? {l:'Contributeur',c:'rank-contrib'} : {l:'Étudiant',c:'rank-etudiant'}
+  const getLevel = (pts) => pts >= 600 ? 'Légende' : pts >= 300 ? 'Senpai' : pts >= 100 ? 'Contributeur' : 'Étudiant'
 
   const verifyDoc = async (id) => {
     // Only award points if this was a held-for-review upload that never got
@@ -457,522 +351,368 @@ export default function ModeratorPanel() {
     setModules(data || [])
   }
 
-  const TYPE_COLORS = { survival_guide:'#4F8EF7', cheat_code:'#FBD34D', timeline:'#4ADE80', red_flag:'#F87171', path_review:'#C4B5FD' }
-  const TYPE_LABELS = { survival_guide:'Guide de survie', cheat_code:'Cheat Code', timeline:'Timeline', red_flag:'Red Flag', path_review:'Bilan de parcours' }
+  if (authLoading) {
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="t-mono qz-subtle">Chargement…</span></div>
+  }
 
-  if (authLoading) return (
-    <div className="page"><style>{css}</style>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh',fontFamily:'DM Mono',fontSize:'0.75rem',color:'var(--text3)'}}>Chargement...</div>
-    </div>
-  )
-
-  if (!user || !profile || (!profile.is_moderator && !profile.is_admin)) return (
-    <div className="page"><style>{css}</style>
-      <div style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}>
-        <div className="denied">
-          <div className="denied-code">// 403 — access forbidden</div>
-          <div className="denied-title">Accès non autorisé</div>
-          <div className="denied-desc">Cette page est réservée aux modérateurs.</div>
-          <button style={{marginTop:'1.5rem',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',padding:'8px 20px',borderRadius:8,cursor:'pointer',fontSize:'0.82rem',fontFamily:'Outfit,sans-serif'}} onClick={() => navigate('/')}>Retour à l'accueil</button>
-        </div>
-      </div>
-    </div>
-  )
+  if (!user || !profile || (!profile.is_moderator && !profile.is_admin)) {
+    return <div><style>{css}</style><PanelLayout denied /></div>
+  }
 
   const TABS = [
-    { k:'overview',  label:'Vue d\'ensemble', icon:'~>' },
-    { k:'documents', label:'Documents signalés', icon:'[]', count: stats?.flaggedDocs },
-    { k:'senpai',    label:'Senpai Zone', icon:'🧠', count: stats?.flaggedPosts },
-    { k:'schools',   label:'Écoles', icon:'@', count: stats?.pendingSchools },
-    { k:'filieres',  label:'Filières', icon:'≡', count: stats?.pendingFils },
-    { k:'modules',   label:'Modules', icon:'#' },
-    { k:'users',     label:'Utilisateurs', icon:'::' },
-    { k:'messages',  label:'Messages', icon:'✉', count: unreadMsgCount },
+    { id: 'overview',  label: "Vue d'ensemble", icon: 'monitor' },
+    { id: 'documents', label: 'Documents signalés', icon: 'flag', count: stats?.flaggedDocs },
+    { id: 'senpai',    label: 'Senpai Zone', icon: 'message', count: stats?.flaggedPosts },
+    { id: 'schools',   label: 'Écoles', icon: 'shield', count: stats?.pendingSchools },
+    { id: 'filieres',  label: 'Filières', icon: 'file', count: stats?.pendingFils },
+    { id: 'modules',   label: 'Modules', icon: 'bookmark' },
+    { id: 'users',     label: 'Utilisateurs', icon: 'user' },
+    { id: 'messages',  label: 'Messages', icon: 'inbox', count: unreadMsgCount },
   ]
 
+  const TITLES = {
+    overview: ["Vue d'ensemble", 'Ce qui a besoin de ton attention.'],
+    documents: ['Documents signalés', 'Vérifie ou supprime les documents signalés par la communauté.'],
+    senpai: ['Senpai Zone', 'Posts signalés en attente de modération.'],
+    schools: ['Écoles', "Demandes d'ajout — lecture seule."],
+    filieres: ['Filières', "Demandes d'ajout — lecture seule."],
+    modules: ['Modules', 'Ajoute, renomme ou recherche un module.'],
+    users: ['Utilisateurs', 'Gère les bannissements.'],
+    messages: ['Messages', 'Réponds aux utilisateurs.'],
+  }
+
   return (
-    <div className="page">
+    <div>
       <style>{css}</style>
-
-      <nav className="nav">
-        <div className="nav-left">
-          <div className="logo" onClick={() => navigate('/')}><div className="logo-box"/><span className="logo-text">9raw<b>Zid</b>9ra</span></div>
-          <div className="nav-divider"/>
-          <span className="mod-badge">MODÉRATEUR</span>
-        </div>
-        <div className="nav-right">
-          <span className="nav-user">{profile?.name || ''}</span>
-          <button className="btn-ghost" onClick={() => navigate('/')}>Retour au site</button>
-        </div>
-      </nav>
-
-      <div className="layout">
-        <aside className="sidebar">
-          <div className="sidebar-title">// panneau modérateur</div>
-          {TABS.map(t => (
-            <div key={t.k} className={`nav-item ${activeTab===t.k?'active':''}`} onClick={() => setActiveTab(t.k)}>
-              <div className="nav-item-left">
-                <span className="nav-item-icon">{t.icon}</span>
-                <span className="nav-item-label">{t.label}</span>
+      <PanelLayout
+        role="moderator"
+        tabs={TABS}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userName={profile?.name}
+        title={TITLES[activeTab]?.[0]}
+        subtitle={TITLES[activeTab]?.[1]}
+      >
+        {activeTab === 'overview' && (
+          <>
+            <StatStrip items={[
+              { value: stats?.flaggedDocs ?? '—', label: 'Docs signalés' },
+              { value: stats?.flaggedPosts ?? '—', label: 'Posts signalés' },
+              { value: stats?.pendingSchools ?? '—', label: 'Écoles en attente' },
+              { value: stats?.pendingFils ?? '—', label: 'Filières en attente' },
+              { value: stats?.totalModules ?? '—', label: 'Modules total' },
+              { value: stats?.totalUsers ?? '—', label: 'Utilisateurs' },
+            ]} />
+            {(stats?.flaggedDocs > 0 || stats?.flaggedPosts > 0 || stats?.pendingSchools > 0 || stats?.pendingFils > 0) && (
+              <div className="mp-actions">
+                {stats?.flaggedDocs > 0 && <Button variant="danger-ghost" icon="flag" onClick={() => setActiveTab('documents')}>{stats.flaggedDocs} doc{stats.flaggedDocs > 1 ? 's' : ''} signalé{stats.flaggedDocs > 1 ? 's' : ''}</Button>}
+                {stats?.flaggedPosts > 0 && <Button variant="danger-ghost" icon="flag" onClick={() => setActiveTab('senpai')}>{stats.flaggedPosts} post{stats.flaggedPosts > 1 ? 's' : ''} signalé{stats.flaggedPosts > 1 ? 's' : ''}</Button>}
+                {stats?.pendingSchools > 0 && <Button variant="secondary" onClick={() => setActiveTab('schools')}>Voir {stats.pendingSchools} école{stats.pendingSchools > 1 ? 's' : ''}</Button>}
+                {stats?.pendingFils > 0 && <Button variant="secondary" onClick={() => setActiveTab('filieres')}>Voir {stats.pendingFils} filière{stats.pendingFils > 1 ? 's' : ''}</Button>}
               </div>
-              {t.count > 0 && <span className={`nav-badge ${t.k==='schools'||t.k==='filieres'?'yellow':''}`}>{t.count}</span>}
+            )}
+          </>
+        )}
+
+        {activeTab === 'documents' && (
+          loading ? <Skeleton height={200} /> :
+          flaggedDocs.length === 0 ? <EmptyState icon="flag" title="Aucun document signalé" /> : (
+            <div className="qz-table-wrap">
+              <table className="qz-table">
+                <thead><tr><th>Document</th><th>Module</th><th>Uploadé par</th><th>Signalements</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {flaggedDocs.map(d => (
+                    <tr key={d.id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                          <DocType type={d.doc_type} size="lg" />
+                          <div>
+                            <div className="qz-table-name">{d.academic_year}</div>
+                            <div className="qz-table-mono">{d.pages_count} page{d.pages_count > 1 ? 's' : ''} · {d.file_type}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div>{d.module_name}</div>
+                        <div className="qz-table-mono">{d.fac_name}</div>
+                      </td>
+                      <td className="qz-table-mono">{d.uploader_name || 'Anonyme'}</td>
+                      <td>
+                        {d.report_count > 0 ? (
+                          <Badge tone="danger" icon="flag">{d.report_count} signalement{d.report_count > 1 ? 's' : ''}</Badge>
+                        ) : d.flag_reason ? (
+                          <Badge tone="warning" icon="alert">{d.flag_reason}</Badge>
+                        ) : null}
+                      </td>
+                      <td>
+                        <div className="qz-table-actions">
+                          {d.files?.[0] && <Button as="a" href={d.files[0]} target="_blank" rel="noreferrer" variant="secondary" size="sm" icon="eye">Voir</Button>}
+                          <Button variant="secondary" size="sm" icon="check" onClick={() => verifyDoc(d.id)}>Vérifier</Button>
+                          <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => deleteDoc(d)}>Supprimer</Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </aside>
+          )
+        )}
 
-        <main className="main">
-
-          {/* OVERVIEW */}
-          {activeTab === 'overview' && (
-            <>
-              <div className="section-title">// vue d'ensemble</div>
-              <div className="stats-grid">
-                <div className="stat-card"><div className="stat-n" style={{color:'var(--red)'}}>{stats?.flaggedDocs ?? '—'}</div><div className="stat-l">Docs signalés</div></div>
-                <div className="stat-card"><div className="stat-n" style={{color:'var(--red)'}}>{stats?.flaggedPosts ?? '—'}</div><div className="stat-l">Posts signalés</div></div>
-                <div className="stat-card"><div className="stat-n" style={{color:'var(--yellow)'}}>{stats?.pendingSchools ?? '—'}</div><div className="stat-l">Écoles en attente</div></div>
-                <div className="stat-card"><div className="stat-n" style={{color:'var(--yellow)'}}>{stats?.pendingFils ?? '—'}</div><div className="stat-l">Filières en attente</div></div>
-                <div className="stat-card"><div className="stat-n" style={{color:'var(--accent2)'}}>{stats?.totalModules ?? '—'}</div><div className="stat-l">Modules total</div></div>
-                <div className="stat-card"><div className="stat-n" style={{color:'var(--teal2)'}}>{stats?.totalUsers ?? '—'}</div><div className="stat-l">Utilisateurs</div></div>
-              </div>
-              {(stats?.flaggedDocs > 0 || stats?.flaggedPosts > 0) && (
-                <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-                  {stats?.flaggedDocs > 0 && <button className="act-btn act-reject" style={{padding:'10px 20px',fontSize:'0.82rem'}} onClick={() => setActiveTab('documents')}>⚠ {stats.flaggedDocs} doc{stats.flaggedDocs>1?'s':''} signalé{stats.flaggedDocs>1?'s':''}</button>}
-                  {stats?.flaggedPosts > 0 && <button className="act-btn act-reject" style={{padding:'10px 20px',fontSize:'0.82rem'}} onClick={() => setActiveTab('senpai')}>⚠ {stats.flaggedPosts} post{stats.flaggedPosts>1?'s':''} signalé{stats.flaggedPosts>1?'s':''}</button>}
-                  {stats?.pendingSchools > 0 && <button className="act-btn act-rename" style={{padding:'10px 20px',fontSize:'0.82rem'}} onClick={() => setActiveTab('schools')}>Voir {stats.pendingSchools} école{stats.pendingSchools>1?'s':''}</button>}
-                  {stats?.pendingFils > 0 && <button className="act-btn act-rename" style={{padding:'10px 20px',fontSize:'0.82rem'}} onClick={() => setActiveTab('filieres')}>Voir {stats.pendingFils} filière{stats.pendingFils>1?'s':''}</button>}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* DOCUMENTS */}
-          {activeTab === 'documents' && (
-            <>
-              <div className="section-title">// documents signalés</div>
-              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               flaggedDocs.length === 0 ? <div className="empty">// aucun document signalé</div> : (
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr><th>Document</th><th>Module</th><th>Uploadé par</th><th>Signalements</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                      {flaggedDocs.map(d => (
-                        <tr key={d.id}>
-                          <td>
-                            <div className="table-name">{d.doc_type?.toUpperCase()} — {d.academic_year}</div>
-                            <div className="table-mono" style={{color:'var(--text3)'}}>{d.pages_count} page{d.pages_count>1?'s':''} · {d.file_type}</div>
-                          </td>
-                          <td>
-                            <div>{d.module_name}</div>
-                            <div className="table-mono" style={{color:'var(--text3)'}}>{d.fac_name}</div>
-                          </td>
-                          <td className="table-mono">{d.uploader_name || 'Anonyme'}</td>
-                          <td>
-                            {d.report_count > 0 ? (
-                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.68rem',background:'rgba(248,113,113,0.1)',color:'var(--red)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:4,padding:'2px 8px'}}>
-                                🚩 {d.report_count} signalement{d.report_count>1?'s':''}
-                              </span>
-                            ) : d.flag_reason ? (
-                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.65rem',background:'rgba(251,211,77,0.1)',color:'var(--yellow)',border:'1px solid rgba(251,211,77,0.2)',borderRadius:4,padding:'2px 8px',display:'inline-block',maxWidth:220}}>
-                                🔍 {d.flag_reason}
-                              </span>
-                            ) : null}
-                          </td>
-                          <td>
-                            <div className="actions">
-                              {d.files?.[0] && <a href={d.files[0]} target="_blank" rel="noreferrer"><button className="act-btn act-view">Voir</button></a>}
-                              <button className="act-btn act-approve" onClick={() => verifyDoc(d.id)}>Vérifier ✓</button>
-                              <button className="act-btn act-reject" onClick={() => deleteDoc(d)}>Supprimer</button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* SENPAI */}
-          {activeTab === 'senpai' && (
-            <>
-              <div className="section-title">// senpai zone — posts signalés</div>
-              {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel" style={{height:100}}/>) :
-               flaggedPosts.length === 0 ? <div className="empty">// aucun post signalé</div> : (
-                <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                  {flaggedPosts.map(post => {
-                    const color = TYPE_COLORS[post.post_type] || '#94A3B8'
-                    return (
-                      <div key={post.id} style={{background:'var(--surface)',border:'1px solid rgba(248,113,113,0.2)',borderRadius:10,padding:'1rem 1.25rem'}}>
-                        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:12,marginBottom:10}}>
-                          <div style={{flex:1}}>
-                            <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:6,flexWrap:'wrap'}}>
-                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.65rem',color,background:`${color}18`,padding:'2px 8px',borderRadius:4,border:`1px solid ${color}33`}}>
-                                {TYPE_LABELS[post.post_type] || post.post_type}
-                              </span>
-                              {post.is_anonymous && (
-                                <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'#94A3B8',background:'rgba(148,163,184,0.08)',padding:'2px 8px',borderRadius:4,border:'1px solid rgba(148,163,184,0.15)'}}>🎭 Anonyme</span>
-                              )}
-                            </div>
-                            <div style={{fontSize:'0.92rem',fontWeight:700,color:'#fff',marginBottom:4}}>{post.title}</div>
-                            <div style={{fontSize:'0.78rem',color:'#94A3B8',lineHeight:1.5,display:'-webkit-box',WebkitLineClamp:3,WebkitBoxOrient:'vertical',overflow:'hidden',marginBottom:8}}>
-                              {post.content}
-                            </div>
-                            <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'#4A5568'}}>
-                              Par : {post.user_profiles?.name || '—'} · {fmt(post.created_at)}
-                            </div>
-                          </div>
-                          <div style={{display:'flex',flexDirection:'column',gap:6,flexShrink:0}}>
-                            <button className="act-btn act-approve" onClick={() => approvePost(post.id)}>Approuver</button>
-                            <button className="act-btn act-reject" onClick={() => deletePost(post)}>Supprimer</button>
-                          </div>
-                        </div>
+        {activeTab === 'senpai' && (
+          loading ? <Skeleton height={200} /> :
+          flaggedPosts.length === 0 ? <EmptyState icon="message" title="Aucun post signalé" /> : (
+            <div className="mp-list">
+              {flaggedPosts.map(post => (
+                <Card key={post.id} style={{ borderColor: 'var(--danger)' }}>
+                  <div className="mp-post">
+                    <div className="mp-post-body">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-2)' }}>
+                        <Badge tone={TYPE_TONES[post.post_type] || 'neutral'}>{TYPE_LABELS[post.post_type] || post.post_type}</Badge>
+                        {post.is_anonymous && <Badge>Anonyme</Badge>}
                       </div>
-                    )
-                  })}
-                </div>
-               )}
-            </>
-          )}
-
-          {/* SCHOOLS */}
-          {activeTab === 'schools' && (
-            <>
-              <div className="section-title">// demandes d'ajout d'écoles</div>
-              <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--text3)',marginBottom:'1rem'}}>// lecture seule — les approbations sont réservées à l'admin</div>
-              {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               schoolReqs.length === 0 ? <div className="empty">// aucune demande d'école</div> : (
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr><th>Établissement</th><th>Type</th><th>Demandé par</th><th>Statut</th></tr>
-                    </thead>
-                    <tbody>
-                      {schoolReqs.map(s => {
-                        const rt = s.request_type || 'independent'
-                        const RT_LABEL = { independent:'École indép.', faculty:'Faculté', university_with_faculties:'Université' }
-                        const RT_COLOR = { independent:'rgba(79,142,247,0.1)', faculty:'rgba(79,142,247,0.08)', university_with_faculties:'rgba(245,158,11,0.08)' }
-                        const RT_BORDER = { independent:'rgba(79,142,247,0.2)', faculty:'rgba(79,142,247,0.18)', university_with_faculties:'rgba(245,158,11,0.22)' }
-                        const RT_TEXT = { independent:'var(--accent2)', faculty:'var(--teal2)', university_with_faculties:'#F59E0B' }
-                        return (
-                          <tr key={s.id}>
-                            <td>
-                              <div className="table-name">{s.school_name}</div>
-                              {s.city && <div className="table-mono" style={{color:'var(--text3)'}}>{s.city}</div>}
-                            </td>
-                            <td>
-                              <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',background:RT_COLOR[rt],border:`1px solid ${RT_BORDER[rt]}`,color:RT_TEXT[rt],padding:'2px 8px',borderRadius:4}}>
-                                {RT_LABEL[rt]}
-                              </span>
-                            </td>
-                            <td>
-                              <div className="table-name">{s.user_profiles?.name || '—'}</div>
-                              <div className="table-mono" style={{color:'var(--text3)'}}>{fmt(s.created_at)}</div>
-                            </td>
-                            <td><span className={`badge badge-${s.status}`}>{s.status}</span></td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* FILIÈRES */}
-          {activeTab === 'filieres' && (
-            <>
-              <div className="section-title">// demandes d'ajout de filières</div>
-              <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--text3)',marginBottom:'1rem'}}>// lecture seule — les approbations sont réservées à l'admin</div>
-              {loading ? Array(3).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               filiereReqs.length === 0 ? <div className="empty">// aucune demande de filière</div> : (
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr><th>Filière</th><th>Faculté / Université</th><th>Semestres</th><th>Demandé par</th><th>Statut</th></tr>
-                    </thead>
-                    <tbody>
-                      {filiereReqs.map(f => (
-                        <tr key={f.id}>
-                          <td><div className="table-name">{f.name}</div></td>
-                          <td>
-                            <div>{f.faculties?.name || '—'}</div>
-                            <div className="table-mono" style={{color:'var(--text3)'}}>{f.faculties?.universities?.name || '—'}</div>
-                          </td>
-                          <td className="table-mono">{f.total_semesters ?? '—'}</td>
-                          <td>
-                            <div className="table-name">{f.user_profiles?.name || '—'}</div>
-                            <div className="table-mono" style={{color:'var(--text3)'}}>{fmt(f.created_at)}</div>
-                          </td>
-                          <td><span className={`badge badge-${f.status}`}>{f.status}</span></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* MODULES */}
-          {activeTab === 'modules' && (
-            <>
-              <div className="section-title">// modules</div>
-
-              <div className="add-mod-form">
-                <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--teal2)',marginBottom:'0.85rem'}}>// ajouter un module</div>
-                <div className="add-mod-row">
-                  <div>
-                    <div className="field-label">Nom du module</div>
-                    <input className="field-input" style={{width:220}} placeholder="Ex: Analyse 2" value={newModName} onChange={e => setNewModName(e.target.value)} />
-                  </div>
-                  <div>
-                    <div className="field-label">Filière</div>
-                    <select className="field-input" style={{width:200}} value={newModFilId} onChange={e => setNewModFilId(e.target.value)}>
-                      <option value="">— Choisir —</option>
-                      {filieresList.map(f => (
-                        <option key={f.id} value={f.id}>{f.name}{f.total_semesters ? ` (${f.total_semesters}S)` : ''}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <div className="field-label">Semestre</div>
-                    <input className="field-input" style={{width:80}} type="number" min="1" max="12" placeholder="S?" value={newModSem} onChange={e => setNewModSem(e.target.value)} />
-                  </div>
-                  <button className="act-btn act-approve" style={{padding:'8px 16px',fontSize:'0.78rem'}} onClick={addModule} disabled={!newModName.trim() || !newModFilId}>
-                    + Ajouter
-                  </button>
-                </div>
-              </div>
-
-              <div style={{marginBottom:'0.85rem'}}>
-                <input
-                  style={{background:'var(--s2)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 14px',color:'var(--text)',fontSize:'0.82rem',fontFamily:'Outfit,sans-serif',outline:'none',width:'100%',maxWidth:320}}
-                  placeholder="Rechercher un module..."
-                  value={modSearch}
-                  onChange={e => { const v = e.target.value; setModSearch(v); clearTimeout(modSearchDebounceRef.current); modSearchDebounceRef.current = setTimeout(() => searchMods(v), 500) }}
-                />
-              </div>
-
-              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               modules.length === 0 ? <div className="empty">// aucun module trouvé</div> : (
-                <div className="table-wrap">
-                  <table className="table">
-                    <thead>
-                      <tr><th>Module</th><th>Filière</th><th>Semestre</th><th>Actions</th></tr>
-                    </thead>
-                    <tbody>
-                      {modules.map(m => (
-                        <tr key={m.id}>
-                          <td>
-                            {renamingId === m.id ? (
-                              <input className="rename-input" value={renameVal} onChange={e => setRenameVal(e.target.value)} placeholder="Nouveau nom..." />
-                            ) : (
-                              <span className="table-name">{m.name}</span>
-                            )}
-                          </td>
-                          <td>
-                            <div>{m.filieres?.name || '—'}</div>
-                            <div className="table-mono" style={{color:'var(--text3)'}}>{m.filieres?.faculties?.universities?.name || '—'}</div>
-                          </td>
-                          <td className="table-mono">{m.semester ?? '—'}</td>
-                          <td>
-                            <div className="actions">
-                              {renamingId === m.id ? (
-                                <>
-                                  <button className="act-btn act-approve" onClick={() => renameMod(m)}>Sauvegarder</button>
-                                  <button className="act-btn act-view" onClick={() => { setRenamingId(null); setRenameVal('') }}>Annuler</button>
-                                </>
-                              ) : (
-                                <button className="act-btn act-rename" onClick={() => { setRenamingId(m.id); setRenameVal(m.name) }}>Renommer</button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* USERS */}
-          {activeTab === 'users' && (
-            <>
-              <div className="section-title">// utilisateurs</div>
-              {loading ? Array(5).fill(0).map((_,i) => <div key={i} className="skel"/>) :
-               users.length === 0 ? <div className="empty">// aucun utilisateur</div> : (
-                <div style={{display:'flex',flexDirection:'column',gap:8}}>
-                  {users.map(u => {
-                    const lvl = getLevel(u.points || 0)
-                    const isBanning = banningId === u.id
-                    return (
-                      <div key={u.id} style={{background:'var(--surface)',border:`1px solid ${u.is_banned?'rgba(248,113,113,0.25)':'var(--border)'}`,borderRadius:10,padding:'12px 16px'}}>
-                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
-                          <div style={{display:'flex',alignItems:'center',gap:10}}>
-                            <span style={{fontWeight:600,fontSize:'0.85rem',color:'var(--text)'}}>{u.name || 'Sans nom'}</span>
-                            <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--text2)'}}>{u.universities?.name || ''}</span>
-                            <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--accent2)'}}>{u.uploads_count||0} docs · {u.points||0}pts</span>
-                            {u.is_banned && <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',background:'rgba(248,113,113,0.1)',color:'#F87171',border:'1px solid rgba(248,113,113,0.25)',borderRadius:4,padding:'1px 7px'}}>BANNI</span>}
-                          </div>
-                          <div className="actions">
-                            {u.is_admin
-                              ? <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--text3)',padding:'5px 10px'}}>admin</span>
-                              : u.is_banned
-                                ? <button className="act-btn act-approve" onClick={() => unbanUser(u.id)}>Débannir</button>
-                                : <button className="act-btn act-ban" onClick={() => { setBanningId(isBanning ? null : u.id); setBanReason('') }}>
-                                    {isBanning ? 'Annuler' : 'Bannir'}
-                                  </button>
-                            }
-                          </div>
-                        </div>
-                        {u.is_banned && u.ban_reason && (
-                          <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'#F87171',marginTop:6}}>
-                            Raison : {u.ban_reason} {u.banned_until ? `· jusqu'au ${new Date(u.banned_until).toLocaleDateString('fr-MA',{day:'2-digit',month:'short'})}` : '· permanent'}
-                          </div>
-                        )}
-                        {isBanning && (
-                          <div style={{marginTop:10,padding:'12px 14px',background:'var(--s2)',borderRadius:8,border:'1px solid rgba(248,113,113,0.2)',display:'flex',flexWrap:'wrap',gap:8,alignItems:'center'}}>
-                            <select value={banDuration} onChange={e => setBanDuration(e.target.value)}
-                              style={{background:'var(--s2)',border:'1px solid var(--border)',borderRadius:6,padding:'5px 10px',color:'var(--text)',fontSize:'0.78rem',fontFamily:'Outfit,sans-serif',cursor:'pointer'}}>
-                              <option value="24h">24 heures</option>
-                              <option value="7d">7 jours</option>
-                              <option value="30d">30 jours</option>
-                              <option value="perm">Permanent</option>
-                            </select>
-                            <input value={banReason} onChange={e => setBanReason(e.target.value)}
-                              placeholder="Raison (optionnel)"
-                              style={{flex:1,minWidth:160,background:'var(--s2)',border:'1px solid var(--border)',borderRadius:6,padding:'5px 10px',color:'var(--text)',fontSize:'0.78rem',fontFamily:'Outfit,sans-serif',outline:'none'}}
-                            />
-                            <button className="act-btn act-ban" disabled={banBusy} onClick={() => confirmBan(u)}>
-                              {banBusy ? '...' : 'Confirmer le bannissement'}
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* MESSAGES */}
-          {activeTab === 'messages' && (
-            <>
-              <div className="section-title">// messages des utilisateurs</div>
-              {loading ? Array(4).fill(0).map((_,i) => <div key={i} className="skel" style={{height:56}}/>) : (
-                <div className="msg-layout" style={{ height:'calc(100vh - 170px)', minHeight:400 }}>
-
-                  {/* Left panel */}
-                  <div className="msg-left">
-                    <div style={{ padding:'10px 14px', borderBottom:'1px solid var(--border)', fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'var(--text3)', letterSpacing:'1.5px' }}>
-                      // CONVERSATIONS
+                      <h3 className="t-h3" style={{ marginBottom: 4 }}>{post.title}</h3>
+                      <p className="t-body-sm qz-muted" style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 'var(--space-2)' }}>{post.content}</p>
+                      <span className="t-mono qz-subtle">Par : {post.user_profiles?.name || '—'} · {fmt(post.created_at)}</span>
                     </div>
-                    {msgConvos.length === 0 && (
-                      <div className="empty" style={{padding:'3rem 1rem'}}>// aucun message</div>
-                    )}
-                    {msgConvos.map(c => {
-                      const initial = (c.name || '?')[0].toUpperCase()
-                      const isSelected = selectedConvo?.id === c.id
-                      const colors = ['#4F8EF7','#4F8EF7','#F59E0B','#C4B5FD','#4ADE80','#F87171']
-                      const color = colors[c.id.charCodeAt(0) % colors.length]
+                    <div className="mp-post-actions">
+                      <Button variant="secondary" size="sm" icon="check" onClick={() => approvePost(post.id)}>Approuver</Button>
+                      <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => deletePost(post)}>Supprimer</Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )
+        )}
+
+        {activeTab === 'schools' && (
+          <>
+            <Banner>Lecture seule — les approbations sont réservées à l'admin.</Banner>
+            <div style={{ height: 'var(--space-4)' }} />
+            {loading ? <Skeleton height={200} /> :
+             schoolReqs.length === 0 ? <EmptyState icon="shield" title="Aucune demande d'école" /> : (
+              <div className="qz-table-wrap">
+                <table className="qz-table">
+                  <thead><tr><th>Établissement</th><th>Type</th><th>Demandé par</th><th>Statut</th></tr></thead>
+                  <tbody>
+                    {schoolReqs.map(s => {
+                      const rt = s.request_type || 'independent'
                       return (
-                        <div key={c.id} onClick={() => loadThread(c)}
-                          style={{
-                            display:'flex', alignItems:'center', gap:10, padding:'12px 14px', cursor:'pointer',
-                            background: isSelected ? 'rgba(79,142,247,0.06)' : 'transparent',
-                            borderLeft: isSelected ? '3px solid var(--teal)' : '3px solid transparent',
-                            transition:'all 0.15s',
-                          }}
-                        >
-                          <div style={{ width:36, height:36, borderRadius:'50%', background:`${color}22`, border:`1px solid ${color}44`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'0.82rem', fontWeight:700, color, flexShrink:0 }}>
-                            {initial}
-                          </div>
-                          <div style={{ flex:1, minWidth:0 }}>
-                            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:2 }}>
-                              <span style={{ fontSize:'0.82rem', fontWeight:600, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</span>
-                              {c.unread > 0 && (
-                                <span style={{ background:'var(--red)', color:'#fff', borderRadius:10, padding:'1px 6px', fontSize:'0.58rem', fontWeight:700, flexShrink:0, marginLeft:6, fontFamily:'DM Mono,monospace' }}>
-                                  {c.unread}
-                                </span>
-                              )}
-                            </div>
-                            <div style={{ fontSize:'0.72rem', color:'var(--text3)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                              {c.lastMsg?.slice(0, 42) || '—'}
-                            </div>
-                          </div>
-                        </div>
+                        <tr key={s.id}>
+                          <td>
+                            <div className="qz-table-name">{s.school_name}</div>
+                            {s.city && <div className="qz-table-mono">{s.city}</div>}
+                          </td>
+                          <td><Badge tone={RT_TONE[rt]}>{RT_LABEL[rt]}</Badge></td>
+                          <td>
+                            <div className="qz-table-name">{s.user_profiles?.name || '—'}</div>
+                            <div className="qz-table-mono">{fmt(s.created_at)}</div>
+                          </td>
+                          <td><Badge tone={STATUS_TONE[s.status]}>{s.status}</Badge></td>
+                        </tr>
                       )
                     })}
-                  </div>
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
 
-                  {/* Right panel */}
-                  <div className="msg-right">
-                    {!selectedConvo ? (
-                      <div style={{ margin:'auto', textAlign:'center', color:'var(--text3)', fontFamily:'DM Mono,monospace', fontSize:'0.72rem' }}>
-                        💬 Sélectionne une conversation
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ padding:'12px 16px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10, flexShrink:0, background:'var(--s2)' }}>
-                          <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--teal2)', letterSpacing:'1px' }}>
-                            // {selectedConvo.name}
-                          </span>
-                        </div>
-                        <div style={{ flex:1, overflowY:'auto', padding:'14px 16px', display:'flex', flexDirection:'column', gap:8 }}>
-                          {msgThread.length === 0 && (
-                            <div style={{ margin:'auto', fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'var(--text3)' }}>chargement...</div>
+        {activeTab === 'filieres' && (
+          <>
+            <Banner>Lecture seule — les approbations sont réservées à l'admin.</Banner>
+            <div style={{ height: 'var(--space-4)' }} />
+            {loading ? <Skeleton height={200} /> :
+             filiereReqs.length === 0 ? <EmptyState icon="file" title="Aucune demande de filière" /> : (
+              <div className="qz-table-wrap">
+                <table className="qz-table">
+                  <thead><tr><th>Filière</th><th>Faculté / Université</th><th>Semestres</th><th>Demandé par</th><th>Statut</th></tr></thead>
+                  <tbody>
+                    {filiereReqs.map(f => (
+                      <tr key={f.id}>
+                        <td><div className="qz-table-name">{f.name}</div></td>
+                        <td>
+                          <div>{f.faculties?.name || '—'}</div>
+                          <div className="qz-table-mono">{f.faculties?.universities?.name || '—'}</div>
+                        </td>
+                        <td className="qz-table-mono">{f.total_semesters ?? '—'}</td>
+                        <td>
+                          <div className="qz-table-name">{f.user_profiles?.name || '—'}</div>
+                          <div className="qz-table-mono">{fmt(f.created_at)}</div>
+                        </td>
+                        <td><Badge tone={STATUS_TONE[f.status]}>{f.status}</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'modules' && (
+          <>
+            <div className="mp-add-form">
+              <div className="mp-field"><Input label="Nom du module" placeholder="Ex: Analyse 2" value={newModName} onChange={e => setNewModName(e.target.value)} /></div>
+              <div className="mp-field">
+                <Select label="Filière" value={newModFilId} onChange={e => setNewModFilId(e.target.value)}
+                  options={[{ value: '', label: '— Choisir —' }, ...filieresList.map(f => ({ value: f.id, label: f.name + (f.total_semesters ? ` (${f.total_semesters}S)` : '') }))]} />
+              </div>
+              <div style={{ width: 100 }}><Input label="Semestre" type="number" min="1" max="12" placeholder="S?" value={newModSem} onChange={e => setNewModSem(e.target.value)} /></div>
+              <Button variant="primary" icon="plus" onClick={addModule} disabled={!newModName.trim() || !newModFilId}>Ajouter</Button>
+            </div>
+
+            <div className="mp-search">
+              <Input placeholder="Rechercher un module..." value={modSearch}
+                onChange={e => { const v = e.target.value; setModSearch(v); clearTimeout(modSearchDebounceRef.current); modSearchDebounceRef.current = setTimeout(() => searchMods(v), 500) }} />
+            </div>
+
+            {loading ? <Skeleton height={200} /> :
+             modules.length === 0 ? <EmptyState icon="bookmark" title="Aucun module trouvé" /> : (
+              <div className="qz-table-wrap">
+                <table className="qz-table">
+                  <thead><tr><th>Module</th><th>Filière</th><th>Semestre</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {modules.map(m => (
+                      <tr key={m.id}>
+                        <td>
+                          {renamingId === m.id ? (
+                            <Input value={renameVal} onChange={e => setRenameVal(e.target.value)} placeholder="Nouveau nom..." />
+                          ) : (
+                            <span className="qz-table-name">{m.name}</span>
                           )}
-                          {msgThread.map(m => {
-                            const fromAdmin = m.sender_id === ADMIN_ID
-                            return (
-                              <div key={m.id} style={{ display:'flex', justifyContent: fromAdmin ? 'flex-end' : 'flex-start' }}>
-                                <div style={{
-                                  maxWidth:'72%', padding:'8px 12px',
-                                  borderRadius: fromAdmin ? '12px 4px 12px 12px' : '4px 12px 12px 12px',
-                                  background: fromAdmin ? 'rgba(79,142,247,0.15)' : 'var(--s2)',
-                                  border: `1px solid ${fromAdmin ? 'rgba(79,142,247,0.3)' : 'var(--border)'}`,
-                                }}>
-                                  {fromAdmin && (
-                                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.56rem', color:'var(--teal2)', marginBottom:4 }}>Support 9rawZid9ra</div>
-                                  )}
-                                  <div style={{ fontSize:'0.82rem', color:'var(--text)', lineHeight:1.55, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>{m.content}</div>
-                                  <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.58rem', color:'var(--text3)', marginTop:4, textAlign: fromAdmin ? 'right' : 'left' }}>{fmt(m.created_at)}</div>
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
-                        <div style={{ padding:'10px 12px', borderTop:'1px solid var(--border)', display:'flex', gap:8, flexShrink:0 }}>
-                          <input
-                            value={replyText}
-                            onChange={e => setReplyText(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
-                            placeholder="Répondre (envoyé en tant que Support)..."
-                            style={{ flex:1, background:'var(--s2)', border:'1px solid var(--border)', borderRadius:8, padding:'8px 12px', color:'var(--text)', fontSize:'0.82rem', fontFamily:'Outfit,sans-serif', outline:'none', transition:'border-color 0.15s' }}
-                            onFocus={e => e.target.style.borderColor='rgba(79,142,247,0.4)'}
-                            onBlur={e => e.target.style.borderColor='var(--border)'}
-                          />
-                          <button onClick={sendReply} disabled={!replyText.trim() || replySending}
-                            style={{ background: replyText.trim() ? 'var(--teal)' : 'var(--border)', color:'#fff', border:'none', borderRadius:8, padding:'8px 16px', fontSize:'0.8rem', fontWeight:600, cursor: replyText.trim() ? 'pointer' : 'not-allowed', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}>
-                            {replySending ? '...' : 'Envoyer'}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+                        </td>
+                        <td>
+                          <div>{m.filieres?.name || '—'}</div>
+                          <div className="qz-table-mono">{m.filieres?.faculties?.universities?.name || '—'}</div>
+                        </td>
+                        <td className="qz-table-mono">{m.semester ?? '—'}</td>
+                        <td>
+                          <div className="qz-table-actions">
+                            {renamingId === m.id ? (
+                              <>
+                                <Button variant="secondary" size="sm" icon="check" onClick={() => renameMod(m)}>Sauvegarder</Button>
+                                <Button variant="ghost" size="sm" onClick={() => { setRenamingId(null); setRenameVal('') }}>Annuler</Button>
+                              </>
+                            ) : (
+                              <Button variant="ghost" size="sm" onClick={() => { setRenamingId(m.id); setRenameVal(m.name) }}>Renommer</Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
 
-        </main>
-      </div>
+        {activeTab === 'users' && (
+          loading ? <Skeleton height={200} /> :
+          users.length === 0 ? <EmptyState icon="user" title="Aucun utilisateur" /> : (
+            <div className="mp-list">
+              {users.map(u => {
+                const isBanning = banningId === u.id
+                const level = getLevel(u.points || 0)
+                return (
+                  <Card key={u.id} style={u.is_banned ? { borderColor: 'var(--danger)' } : undefined}>
+                    <div className="mp-user-row">
+                      <div className="mp-user-meta">
+                        <span className="t-label">{u.name || 'Sans nom'}</span>
+                        <Badge tone={LEVEL_TONE[level]}>{level}</Badge>
+                        <span className="t-mono qz-subtle">{u.universities?.name || ''}</span>
+                        <span className="t-mono qz-subtle">{u.uploads_count || 0} docs · {u.points || 0} pts</span>
+                        {u.is_banned && <Badge tone="danger">Banni</Badge>}
+                      </div>
+                      <div className="qz-table-actions">
+                        {u.is_admin
+                          ? <span className="t-mono qz-subtle">admin</span>
+                          : u.is_banned
+                            ? <Button variant="secondary" size="sm" onClick={() => unbanUser(u.id)}>Débannir</Button>
+                            : <Button variant="danger-ghost" size="sm" onClick={() => { setBanningId(isBanning ? null : u.id); setBanReason('') }}>{isBanning ? 'Annuler' : 'Bannir'}</Button>}
+                      </div>
+                    </div>
+                    {u.is_banned && u.ban_reason && (
+                      <p className="t-body-sm" style={{ color: 'var(--danger)', marginTop: 'var(--space-2)' }}>
+                        Raison : {u.ban_reason} {u.banned_until ? `· jusqu'au ${new Date(u.banned_until).toLocaleDateString('fr-MA', { day: '2-digit', month: 'short' })}` : '· permanent'}
+                      </p>
+                    )}
+                    {isBanning && (
+                      <div className="mp-ban-form">
+                        <Select value={banDuration} onChange={e => setBanDuration(e.target.value)} options={[
+                          { value: '24h', label: '24 heures' }, { value: '7d', label: '7 jours' }, { value: '30d', label: '30 jours' }, { value: 'perm', label: 'Permanent' },
+                        ]} />
+                        <div className="mp-ban-reason"><Input placeholder="Raison (optionnel)" value={banReason} onChange={e => setBanReason(e.target.value)} /></div>
+                        <Button variant="danger-ghost" disabled={banBusy} onClick={() => confirmBan(u)}>{banBusy ? '...' : 'Confirmer le bannissement'}</Button>
+                      </div>
+                    )}
+                  </Card>
+                )
+              })}
+            </div>
+          )
+        )}
+
+        {activeTab === 'messages' && (
+          loading ? <Skeleton height={200} /> : (
+            <div className="mp-msg-layout">
+              <div className="mp-msg-left">
+                <div className="t-eyebrow qz-subtle" style={{ padding: 'var(--space-3) var(--space-4)', borderBottom: '1px solid var(--border)' }}>Conversations</div>
+                {msgConvos.length === 0 && <div style={{ padding: 'var(--space-8) var(--space-4)' }}><EmptyState icon="inbox" title="Aucun message" /></div>}
+                {msgConvos.map(c => (
+                  <div key={c.id} className="qz-inbox-row" onClick={() => loadThread(c)} style={{ background: selectedConvo?.id === c.id ? 'var(--surface-2)' : undefined }}>
+                    <Avatar name={c.name} size="sm" />
+                    <div className="qz-inbox-row__main">
+                      <div className="qz-inbox-row__top">
+                        <span className="qz-inbox-row__name">{c.name}</span>
+                        {c.unread > 0 && <span className="qz-inbox-row__unread">{c.unread}</span>}
+                      </div>
+                      <p className="qz-inbox-row__preview">{c.lastMsg?.slice(0, 42) || '—'}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mp-msg-right">
+                {!selectedConvo ? (
+                  <div className="mp-msg-empty"><span className="t-mono qz-subtle">Sélectionne une conversation</span></div>
+                ) : (
+                  <>
+                    <div className="mp-msg-head"><span className="t-eyebrow qz-subtle">{selectedConvo.name}</span></div>
+                    <div className="qz-chat__body mp-msg-thread">
+                      {msgThread.length === 0 && <span className="t-mono qz-subtle" style={{ margin: 'auto' }}>Chargement…</span>}
+                      {msgThread.map(m => {
+                        const fromSupport = m.sender_id === ADMIN_ID
+                        return (
+                          <div key={m.id} style={{ display: 'flex', justifyContent: fromSupport ? 'flex-end' : 'flex-start' }}>
+                            <div className={`qz-bubble qz-bubble--${fromSupport ? 'out' : 'in'}`}>
+                              {fromSupport && <div className="t-caption qz-subtle" style={{ marginBottom: 4 }}>Support 9rawZid9ra</div>}
+                              <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{m.content}</div>
+                              <time>{fmt(m.created_at)}</time>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="mp-msg-compose">
+                      <Input
+                        value={replyText}
+                        onChange={e => setReplyText(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendReply() } }}
+                        placeholder="Répondre (envoyé en tant que Support)..."
+                      />
+                      <Button variant="primary" icon="send" iconOnly aria-label="Envoyer" onClick={sendReply} disabled={!replyText.trim() || replySending} loading={replySending} />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )
+        )}
+      </PanelLayout>
+
       {modal && <ConfirmModal {...modal} onCancel={modal.onCancel !== undefined ? modal.onCancel : () => setModal(null)} />}
     </div>
   )
