@@ -133,7 +133,10 @@ import React from 'react';
   /* ---- Badge ---- */
   function Badge(props) {
     var tone = props.tone || 'neutral';
-    return h('span', { className: cx('qz-badge', tone !== 'neutral' && 'qz-badge--' + tone) },
+    var Tag = props.onClick ? 'button' : 'span';
+    var p = { className: cx('qz-badge', tone !== 'neutral' && 'qz-badge--' + tone) };
+    if (props.onClick) { p.type = 'button'; p.onClick = props.onClick; }
+    return h(Tag, p,
       props.dot ? h('span', { className: 'qz-dot' }) : (props.icon ? h(Icon, { name: props.icon }) : null), props.children);
   }
 
@@ -220,7 +223,11 @@ import React from 'react';
   /* ---- Avatar ---- */
   function Avatar(props) {
     var initials = String(props.name || '?').split(/\s+/).map(function (w) { return w[0]; }).join('').slice(0, 2).toUpperCase();
-    return h('span', { className: cx('qz-avatar', props.size && props.size !== 'md' && 'qz-avatar--' + props.size, props.founder && 'qz-avatar--founder'), title: props.name + (props.founder ? ' · Fondateur' : '') },
+    var p = rest(props, ['name', 'size', 'founder', 'src', 'online', 'className']);
+    p.className = cx('qz-avatar', props.size && props.size !== 'md' && 'qz-avatar--' + props.size, props.founder && 'qz-avatar--founder', props.className);
+    p.title = props.name + (props.founder ? ' · Fondateur' : '');
+    if (props.onClick && !p.style) p.style = { cursor: 'pointer' }; else if (props.onClick) p.style = Object.assign({ cursor: 'pointer' }, p.style);
+    return h('span', p,
       props.src ? h('img', { src: props.src, alt: '' }) : initials,
       props.online ? h('span', { className: 'qz-avatar__status', 'aria-label': 'en ligne' }) : null);
   }
@@ -331,25 +338,37 @@ import React from 'react';
 
   /* ---- PostCard ---- */
   function PostCard(props) {
-    var st = useState(props.voted || false); var voted = st[0]; var setVoted = st[1];
-    var score = (props.score || 0) + (voted && !props.voted ? 1 : 0) - (!voted && props.voted ? 1 : 0);
-    return h(Card, { className: 'qz-post' },
+    var uncontrolled = props.onVote == null;
+    var st = useState(props.voted || false); var localVoted = st[0]; var setLocalVoted = st[1];
+    var voted = uncontrolled ? localVoted : !!props.voted;
+    var score = uncontrolled ? (props.score || 0) + (localVoted && !props.voted ? 1 : 0) - (!localVoted && props.voted ? 1 : 0) : (props.score || 0);
+    var onVoteClick = uncontrolled ? function () { setLocalVoted(!localVoted); } : props.onVote;
+    var authorEl = props.anonymous
+      ? h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)' } }, h(Avatar, { name: '?', size: 'sm' }), h('strong', null, 'Anonyme'))
+      : h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 'var(--space-2)', cursor: props.onAuthorClick ? 'pointer' : undefined }, onClick: props.onAuthorClick },
+          h(Avatar, { name: props.author, size: 'sm', founder: props.founder }), h('strong', null, props.author));
+    return h(Card, { className: 'qz-post', onClick: props.onOpen },
       h('div', { className: 'qz-vote' },
-        h('button', { type: 'button', 'aria-pressed': voted ? 'true' : 'false', 'aria-label': 'Voter utile', onClick: function () { setVoted(!voted); } }, h(Icon, { name: 'up', size: 18 })),
+        h('button', { type: 'button', 'aria-pressed': voted ? 'true' : 'false', 'aria-label': 'Voter utile', onClick: function (e) { if (e && e.stopPropagation) e.stopPropagation(); onVoteClick(); } }, h(Icon, { name: 'up', size: 18 })),
         h('span', null, score)),
-      h('div', null,
+      h('div', { style: { flex: 1, minWidth: 0 } },
         h('div', { className: 'qz-post__head' },
-          h(Avatar, { name: props.author, size: 'sm', founder: props.founder }),
-          h('strong', null, props.author),
-          props.founder ? h(Badge, { tone: 'founder', icon: 'star' }, 'Fondateur') : null,
-          props.moderator ? h(Badge, { tone: 'accent' }, 'Modérateur') : null,
-          h('span', null, '· ' + (props.ago || ''))),
+          authorEl,
+          props.anonymous ? h(Badge, null, 'Anonyme') : null,
+          props.founder && !props.anonymous ? h(Badge, { tone: 'founder', icon: 'star' }, 'Fondateur') : null,
+          props.moderator && !props.anonymous ? h(Badge, { tone: 'accent' }, 'Modérateur') : null,
+          h('span', null, '· ' + (props.ago || '')),
+          props.menu ? h('span', { style: { marginLeft: 'auto' }, onClick: function (e) { if (e && e.stopPropagation) e.stopPropagation(); } }, props.menu) : null),
+        props.title ? h('h3', { className: 'qz-h3', style: { margin: '4px 0' } }, props.title) : null,
         h('p', { className: 'qz-post__body' }, props.children),
+        (props.moduleLabel || (props.tags || []).length > 0) ? h('div', { className: 'qz-post__foot', style: { marginTop: 0, paddingTop: 0, borderTop: 0 } },
+          props.moduleLabel ? h(Badge, { tone: 'brand', onClick: props.onModuleClick }, props.moduleLabel) : null,
+          (props.tags || []).map(function (t) { return h(Badge, { key: t }, '#' + t); })) : null,
         h('div', { className: 'qz-post__foot' },
-          (props.tags || []).map(function (t) { return h(Badge, { key: t }, '#' + t); }),
+          h(Button, { variant: 'ghost', size: 'sm', icon: 'reply', onClick: props.onReply }, (props.replies || 0) + ' réponses'),
           h('span', { style: { flex: 1 } }),
-          h(Button, { variant: 'ghost', size: 'sm', icon: 'reply' }, (props.replies || 0) + ' réponses'),
-          h(Button, { variant: 'ghost', size: 'sm', icon: 'flag', iconOnly: true, 'aria-label': 'Signaler' }))));
+          props.extraActions || null,
+          props.onReport ? h(Button, { variant: 'ghost', size: 'sm', icon: 'flag', iconOnly: true, 'aria-label': 'Signaler', onClick: props.onReport }) : null)));
   }
 
   /* ---- Messenger ---- */
