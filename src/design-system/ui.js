@@ -102,9 +102,11 @@ import React from 'react';
   /* ---- SearchBar ---- */
   function SearchBar(props) {
     var compact = props.variant === 'compact';
+    var inputProps = { ref: props.inputRef, type: 'search', placeholder: props.placeholder || 'Module, filière ou école…', onChange: props.onChange, 'aria-label': props.placeholder || 'Rechercher' };
+    if (props.value !== undefined) inputProps.value = props.value; else inputProps.defaultValue = props.defaultValue;
     return h('form', { className: cx('qz-search', compact && 'qz-search--compact'), role: 'search', onSubmit: function (e) { e.preventDefault(); var input = e.currentTarget.querySelector('input'); if (props.onSubmit) props.onSubmit(input ? input.value : '', e); } },
       h(Icon, { name: 'search', size: 18 }),
-      h('input', { ref: props.inputRef, type: 'search', placeholder: props.placeholder || 'Module, filière ou école…', defaultValue: props.defaultValue, onChange: props.onChange, 'aria-label': props.placeholder || 'Rechercher' }),
+      h('input', inputProps),
       props.shortcut ? h('span', { className: 'qz-kbd' }, props.shortcut) : null,
       compact ? null : h(Button, { type: 'submit', variant: 'primary' }, props.submitLabel || 'Rechercher'));
   }
@@ -159,7 +161,7 @@ import React from 'react';
   /* ---- ModuleCard ---- */
   function ModuleCard(props) {
     var pct = Math.max(0, Math.min(100, props.completeness || 0));
-    return h(Card, { href: props.href || '#', className: 'qz-module' },
+    return h(Card, { href: props.href || '#', linkAs: props.linkAs, className: 'qz-module' },
       h('div', { className: 'qz-module__top' },
         h('span', { className: 'qz-eyebrow' }, 'S' + props.semester + (props.school ? ' · ' + props.school : '')),
         props.bookmarked ? h(Badge, { tone: 'brand', icon: 'bookmark' }, 'Suivi') : null),
@@ -266,7 +268,7 @@ import React from 'react';
     return h('div', { className: 'qz-empty' },
       h('div', { className: 'qz-empty__icon' }, h(Icon, { name: props.icon || 'inbox' })),
       h('h3', { className: 'qz-h3' }, props.title),
-      props.children ? h('p', null, props.children) : null,
+      props.children ? h('div', { className: 'qz-empty__body' }, props.children) : null,
       props.action || null);
   }
 

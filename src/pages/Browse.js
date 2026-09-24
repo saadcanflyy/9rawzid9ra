@@ -1,315 +1,127 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { FiArrowRight, FiSliders } from 'react-icons/fi'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
-
-const cardReveal = {
-  hidden: { opacity: 0, y: 10 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.25, ease: 'easeOut' } },
-}
+import {
+  Breadcrumb, SearchBar, Select, Chip, Tabs, ModuleCard, DocumentRow, Card, Button,
+  Input, Sheet, Badge, EmptyState, Skeleton, ProgressBar, Icon,
+} from '../design-system/ui'
+import { notify } from '../design-system/toast'
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
-  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  :root {
-    --bg:#02040A; --surface:#070C18; --s2:#0C1222; --s3:#111827;
-    --border:#1C2A45; --borderhi:#2D4A7A;
-    --accent:#4F8EF7; --accent2:#7BB3FF; --teal:#2DD4BF; --teal2:#5EEAD4;
-    --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
-  }
-
-  html, body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; height:100%; }
-  .browse { min-height:100vh; display:flex; flex-direction:column; }
-  .layout { display:flex; flex:1; overflow:hidden; height:calc(100vh - 58px); }
-
-  /* SIDEBAR */
-  .sidebar { width:272px; flex-shrink:0; border-right:1px solid var(--border); background:var(--surface); overflow-y:auto; padding:1.25rem; }
-  .sidebar::-webkit-scrollbar { width:4px; }
-  .sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
-  .sidebar-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; padding-bottom:1rem; border-bottom:1px solid var(--border); }
-  .sidebar-title { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); letter-spacing:2px; text-transform:uppercase; }
-  .sidebar-reset { font-size:0.7rem; color:var(--red); background:none; border:none; cursor:pointer; font-family:'DM Mono',monospace; transition:color 0.15s; padding:0; font-weight:500; }
-  .sidebar-reset:hover { color:#FF9999; }
-
-  .filter-block { margin-bottom:1.25rem; }
-  .filter-label { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:0.5rem; display:block; }
-  .filter-select { width:100%; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; color:var(--text); font-size:0.82rem; font-family:'Outfit',sans-serif; outline:none; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234A5568' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:28px; transition:border-color 0.15s; }
-  .filter-select:focus { border-color:var(--accent); }
-  .filter-select option { background:var(--s2); }
-
-  .sem-wrap { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; }
-  .sem-btn { background:var(--s2); border:1px solid var(--border); border-radius:6px; padding:6px 2px; font-size:0.68rem; color:var(--text3); cursor:pointer; transition:all 0.15s; text-align:center; font-family:'DM Mono',monospace; }
-  .sem-btn:hover { border-color:var(--borderhi); color:var(--text2); }
-  .sem-btn.on { background:rgba(79,142,247,0.1); border-color:var(--accent); color:var(--accent2); }
-
-  .type-wrap { display:flex; flex-direction:column; gap:3px; }
-  .type-row { display:flex; align-items:center; gap:10px; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; cursor:pointer; transition:all 0.15s; font-family:'Outfit',sans-serif; }
-  .type-row:hover { border-color:var(--borderhi); }
-  .type-row.on { background:rgba(79,142,247,0.06); border-color:var(--accent); }
-  .type-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; background:var(--border); }
-  .type-row.on .type-dot { background:var(--accent); }
-  .type-name { font-size:0.8rem; color:var(--text2); }
-  .type-row.on .type-name { color:var(--accent2); font-weight:500; }
-  .sidebar-divider { height:1px; background:var(--border); margin:1.25rem 0; }
-
-  /* SEARCHABLE UNI DROPDOWN */
-  .uni-wrap { position:relative; }
-  .uni-input { width:100%; background:var(--s2); border:1px solid var(--border); border-radius:8px; padding:8px 10px; color:var(--text); font-size:0.82rem; font-family:'Outfit',sans-serif; outline:none; transition:border-color 0.15s; }
-  .uni-input:focus { border-color:var(--accent); }
-  .uni-input::placeholder { color:var(--text3); }
-  .uni-dd { position:absolute; top:100%; left:0; right:0; z-index:100; background:var(--s2); border:1px solid var(--borderhi); border-radius:8px; margin-top:4px; overflow:hidden; max-height:220px; overflow-y:auto; box-shadow:0 8px 24px rgba(0,0,0,0.4); }
-  .uni-dd::-webkit-scrollbar { width:3px; }
-  .uni-dd::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
-  .uni-dd-item { padding:8px 10px; cursor:pointer; font-size:0.82rem; color:var(--text); border-bottom:1px solid var(--border); transition:background 0.12s; font-family:'Outfit',sans-serif; }
-  .uni-dd-item:last-child { border-bottom:none; }
-  .uni-dd-item:hover { background:var(--s3); }
-  .uni-dd-item.reset { color:var(--text3); font-style:italic; }
-  .uni-dd-empty { padding:8px 10px; font-size:0.78rem; color:var(--text3); font-family:'DM Mono',monospace; }
-  .uni-dd-ask { padding:8px 10px; cursor:pointer; font-size:0.75rem; color:var(--accent2); font-family:'DM Mono',monospace; border-top:1px solid var(--border); border-bottom:none; transition:background 0.12s; }
-  .uni-dd-ask:hover { background:var(--s3); }
-
-  /* REQUEST FORMS */
-  .req-form { margin-top:8px; background:rgba(79,142,247,0.04); border:1px solid rgba(79,142,247,0.18); border-radius:8px; padding:10px 12px; }
-  .req-form-title { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--accent2); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
-  .req-input { width:100%; background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:7px 10px; color:var(--text); font-size:0.8rem; font-family:'Outfit',sans-serif; outline:none; margin-bottom:6px; transition:border-color 0.15s; }
-  .req-input:focus { border-color:var(--accent); }
-  .req-input::placeholder { color:var(--text3); }
-  .req-send { background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.3); color:var(--accent2); border-radius:6px; padding:5px 12px; font-size:0.75rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.12s; }
-  .req-send:disabled { opacity:0.4; cursor:not-allowed; }
-  .req-cancel { background:none; border:none; color:var(--text3); font-size:0.72rem; cursor:pointer; font-family:'DM Mono',monospace; margin-left:6px; }
-  .req-link { display:block; margin-top:6px; background:none; border:none; color:var(--text3); font-size:0.7rem; cursor:pointer; font-family:'DM Mono',monospace; padding:0; text-align:left; transition:color 0.15s; }
-  .req-link:hover { color:var(--accent2); }
-  .req-ok { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--teal2); margin-top:6px; }
-
-  /* MAIN */
-  .main { flex:1; overflow-y:auto; display:flex; flex-direction:column; }
-  .main::-webkit-scrollbar { width:4px; }
-  .main::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
-
-  .topbar { position:sticky; top:0; z-index:10; background:rgba(2,4,10,0.92); backdrop-filter:blur(20px); border-bottom:1px solid var(--border); padding:0.875rem 1.5rem; display:flex; align-items:center; gap:1rem; }
-  .search-field { flex:1; display:flex; align-items:center; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:0 4px 0 14px; gap:10px; transition:border-color 0.15s, box-shadow 0.15s; }
-  .search-field:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(79,142,247,0.1); }
-  .search-prompt { font-family:'DM Mono',monospace; font-size:0.75rem; color:var(--text3); flex-shrink:0; }
-  .search-input { flex:1; background:none; border:none; outline:none; font-size:0.875rem; color:var(--text); font-family:'Outfit',sans-serif; padding:9px 0; }
-  .search-input::placeholder { color:var(--text3); }
-  .search-btn { background:var(--accent); color:var(--white); border:none; border-radius:7px; padding:7px 16px; font-size:0.8rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; }
-  .search-btn:hover { background:#3A6ED4; }
-
-  .breadcrumb { display:flex; align-items:center; gap:6px; padding:0.6rem 1.5rem; border-bottom:1px solid var(--border); background:var(--surface); flex-wrap:wrap; }
-  .bc-item { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text3); }
-  .bc-sep { font-size:0.68rem; color:var(--text3); }
-  .bc-active { color:var(--accent2); }
-
-  .chip-row { display:flex; align-items:center; gap:6px; padding:0.6rem 1.5rem; border-bottom:1px solid var(--border); background:var(--surface); flex-wrap:wrap; }
-  .filter-chip { display:inline-flex; align-items:center; gap:6px; background:rgba(79,142,247,0.08); border:1px solid rgba(79,142,247,0.2); color:var(--accent2); border-radius:20px; padding:3px 6px 3px 12px; font-size:0.74rem; font-family:'Outfit',sans-serif; }
-  .filter-chip button { background:rgba(255,255,255,0.06); border:none; color:var(--accent2); width:16px; height:16px; border-radius:50%; cursor:pointer; font-size:0.7rem; line-height:1; display:flex; align-items:center; justify-content:center; transition:background 0.15s; }
-  .filter-chip button:hover { background:rgba(255,255,255,0.14); }
-
-  .results-bar { display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1.5rem; flex-wrap:wrap; gap:10px; }
-  .results-info { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text3); }
-  .results-info b { color:var(--accent2); }
-  .clear-btn { font-size:0.72rem; color:var(--text3); background:none; border:none; cursor:pointer; font-family:'DM Mono',monospace; transition:color 0.15s; }
-  .clear-btn:hover { color:var(--accent2); }
-  .sort-select { background:none; border:1px solid var(--border); color:var(--text2); border-radius:7px; padding:5px 10px; font-size:0.75rem; font-family:'Outfit',sans-serif; cursor:pointer; outline:none; }
-  .view-toggle { display:flex; align-items:center; gap:2px; background:var(--s2); border:1px solid var(--border); border-radius:7px; padding:2px; }
-  .view-toggle button { background:none; border:none; color:var(--text3); padding:5px 7px; border-radius:5px; cursor:pointer; display:flex; align-items:center; transition:all 0.15s; }
-  .view-toggle button.on { background:var(--surface); color:var(--accent2); }
-
-  .grid-wrap { padding:0 1.5rem 1.5rem; }
-  .modules-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
-  .modules-grid.list-mode { grid-template-columns:1fr; }
-  .nudge-card { align-items:center; justify-content:center; text-align:center; gap:8px; cursor:pointer; background:rgba(79,142,247,0.03); }
-  .nudge-label { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); }
-  .nudge-title { font-size:0.85rem; font-weight:600; color:var(--text2); }
-  .nudge-btn { display:inline-block; background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.25); color:var(--accent2); border-radius:20px; padding:4px 14px; font-size:0.72rem; font-weight:600; font-family:'DM Mono',monospace; }
-
-  .right-rail { width:220px; flex-shrink:0; border-left:1px solid var(--border); background:var(--surface); padding:1.25rem; overflow-y:auto; }
-  .rail-title { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:1rem; }
-  .rail-row { margin-bottom:0.9rem; }
-  .rail-name { font-size:0.76rem; color:var(--text2); margin-bottom:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .rail-bar-wrap { height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:3px; }
-  .rail-bar { height:100%; background:linear-gradient(90deg,var(--accent),var(--teal)); border-radius:3px; transition:width 0.4s ease; }
-  .rail-pct { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); }
-  @media(max-width:1300px) { .right-rail { display:none; } }
-
-  .mod-card { background:var(--surface); padding:1.25rem; cursor:pointer; transition:background 0.15s; display:flex; flex-direction:column; gap:0.5rem; position:relative; overflow:hidden; }
-  .mod-card::before { content:''; position:absolute; top:0; left:0; bottom:0; width:2px; background:linear-gradient(180deg,var(--accent),var(--teal)); transform:scaleY(0); transform-origin:top; transition:transform 0.25s cubic-bezier(0.4,0,0.2,1); }
-  .mod-card:hover { background:var(--s2); }
-  .mod-card:hover::before { transform:scaleY(1); }
-  .mod-top { display:flex; align-items:center; justify-content:space-between; }
-  .mod-sem { font-family:'DM Mono',monospace; font-size:0.62rem; font-weight:500; color:var(--accent); background:rgba(79,142,247,0.08); border:1px solid rgba(79,142,247,0.15); padding:2px 8px; border-radius:4px; letter-spacing:0.5px; }
-  .mod-type-tag { font-family:'DM Mono',monospace; font-size:0.58rem; text-transform:uppercase; letter-spacing:0.5px; padding:2px 7px; border-radius:3px; }
-  .tag-cours { background:rgba(79,142,247,0.08); color:var(--teal2); }
-  .tag-projet { background:rgba(79,142,247,0.08); color:var(--accent2); }
-  .mod-name { font-size:0.9rem; font-weight:600; color:var(--white); line-height:1.35; }
-  .mod-path { font-size:0.72rem; color:var(--text3); font-family:'DM Mono',monospace; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .mod-footer { display:flex; align-items:center; justify-content:space-between; padding-top:0.75rem; margin-top:0.25rem; border-top:1px solid var(--border); }
-  .mod-docs { font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text3); }
-  .mod-docs b { color:var(--accent2); }
-  .mod-corrige-tag { display:inline-block; align-self:flex-start; font-family:'DM Mono',monospace; font-size:0.58rem; font-weight:600; color:var(--green); background:rgba(74,222,128,0.1); border:1px solid rgba(74,222,128,0.22); border-radius:4px; padding:2px 7px; }
-  .mod-arr { font-size:0.7rem; color:var(--text3); transition:all 0.15s; font-family:'DM Mono',monospace; }
-  .mod-card:hover .mod-arr { color:var(--accent2); transform:translateX(4px); }
-
-  .empty { grid-column:1/-1; padding:5rem 2rem; text-align:center; }
-  .empty-code { font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text3); margin-bottom:0.75rem; }
-  .empty-title { font-size:1rem; font-weight:600; color:var(--text2); margin-bottom:6px; }
-  .empty-sub { font-size:0.8rem; color:var(--text3); }
-
-  .skel { background:linear-gradient(90deg,#070C18,#0C1222,#070C18); background-size:200% 100%; height:130px; animation:shimmerB 1.5s infinite; }
-  @keyframes shimmerB { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  @keyframes pulse { 0%,100%{opacity:0.35} 50%{opacity:0.7} }
-
-  @media(max-width:768px) {
-    .layout { height:auto; overflow:visible; }
-    .sidebar { display:none; }
-    .main { height:auto; overflow:visible; }
-    .topbar { padding:0.75rem 1rem; flex-wrap:wrap; gap:8px; }
-    .breadcrumb { padding:0.5rem 1rem; }
-    .results-bar { padding:0.5rem 1rem; }
-    .grid-wrap { padding:0 1rem 1rem; }
-    .modules-grid { grid-template-columns:1fr 1fr; }
-  }
-  @media(max-width:480px) {
-    .modules-grid { grid-template-columns:1fr; }
-    .search-prompt { display:none; }
-  }
-
-  /* MOBILE FILTER DRAWER */
-  .mob-filter-btn { display:none; }
-  @media(max-width:768px) {
-    .mob-filter-btn {
-      display:flex; align-items:center; gap:7px;
-      position:fixed; bottom:24px; left:20px; z-index:500;
-      background:var(--accent); color:#fff; border:none; border-radius:24px;
-      padding:11px 20px; font-size:0.875rem; font-weight:700;
-      font-family:'Outfit',sans-serif; cursor:pointer;
-      box-shadow:0 4px 24px rgba(79,142,247,0.5); transition:all 0.2s;
-    }
-  }
-  .mob-badge {
-    background:#F87171; color:#fff; border-radius:10px;
-    min-width:18px; height:18px; display:flex; align-items:center; justify-content:center;
-    font-size:0.68rem; font-weight:700; padding:0 4px;
-  }
-  .mob-overlay {
-    position:fixed; inset:0; z-index:600; background:rgba(2,4,10,0.75);
-    backdrop-filter:blur(4px);
-  }
-  .mob-drawer {
-    position:fixed; bottom:0; left:0; right:0; z-index:601;
-    background:var(--surface); border-top:1px solid var(--border);
-    border-radius:18px 18px 0 0; padding:0 1.25rem 2rem;
-    max-height:85vh; overflow-y:auto;
-    animation:mob-slide-up 0.3s cubic-bezier(0.16,1,0.3,1);
-  }
-  @keyframes mob-slide-up { from { transform:translateY(100%) } to { transform:translateY(0) } }
-  .mob-drawer::-webkit-scrollbar { width:3px; }
-  .mob-drawer::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
-  .mob-handle { width:40px; height:4px; background:var(--border); border-radius:2px; margin:14px auto 1.25rem; }
-  .mob-drawer-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; padding-bottom:1rem; border-bottom:1px solid var(--border); }
-  .mob-drawer-title { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); letter-spacing:2px; text-transform:uppercase; }
-  .mob-drawer-reset { background:none; border:none; color:#F87171; font-size:0.7rem; cursor:pointer; font-family:'DM Mono',monospace; font-weight:500; }
-  .mob-apply { width:100%; background:linear-gradient(135deg,#4F8EF7,#3A6ED4); color:#fff; border:none; border-radius:12px; padding:13px; font-size:0.9rem; font-weight:700; font-family:'Outfit',sans-serif; cursor:pointer; margin-top:1.25rem; }
-
-  @keyframes fade-hint {
-    0%   { opacity:0; transform:translateX(-50%) translateY(8px); }
-    15%  { opacity:1; transform:translateX(-50%) translateY(0); }
-    70%  { opacity:1; transform:translateX(-50%) translateY(0); }
-    100% { opacity:0; transform:translateX(-50%) translateY(-6px); }
-  }
-  .scroll-hint {
-    position:fixed; bottom:100px; left:50%; transform:translateX(-50%);
-    z-index:700; background:#0C1222; border:1px solid #2D4A7A;
-    border-radius:10px; padding:10px 22px;
-    font-family:'DM Mono',monospace; font-size:0.78rem; color:#5EEAD4;
-    box-shadow:0 8px 32px rgba(0,0,0,0.5); white-space:nowrap;
-    pointer-events:none; animation:fade-hint 1.5s ease forwards;
-  }
+  .bw-banner { border-bottom: 1px solid var(--border); background: var(--brand-soft); padding: var(--space-3) var(--space-6); display: flex; align-items: center; justify-content: center; gap: var(--space-3); flex-wrap: wrap; }
+  .bw-layout { max-width: 1400px; margin: 0 auto; padding: var(--space-6); display: grid; grid-template-columns: 240px 1fr; gap: var(--space-8); align-items: start; }
+  @media (min-width: 1300px) { .bw-layout { grid-template-columns: 240px 1fr 280px; } }
+  @media (max-width: 1023px) { .bw-layout { grid-template-columns: 1fr; } }
+  .bw-sidebar { display: flex; flex-direction: column; gap: var(--space-5); position: sticky; top: 72px; }
+  @media (max-width: 1023px) { .bw-sidebar { display: none; } }
+  .bw-filter-group { display: flex; flex-direction: column; gap: var(--space-2); }
+  .bw-sem-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .bw-type-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+  .bw-uni-wrap { position: relative; }
+  .bw-main { min-width: 0; display: flex; flex-direction: column; gap: var(--space-4); }
+  .bw-search-row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .bw-search-row > *:first-child { flex: 1; min-width: 220px; }
+  .bw-chips-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+  .bw-results-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
+  .bw-results-actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .bw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); }
+  .bw-grid--list { grid-template-columns: 1fr; }
+  .bw-rail { display: flex; flex-direction: column; gap: var(--space-4); position: sticky; top: 72px; }
+  @media (max-width: 1299px) { .bw-rail { position: static; } }
+  .bw-rail-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: var(--space-3); }
+  .bw-rail-row:last-child { margin-bottom: 0; }
+  .bw-rail-row__top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+  .bw-mobile-filter-btn { display: none; position: fixed; bottom: var(--space-6); left: var(--space-5); z-index: 40; }
+  @media (max-width: 1023px) { .bw-mobile-filter-btn { display: inline-flex; } }
+  .bw-sheet-footer { display: flex; gap: var(--space-2); position: sticky; bottom: calc(-1 * var(--space-5)); background: var(--surface); padding: var(--space-3) 0 0; margin-top: var(--space-2); border-top: 1px solid var(--border); }
+  .bw-sheet-footer > :last-child { flex: 1; }
+  .bw-req-form { background: var(--brand-soft); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-2); }
+  .bw-empty-actions { display: flex; gap: var(--space-2); justify-content: center; flex-wrap: wrap; margin-top: var(--space-4); }
 `
 
 const DOC_TYPES = [
-  { k: 'examen',         l: 'Examen Final',     short: 'EXAM'  },
-  { k: 'cc',             l: 'Contrôle Continu',  short: 'CC'    },
-  { k: 'td',             l: 'Travail Dirigé',    short: 'TD'    },
-  { k: 'tp',             l: 'Travail Pratique',  short: 'TP'    },
-  { k: 'cours',          l: 'Cours',             short: 'COURS' },
-  { k: 'corrige_examen', l: 'Corrigé Examen',    short: 'COR.'  },
-  { k: 'corrige_td',     l: 'Corrigé TD',        short: 'C.TD'  },
-  { k: 'corrige_tp',     l: 'Corrigé TP',        short: 'C.TP'  },
-  { k: 'quiz',           l: 'Quiz / Interro',    short: 'QUIZ'  },
-  { k: 'projet_final',  l: 'Projet Final',      short: 'PROJ'  },
+  { k: 'examen', l: 'Examen final' },
+  { k: 'cc', l: 'Contrôle continu' },
+  { k: 'td', l: 'TD' },
+  { k: 'tp', l: 'TP' },
+  { k: 'cours', l: 'Cours' },
+  { k: 'corrige_examen', l: 'Corrigé examen' },
+  { k: 'corrige_td', l: 'Corrigé TD' },
+  { k: 'corrige_tp', l: 'Corrigé TP' },
+  { k: 'quiz', l: 'Quiz' },
+  { k: 'projet_final', l: 'Projet final' },
 ]
+const SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10']
 
 export default function Browse() {
   const navigate = useNavigate()
   const [sp, setSearchParams] = useSearchParams()
-  const debounceRef  = useRef(null)
+  const debounceRef = useRef(null)
   const restoringRef = useRef({ fac: sp.get('fac') || '', fil: sp.get('fil') || '' })
 
-  const [query,          setQuery]          = useState(sp.get('q')    || '')
-  const [debouncedQuery, setDebouncedQuery] = useState(sp.get('q')    || '')
-  const [unis,    setUnis]    = useState([])
-  const [facs,    setFacs]    = useState([])
-  const [fils,    setFils]    = useState([])
-  const [mods,    setMods]    = useState([])
+  const [query, setQuery] = useState(sp.get('q') || '')
+  const [debouncedQuery, setDebouncedQuery] = useState(sp.get('q') || '')
+  const [unis, setUnis] = useState([])
+  const [facs, setFacs] = useState([])
+  const [fils, setFils] = useState([])
+  const [mods, setMods] = useState([])
   const [loading, setLoading] = useState(false)
 
-  const [selUni,  setSelUni]  = useState(sp.get('uni')  || '')
-  const [selFac,  setSelFac]  = useState(sp.get('fac')  || '')
-  const [selFil,  setSelFil]  = useState(sp.get('fil')  || '')
-  const [selSem,  setSelSem]  = useState(sp.get('sem')  || '')
+  const [selUni, setSelUni] = useState(sp.get('uni') || '')
+  const [selFac, setSelFac] = useState(sp.get('fac') || '')
+  const [selFil, setSelFil] = useState(sp.get('fil') || '')
+  const [selSem, setSelSem] = useState(sp.get('sem') || '')
   const [selType, setSelType] = useState(sp.get('type') || '')
-  const [sortMode, setSortMode] = useState('recent')
+  const [sortMode, setSortMode] = useState('pertinence')
   const [viewMode, setViewMode] = useState('grid')
-  const [coverage, setCoverage] = useState([])
-  const [corrigeSet, setCorrigeSet] = useState(new Set())
+  const [docStats, setDocStats] = useState({})
+  const [bookmarked, setBookmarked] = useState(new Set())
   const [fetchErr, setFetchErr] = useState('')
-  const [uniSearch,  setUniSearch]  = useState('')
-  const [showUniDd,  setShowUniDd]  = useState(false)
+  const [uniSearch, setUniSearch] = useState('')
+  const [showUniDd, setShowUniDd] = useState(false)
   const { user } = useAuth()
 
   // Uni request form
-  const [showUniReq,     setShowUniReq]     = useState(false)
-  const [uniReqName,     setUniReqName]     = useState('')
-  const [uniReqCity,     setUniReqCity]     = useState('')
-  const [uniReqSent,     setUniReqSent]     = useState(false)
-  const [uniReqBusy,     setUniReqBusy]     = useState(false)
+  const [showUniReq, setShowUniReq] = useState(false)
+  const [uniReqName, setUniReqName] = useState('')
+  const [uniReqCity, setUniReqCity] = useState('')
+  const [uniReqSent, setUniReqSent] = useState(false)
+  const [uniReqBusy, setUniReqBusy] = useState(false)
 
-  const [facsReady,      setFacsReady]      = useState(false)
+  const [facsReady, setFacsReady] = useState(false)
 
   // Faculté request form
-  const [showFacReq,     setShowFacReq]     = useState(false)
-  const [facReqName,     setFacReqName]     = useState('')
-  const [facReqSent,     setFacReqSent]     = useState(false)
-  const [facReqBusy,     setFacReqBusy]     = useState(false)
+  const [showFacReq, setShowFacReq] = useState(false)
+  const [facReqName, setFacReqName] = useState('')
+  const [facReqSent, setFacReqSent] = useState(false)
+  const [facReqBusy, setFacReqBusy] = useState(false)
 
   // Filière request form (sidebar + inline empty-state)
-  const [showFilReq,       setShowFilReq]       = useState(false)
+  const [showFilReq, setShowFilReq] = useState(false)
   const [showEmptyFilForm, setShowEmptyFilForm] = useState(false)
-  const [filReqName,       setFilReqName]       = useState('')
-  const [filReqSent,       setFilReqSent]       = useState(false)
-  const [filReqBusy,       setFilReqBusy]       = useState(false)
-  const [userUniId,        setUserUniId]        = useState(null)
-  const [showDrawer,       setShowDrawer]       = useState(false)
-  const [showScrollHint,   setShowScrollHint]   = useState(false)
+  const [filReqName, setFilReqName] = useState('')
+  const [filReqSent, setFilReqSent] = useState(false)
+  const [filReqBusy, setFilReqBusy] = useState(false)
+  const [userUniId, setUserUniId] = useState(null)
+  const [showDrawer, setShowDrawer] = useState(false)
 
   // Module suggestion state
-  const [showModReq,  setShowModReq]  = useState(false)
-  const [modReqName,  setModReqName]  = useState('')
-  const [modReqSem,   setModReqSem]   = useState('S1')
+  const [showModReq, setShowModReq] = useState(false)
+  const [modReqName, setModReqName] = useState('')
+  const [modReqSem, setModReqSem] = useState('S1')
   const [modReqFilId, setModReqFilId] = useState('')
-  const [modReqBusy,  setModReqBusy]  = useState(false)
-  const [modReqSent,  setModReqSent]  = useState(false)
-  const [modReqDup,   setModReqDup]   = useState(null)
-  const [newModId,    setNewModId]    = useState(null)
+  const [modReqBusy, setModReqBusy] = useState(false)
+  const [modReqSent, setModReqSent] = useState(false)
+  const [modReqDup, setModReqDup] = useState(null)
 
   useEffect(() => {
-    if (!user?.id) { setUserUniId(null); return }
+    if (!user?.id) { setUserUniId(null); setBookmarked(new Set()); return }
     supabase.from('user_profiles').select('university_id').eq('id', user.id).single()
       .then(({ data }) => setUserUniId(data?.university_id || null))
+    supabase.from('module_bookmarks').select('module_id').eq('user_id', user.id)
+      .then(({ data }) => setBookmarked(new Set((data || []).map(b => b.module_id))))
   }, [user?.id]) // eslint-disable-line
 
   // Sync from URL when navigated here externally (e.g. Navbar search → /browse?q=)
@@ -330,11 +142,11 @@ export default function Browse() {
   // Persist all active filters to URL + save to sessionStorage for Navbar restore
   useEffect(() => {
     const p = {}
-    if (query)   p.q    = query
-    if (selUni)  p.uni  = selUni
-    if (selFac)  p.fac  = selFac
-    if (selFil)  p.fil  = selFil
-    if (selSem)  p.sem  = selSem
+    if (query) p.q = query
+    if (selUni) p.uni = selUni
+    if (selFac) p.fac = selFac
+    if (selFil) p.fil = selFil
+    if (selSem) p.sem = selSem
     if (selType) p.type = selType
     setSearchParams(p, { replace: true })
     const qs = new URLSearchParams(p).toString()
@@ -440,7 +252,7 @@ export default function Browse() {
   useEffect(() => { loadModules() }, [loadModules])
 
   useEffect(() => {
-    setShowModReq(false); setModReqSent(false); setModReqDup(null); setNewModId(null)
+    setShowModReq(false); setModReqSent(false); setModReqDup(null)
   }, [debouncedQuery])
 
   const flushSearch = () => { clearTimeout(debounceRef.current); setDebouncedQuery(query) }
@@ -508,15 +320,15 @@ export default function Browse() {
       setModReqBusy(false)
       return
     }
-    const { data: newMod, error } = await supabase
+    const { error } = await supabase
       .from('modules')
       .insert({ name: modReqName.trim().slice(0, 120), filiere_id: parseInt(targetFilId), semester: modReqSem, type: 'cours' })
       .select('id, slug')
       .single()
     setModReqBusy(false)
     if (error) return
-    setNewModId(newMod.id)
     setModReqSent(true)
+    notify.success('Module ajouté', 'Tu peux maintenant y partager un document.')
     loadModules()
   }
 
@@ -529,52 +341,195 @@ export default function Browse() {
     setShowFacReq(false); setFacReqName(''); setFacReqSent(false)
     setShowFilReq(false); setShowEmptyFilForm(false); setFilReqName(''); setFilReqSent(false)
     setShowModReq(false); setModReqName(''); setModReqSem('S1'); setModReqFilId('')
-    setModReqSent(false); setModReqDup(null); setNewModId(null)
+    setModReqSent(false); setModReqDup(null)
   }
 
-  const displayed = sortMode === 'az' ? [...mods].sort((a, b) => a.name.localeCompare(b.name)) : mods
-
-  // Real "coverage" widget — % of the 10 document types actually uploaded per module.
-  // Computed from real documents, not a fabricated stat.
+  // Real per-module document stats (types present + count) for the modules on screen —
+  // powers the coverage rail, sort-by-docs, and each ModuleCard's type list.
   useEffect(() => {
-    if (!selSem || mods.length === 0) { setCoverage([]); return }
-    const sample = mods.slice(0, 8)
-    const ids = sample.map(m => m.id)
+    if (mods.length === 0) { setDocStats({}); return }
+    const ids = mods.slice(0, 60).map(m => m.id)
     supabase.from('documents').select('module_id, doc_type').in('module_id', ids).eq('is_verified', true)
       .then(({ data }) => {
         const byMod = {}
         for (const d of (data || [])) {
-          if (!byMod[d.module_id]) byMod[d.module_id] = new Set()
-          byMod[d.module_id].add(d.doc_type)
+          if (!byMod[d.module_id]) byMod[d.module_id] = { types: new Set(), count: 0 }
+          byMod[d.module_id].types.add(d.doc_type)
+          byMod[d.module_id].count++
         }
-        const rows = sample
-          .map(m => ({ id: m.id, name: m.name, pct: Math.round(((byMod[m.id]?.size) || 0) / DOC_TYPES.length * 100) }))
-          .sort((a, b) => b.pct - a.pct)
-          .slice(0, 4)
-        setCoverage(rows)
+        setDocStats(byMod)
       })
-  }, [mods, selSem]) // eslint-disable-line
-
-  // Real "corrigé dispo" tag — module actually has a corrige_* document
-  useEffect(() => {
-    if (mods.length === 0) { setCorrigeSet(new Set()); return }
-    const ids = mods.slice(0, 30).map(m => m.id)
-    supabase.from('documents').select('module_id, doc_type').in('module_id', ids).eq('is_verified', true).like('doc_type', 'corrige%')
-      .then(({ data }) => setCorrigeSet(new Set((data || []).map(d => d.module_id))))
   }, [mods])
-  const uniName  = unis.find(u => u.id === parseInt(selUni))?.name
+
+  const uniName = unis.find(u => u.id === parseInt(selUni))?.name
   const facNameRaw = facs.find(f => f.id === parseInt(selFac))?.name
-  const facName  = facNameRaw === '__root__' ? null : facNameRaw
-  const filName  = fils.find(f => f.id === parseInt(selFil))?.name
+  const facName = facNameRaw === '__root__' ? null : facNameRaw
+  const filName = fils.find(f => f.id === parseInt(selFil))?.name
   const typeName = DOC_TYPES.find(t => t.k === selType)?.l
-  const hasFilters         = selUni || selFac || selFil || selSem || selType || query
-  const activeFilterCount  = [selUni, facNameRaw === '__root__' ? '' : selFac, selFil, selSem, selType].filter(Boolean).length
+  const hasFilters = selUni || selFac || selFil || selSem || selType || query
+  const activeFilterCount = [selUni, facNameRaw === '__root__' ? '' : selFac, selFil, selSem, selType].filter(Boolean).length
   const hasActiveFilter = !!(selUni || selSem || selType || debouncedQuery.trim())
-  // University selected, facs loaded, no other filters, no results → uni has no content yet
-  const isUniEmpty = !loading && facsReady && selUni && !selSem && !selType && !debouncedQuery.trim() && displayed.length === 0
+  const isUniEmpty = !loading && facsReady && selUni && !selSem && !selType && !debouncedQuery.trim() && mods.length === 0
+
+  const displayed = (() => {
+    const arr = [...mods]
+    if (sortMode === 'az') arr.sort((a, b) => a.name.localeCompare(b.name))
+    else if (sortMode === 'recent') arr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    else if (sortMode === 'docs') arr.sort((a, b) => (docStats[b.id]?.count || 0) - (docStats[a.id]?.count || 0))
+    return arr
+  })()
+
+  const coverageRows = selSem ? mods.slice(0, 6).map(m => ({
+    id: m.id, name: m.name,
+    pct: Math.round(((docStats[m.id]?.types.size) || 0) / DOC_TYPES.length * 100),
+  })).sort((a, b) => b.pct - a.pct) : []
+
+  const breadcrumbItems = [
+    { label: 'Explorer', href: '/browse' },
+    uniName && { label: uniName },
+    facName && { label: facName },
+    filName && { label: filName },
+    selSem && { label: selSem },
+  ].filter(Boolean)
+
+  const requestForm = (form) => {
+    // form: 'uni' | 'fac' | 'fil'
+    if (form === 'uni') return (
+      <div className="bw-req-form">
+        {uniReqSent ? <span className="t-body-sm" style={{ color: 'var(--success)' }}>Université ajoutée.</span>
+          : !user ? <span className="t-body-sm qz-subtle"><Link to="/login" style={{ color: 'var(--brand-text)' }}>Connecte-toi</Link> pour envoyer une demande.</span>
+          : (
+            <>
+              <Input placeholder="Nom de l'université" value={uniReqName} onChange={e => setUniReqName(e.target.value)} />
+              <Input placeholder="Ville (optionnel)" value={uniReqCity} onChange={e => setUniReqCity(e.target.value)} />
+              <div className="bw-search-row">
+                <Button variant="primary" size="sm" loading={uniReqBusy} disabled={!uniReqName.trim()} onClick={handleUniRequest}>Envoyer</Button>
+                <Button variant="ghost" size="sm" onClick={() => { setShowUniReq(false); setUniReqName(''); setUniReqCity('') }}>Annuler</Button>
+              </div>
+            </>
+          )}
+      </div>
+    )
+    if (form === 'fac') return (
+      <div className="bw-req-form">
+        {facReqSent ? <span className="t-body-sm" style={{ color: 'var(--success)' }}>Faculté ajoutée.</span>
+          : !user ? <span className="t-body-sm qz-subtle"><Link to="/login" style={{ color: 'var(--brand-text)' }}>Connecte-toi</Link> pour envoyer une demande.</span>
+          : (
+            <>
+              <Input placeholder="Nom de la faculté / école" value={facReqName} onChange={e => setFacReqName(e.target.value)} />
+              <div className="bw-search-row">
+                <Button variant="primary" size="sm" loading={facReqBusy} disabled={!facReqName.trim()} onClick={handleFacRequest}>Envoyer</Button>
+                <Button variant="ghost" size="sm" onClick={() => { setShowFacReq(false); setFacReqName('') }}>Annuler</Button>
+              </div>
+            </>
+          )}
+      </div>
+    )
+    if (form === 'fil') return (
+      <div className="bw-req-form">
+        {filReqSent ? <span className="t-body-sm" style={{ color: 'var(--success)' }}>Filière ajoutée.</span>
+          : !user ? <span className="t-body-sm qz-subtle"><Link to="/login" style={{ color: 'var(--brand-text)' }}>Connecte-toi</Link> pour envoyer une demande.</span>
+          : (
+            <>
+              <Input placeholder="Nom de la filière" value={filReqName} onChange={e => setFilReqName(e.target.value)} />
+              <div className="bw-search-row">
+                <Button variant="primary" size="sm" loading={filReqBusy} disabled={!filReqName.trim()} onClick={handleFilRequest}>Envoyer</Button>
+                <Button variant="ghost" size="sm" onClick={() => { setShowFilReq(false); setFilReqName('') }}>Annuler</Button>
+              </div>
+            </>
+          )}
+      </div>
+    )
+    return null
+  }
+
+  const renderFilters = () => (
+    <>
+      <div className="bw-filter-group">
+        <label className="t-eyebrow qz-subtle">École</label>
+        {user && userUniId && unis.length > 0 && (() => {
+          const myUni = unis.find(u => u.id === userUniId)
+          if (!myUni) return null
+          return (
+            <Chip selected={selUni === String(userUniId)} onClick={() => { setSelUni(String(myUni.id)); setUniSearch(myUni.name) }}>
+              {myUni.name}
+            </Chip>
+          )
+        })()}
+        <div className="bw-uni-wrap">
+          <Input
+            placeholder="Toutes les universités"
+            value={selUni ? (unis.find(u => String(u.id) === selUni)?.name ?? uniSearch) : uniSearch}
+            onChange={e => { setUniSearch(e.target.value); setSelUni(''); setShowUniDd(true) }}
+            onFocus={() => setShowUniDd(true)}
+            onBlur={() => setTimeout(() => setShowUniDd(false), 150)}
+          />
+          {showUniDd && (
+            <div className="qz-dropdown" style={{ position: 'absolute', left: 0, right: 0, width: 'auto' }}>
+              <button type="button" className="qz-dropdown__item" onMouseDown={() => { setSelUni(''); setUniSearch(''); setShowUniDd(false) }}>Toutes les universités</button>
+              {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).map(u => (
+                <button type="button" key={u.id} className="qz-dropdown__item" onMouseDown={() => { setSelUni(String(u.id)); setUniSearch(u.name); setShowUniDd(false) }}>{u.name}</button>
+              ))}
+              {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).length === 0 && (
+                <div style={{ padding: '8px 12px' }}><span className="t-body-sm qz-subtle">Aucun résultat</span></div>
+              )}
+              <div className="qz-dropdown__sep" />
+              <button type="button" className="qz-dropdown__item" onMouseDown={() => { setShowUniDd(false); setShowUniReq(true); setUniReqSent(false) }}>
+                <Icon name="plus" /> Ton école n'est pas dans la liste
+              </button>
+            </div>
+          )}
+        </div>
+        {showUniReq && requestForm('uni')}
+      </div>
+
+      {selUni && facsReady && facs.filter(f => f.name !== '__root__').length > 0 && (
+        <div className="bw-filter-group">
+          <Select label="Faculté / École" value={selFac} onChange={e => setSelFac(e.target.value)} options={[{ value: '', label: 'Toutes les facultés' }, ...facs.filter(f => f.name !== '__root__').map(f => ({ value: f.id, label: f.name }))]} />
+          {!showFacReq && !facReqSent && <Button variant="link" size="sm" onClick={() => setShowFacReq(true)}>Faculté introuvable ?</Button>}
+          {showFacReq && requestForm('fac')}
+        </div>
+      )}
+
+      {selUni && facsReady && facs.length === 0 && (
+        <div className="bw-filter-group">
+          {!showFilReq && !filReqSent && <Button variant="link" size="sm" onClick={() => { setShowFilReq(true); setShowFacReq(false) }}>Ajouter une filière</Button>}
+          {showFilReq && requestForm('fil')}
+          {!showFacReq && !facReqSent && <Button variant="link" size="sm" onClick={() => { setShowFacReq(true); setShowFilReq(false) }}>Ajouter une faculté / école</Button>}
+          {showFacReq && requestForm('fac')}
+        </div>
+      )}
+
+      {fils.length > 0 && (
+        <div className="bw-filter-group">
+          <Select label="Filière" value={selFil} onChange={e => setSelFil(e.target.value)} options={[{ value: '', label: 'Toutes les filières' }, ...fils.map(f => ({ value: f.id, label: f.name }))]} />
+          {!showFilReq && !filReqSent && <Button variant="link" size="sm" onClick={() => setShowFilReq(true)}>Filière introuvable ?</Button>}
+          {showFilReq && requestForm('fil')}
+        </div>
+      )}
+
+      <div className="bw-filter-group">
+        <label className="t-eyebrow qz-subtle">Semestre</label>
+        <div className="bw-sem-grid">
+          {SEMESTERS.map(s => (
+            <Chip key={s} selected={selSem === s} onClick={() => setSelSem(selSem === s ? '' : s)}>{s}</Chip>
+          ))}
+        </div>
+      </div>
+
+      <div className="bw-filter-group">
+        <label className="t-eyebrow qz-subtle">Type de document</label>
+        <div className="bw-type-wrap">
+          {DOC_TYPES.map(t => (
+            <Chip key={t.k} selected={selType === t.k} onClick={() => setSelType(selType === t.k ? '' : t.k)}>{t.l}</Chip>
+          ))}
+        </div>
+      </div>
+    </>
+  )
 
   return (
-    <div className="browse">
+    <div>
       <style>{css}</style>
       <Navbar activePage="browse" />
 
@@ -582,753 +537,210 @@ export default function Browse() {
         const myUni = unis.find(u => u.id === userUniId)
         if (!myUni) return null
         return (
-          <div style={{ borderBottom:'1px solid rgba(79,142,247,0.1)', padding:'9px 24px', display:'flex', alignItems:'center', justifyContent:'center', gap:12, flexWrap:'wrap', background:'rgba(79,142,247,0.04)' }}>
-            <span style={{ fontSize:'0.875rem', color:'var(--text2)', fontFamily:'Outfit,sans-serif' }}>
-              🎓 Tu étudies à <b style={{ color:'var(--accent2)' }}>{myUni.name}</b> — voir les modules de ton université
-            </span>
-            <button
-              onClick={() => { setSelUni(String(myUni.id)); setUniSearch(myUni.name) }}
-              style={{ background:'rgba(79,142,247,0.1)', border:'1px solid rgba(79,142,247,0.25)', color:'var(--accent2)', borderRadius:7, padding:'4px 14px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}>
-              Voir →
-            </button>
+          <div className="bw-banner">
+            <span className="t-body-sm qz-muted">Tu étudies à <b className="qz-muted" style={{ color: 'var(--text)' }}>{myUni.name}</b> — voir les modules de ton université.</span>
+            <Button variant="secondary" size="sm" onClick={() => { setSelUni(String(myUni.id)); setUniSearch(myUni.name) }}>Voir</Button>
           </div>
         )
       })()}
 
-      <div className="layout">
-        {/* SIDEBAR */}
-        <aside className="sidebar">
-          <div className="sidebar-header">
-            <span className="sidebar-title">// filtres</span>
-            <button className="sidebar-reset" onClick={reset}>reset</button>
+      <div className="bw-layout">
+        <aside className="bw-sidebar">
+          <div className="bw-search-row">
+            <span className="t-eyebrow qz-subtle" style={{ flex: 1 }}>Filtres</span>
+            <Button variant="link" size="sm" onClick={reset}>Réinitialiser</Button>
           </div>
-
-          {user && userUniId && unis.length > 0 && (() => {
-            const myUni = unis.find(u => u.id === userUniId)
-            if (!myUni) return null
-            const active = selUni === String(userUniId)
-            return (
-              <div style={{marginBottom:'1rem'}}>
-                <button
-                  onClick={() => { setSelUni(String(myUni.id)); setUniSearch(myUni.name) }}
-                  style={{
-                    width:'100%', display:'flex', alignItems:'center', gap:7,
-                    background: active ? 'rgba(79,142,247,0.12)' : 'rgba(79,142,247,0.05)',
-                    border: `1px solid ${active ? 'rgba(79,142,247,0.4)' : 'rgba(79,142,247,0.15)'}`,
-                    borderRadius:8, padding:'7px 10px', cursor:'pointer', transition:'all 0.15s',
-                    fontFamily:'Outfit,sans-serif', fontSize:'0.8rem',
-                    color: active ? 'var(--accent2)' : 'var(--text2)', textAlign:'left',
-                  }}>
-                  <span>🎓</span>
-                  <span style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{myUni.name}</span>
-                </button>
-              </div>
-            )
-          })()}
-
-          <div className="filter-block">
-            <span className="filter-label">Université</span>
-            <div className="uni-wrap">
-              <input
-                className="uni-input"
-                placeholder="Toutes les universités"
-                value={selUni ? (unis.find(u => String(u.id) === selUni)?.name ?? uniSearch) : uniSearch}
-                onChange={e => { setUniSearch(e.target.value); setSelUni(''); setShowUniDd(true); }}
-                onFocus={() => setShowUniDd(true)}
-                onBlur={() => setTimeout(() => setShowUniDd(false), 150)}
-              />
-              {showUniDd && (
-                <div className="uni-dd">
-                  <div className="uni-dd-item reset"
-                    onMouseDown={() => { setSelUni(''); setUniSearch(''); setShowUniDd(false); }}>
-                    Toutes les universités
-                  </div>
-                  {unis
-                    .filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase()))
-                    .map(u => (
-                      <div key={u.id} className="uni-dd-item"
-                        onMouseDown={() => { setSelUni(String(u.id)); setUniSearch(u.name); setShowUniDd(false); }}>
-                        {u.name}
-                      </div>
-                    ))
-                  }
-                  {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).length === 0 && (
-                    <div className="uni-dd-empty">Aucun résultat</div>
-                  )}
-                  <div className="uni-dd-ask"
-                    onMouseDown={() => { setShowUniDd(false); setShowUniReq(true); setUniReqSent(false); }}>
-                    + Tu ne trouves pas ton université ?
-                  </div>
-                </div>
-              )}
-              {showUniReq && (
-                <div className="req-form">
-                  {uniReqSent ? (
-                    <div className="req-ok">✓ Université ajoutée !</div>
-                  ) : !user ? (
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
-                      <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
-                    </div>
-                  ) : (
-                    <>
-                      <div className="req-form-title">// université manquante</div>
-                      <input className="req-input" placeholder="Nom de l'université *" value={uniReqName} onChange={e => setUniReqName(e.target.value)} />
-                      <input className="req-input" placeholder="Ville (optionnel)" value={uniReqCity} onChange={e => setUniReqCity(e.target.value)} />
-                      <div>
-                        <button className="req-send" onClick={handleUniRequest} disabled={!uniReqName.trim() || uniReqBusy}>
-                          {uniReqBusy ? '...' : 'Envoyer'}
-                        </button>
-                        <button className="req-cancel" onClick={() => { setShowUniReq(false); setUniReqName(''); setUniReqCity(''); }}>Annuler</button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Faculté dropdown — only when named (non-root) faculties exist */}
-          {selUni && facsReady && facs.filter(f => f.name !== '__root__').length > 0 && (
-            <div className="filter-block">
-              <span className="filter-label">Faculté / École</span>
-              <select className="filter-select" value={selFac} onChange={e => setSelFac(e.target.value)}>
-                <option value="">Toutes les facultés</option>
-                {facs.filter(f => f.name !== '__root__').map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
-              {!showFacReq && !facReqSent && (
-                <button className="req-link" onClick={() => setShowFacReq(true)}>Faculté introuvable ?</button>
-              )}
-              {facReqSent && <div className="req-ok">✓ Faculté ajoutée !</div>}
-              {showFacReq && !facReqSent && (
-                <div className="req-form">
-                  <div className="req-form-title">// faculté manquante</div>
-                  {!user ? (
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
-                      <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
-                    </div>
-                  ) : (
-                    <>
-                      <input className="req-input" placeholder="Nom de la faculté / école *" value={facReqName} onChange={e => setFacReqName(e.target.value)} />
-                      <div>
-                        <button className="req-send" onClick={handleFacRequest} disabled={!facReqName.trim() || facReqBusy}>
-                          {facReqBusy ? '...' : 'Envoyer'}
-                        </button>
-                        <button className="req-cancel" onClick={() => { setShowFacReq(false); setFacReqName(''); }}>Annuler</button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* No faculties yet — show contribute CTAs directly, no empty dropdowns */}
-          {selUni && facsReady && facs.length === 0 && (
-            <div className="filter-block">
-              {!showFilReq && !filReqSent && (
-                <button className="req-link" onClick={() => { setShowFilReq(true); setShowFacReq(false) }}>+ Ajouter une filière</button>
-              )}
-              {showFilReq && !filReqSent && (
-                <div className="req-form">
-                  <div className="req-form-title">// filière manquante</div>
-                  {!user ? (
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
-                      <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
-                    </div>
-                  ) : (
-                    <>
-                      <input className="req-input" placeholder="Nom de la filière *" value={filReqName} onChange={e => setFilReqName(e.target.value)} />
-                      <div>
-                        <button className="req-send" onClick={handleFilRequest} disabled={!filReqName.trim() || filReqBusy}>{filReqBusy ? '...' : 'Envoyer'}</button>
-                        <button className="req-cancel" onClick={() => { setShowFilReq(false); setFilReqName(''); }}>Annuler</button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-              {filReqSent && <div className="req-ok">✓ Filière ajoutée !</div>}
-              {!showFacReq && !facReqSent && (
-                <button className="req-link" onClick={() => { setShowFacReq(true); setShowFilReq(false) }}>+ Ajouter une faculté / école</button>
-              )}
-              {showFacReq && !facReqSent && (
-                <div className="req-form">
-                  <div className="req-form-title">// faculté manquante</div>
-                  {!user ? (
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
-                      <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
-                    </div>
-                  ) : (
-                    <>
-                      <input className="req-input" placeholder="Nom de la faculté / école *" value={facReqName} onChange={e => setFacReqName(e.target.value)} />
-                      <div>
-                        <button className="req-send" onClick={handleFacRequest} disabled={!facReqName.trim() || facReqBusy}>{facReqBusy ? '...' : 'Envoyer'}</button>
-                        <button className="req-cancel" onClick={() => { setShowFacReq(false); setFacReqName(''); }}>Annuler</button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-              {facReqSent && <div className="req-ok">✓ Faculté ajoutée !</div>}
-            </div>
-          )}
-
-          {fils.length > 0 && (
-            <div className="filter-block">
-              <span className="filter-label">Filière</span>
-              <select className="filter-select" value={selFil} onChange={e => setSelFil(e.target.value)}>
-                <option value="">Toutes les filières</option>
-                {fils.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </select>
-              {!showFilReq && !filReqSent && (
-                <button className="req-link" onClick={() => setShowFilReq(true)}>Filière introuvable ?</button>
-              )}
-              {filReqSent && <div className="req-ok">✓ Filière ajoutée !</div>}
-              {showFilReq && !filReqSent && (
-                <div className="req-form">
-                  {!user ? (
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
-                      <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
-                    </div>
-                  ) : (
-                    <>
-                      <div className="req-form-title">// filière manquante</div>
-                      <input className="req-input" placeholder="Nom de la filière *" value={filReqName} onChange={e => setFilReqName(e.target.value)} />
-                      <div>
-                        <button className="req-send" onClick={handleFilRequest} disabled={!filReqName.trim() || filReqBusy}>
-                          {filReqBusy ? '...' : 'Envoyer'}
-                        </button>
-                        <button className="req-cancel" onClick={() => { setShowFilReq(false); setFilReqName(''); }}>Annuler</button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="sidebar-divider" />
-
-          <div className="filter-block">
-            <span className="filter-label">Semestre</span>
-            <div className="sem-wrap">
-              {['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10'].map(s => (
-                <button key={s} className={`sem-btn ${selSem===s?'on':''}`}
-                  onClick={() => setSelSem(selSem===s?'':s)}>{s}</button>
-              ))}
-            </div>
-          </div>
-
-          <div className="sidebar-divider" />
-
-          <div className="filter-block">
-            <span className="filter-label">Type de document</span>
-            <div className="type-wrap">
-              {DOC_TYPES.map(t => (
-                <div key={t.k} className={`type-row ${selType===t.k?'on':''}`}
-                  onClick={() => setSelType(selType===t.k?'':t.k)}>
-                  <div className="type-dot" />
-                  <span className="type-name">{t.l}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
+          {renderFilters()}
         </aside>
 
-        {/* MAIN */}
-        <main className="main">
-          <div className="topbar">
-            <div className="search-field">
-              <span className="search-prompt">$_</span>
-              <input className="search-input"
-                placeholder="Recherche un module... ex: Analyse 1, POO, Marketing Stratégique"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && flushSearch()} />
-            </div>
-            <button className="search-btn" onClick={flushSearch}>Rechercher</button>
+        <main className="bw-main">
+          {hasFilters ? <Breadcrumb items={breadcrumbItems} /> : null}
+
+          <div className="bw-search-row">
+            <SearchBar
+              variant={hasActiveFilter ? 'compact' : undefined}
+              placeholder="Recherche un module… ex. Analyse 1, POO, Marketing"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onSubmit={() => flushSearch()}
+            />
+            <Tabs label="Vue" variant="pill" value={viewMode} onChange={setViewMode} items={[{ id: 'grid', label: 'Grille' }, { id: 'list', label: 'Liste' }]} />
           </div>
 
-          {/* Active filter chips */}
           {hasFilters && (
-            <div className="chip-row">
-              {uniName && <span className="filter-chip">{uniName}<button onClick={() => setSelUni('')}>×</button></span>}
-              {facName && <span className="filter-chip">{facName}<button onClick={() => setSelFac('')}>×</button></span>}
-              {filName && <span className="filter-chip">{filName}<button onClick={() => setSelFil('')}>×</button></span>}
-              {selSem && <span className="filter-chip">{selSem}<button onClick={() => setSelSem('')}>×</button></span>}
-              {typeName && <span className="filter-chip">{typeName}<button onClick={() => setSelType('')}>×</button></span>}
-              {debouncedQuery && <span className="filter-chip">"{debouncedQuery}"<button onClick={() => { setQuery(''); setDebouncedQuery('') }}>×</button></span>}
+            <div className="bw-chips-row">
+              {uniName && <Chip selected onClick={() => setSelUni('')}>{uniName} <Icon name="x" /></Chip>}
+              {facName && <Chip selected onClick={() => setSelFac('')}>{facName} <Icon name="x" /></Chip>}
+              {filName && <Chip selected onClick={() => setSelFil('')}>{filName} <Icon name="x" /></Chip>}
+              {selSem && <Chip selected onClick={() => setSelSem('')}>{selSem} <Icon name="x" /></Chip>}
+              {typeName && <Chip selected onClick={() => setSelType('')}>{typeName} <Icon name="x" /></Chip>}
+              {debouncedQuery && <Chip selected onClick={() => { setQuery(''); setDebouncedQuery('') }}>"{debouncedQuery}" <Icon name="x" /></Chip>}
+              <Button variant="link" size="sm" onClick={reset}>Tout effacer</Button>
             </div>
           )}
 
-          {fetchErr && (
-            <div style={{ margin:'0.5rem 1.5rem', padding:'8px 14px', background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:8, fontSize:'0.78rem', color:'#F87171', fontFamily:'DM Mono,monospace' }}>
-              {fetchErr}
-            </div>
-          )}
+          {fetchErr && <div className="qz-card" style={{ borderColor: 'var(--danger)' }}><span className="t-body-sm" style={{ color: 'var(--danger)' }}>{fetchErr}</span></div>}
+
           {hasActiveFilter && (
-            <div className="results-bar">
-              <span className="results-info">
-                <b>{displayed.length}</b> module{displayed.length!==1?'s':''} trouvé{displayed.length!==1?'s':''}
-              </span>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                {hasFilters && (
-                  <button className="clear-btn" onClick={reset}>effacer les filtres</button>
-                )}
-                <div className="sort-wrap">
-                  <select className="sort-select" value={sortMode} onChange={e => setSortMode(e.target.value)}>
-                    <option value="recent">Trier : Plus récents</option>
-                    <option value="az">Trier : A → Z</option>
-                  </select>
-                </div>
-                <div className="view-toggle">
-                  <button className={viewMode==='grid'?'on':''} onClick={() => setViewMode('grid')} title="Vue grille" aria-label="Vue grille">
-                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-                  </button>
-                  <button className={viewMode==='list'?'on':''} onClick={() => setViewMode('list')} title="Vue liste" aria-label="Vue liste">
-                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
-                  </button>
-                </div>
+            <div className="bw-results-bar">
+              <span className="t-mono qz-subtle"><b className="qz-muted" style={{ color: 'var(--text)' }}>{displayed.length}</b> module{displayed.length !== 1 ? 's' : ''} trouvé{displayed.length !== 1 ? 's' : ''}</span>
+              <div className="bw-results-actions">
+                <Select value={sortMode} onChange={e => setSortMode(e.target.value)} options={[
+                  { value: 'pertinence', label: 'Trier : Pertinence' },
+                  { value: 'docs', label: 'Trier : Plus de documents' },
+                  { value: 'recent', label: 'Trier : Récents' },
+                  { value: 'az', label: 'Trier : A → Z' },
+                ]} />
               </div>
             </div>
           )}
 
-          <div className="grid-wrap" id="browse-results">
-            <div className={`modules-grid ${viewMode === 'list' ? 'list-mode' : ''}`}>
-              {!hasActiveFilter ? (
-                <div className="empty">
-                  <div className="empty-code">// no filter selected</div>
-                  <div className="empty-title">Sélectionne ton université pour commencer</div>
-                  <div className="empty-sub">Utilise les filtres à gauche pour trouver tes modules</div>
-                </div>
-              ) : loading ? (
-                Array(12).fill(0).map((_,i) => <div key={i} className="skel" />)
-              ) : displayed.length === 0 ? (
-                isUniEmpty ? (
-                  <div className="empty">
-                    <div className="empty-code">// aucun contenu</div>
-                    <div className="empty-title">Cette université n'a pas encore de contenu sur la plateforme</div>
-                    <div className="empty-sub">Sois le premier à contribuer !</div>
-                    <div style={{marginTop:'1.25rem',display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
-                      <button
-                        onClick={() => setShowEmptyFilForm(v => !v)}
-                        style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'9px 18px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'all 0.15s'}}>
-                        Suggérer une filière
-                      </button>
-                      <button
-                        onClick={() => navigate('/upload')}
-                        style={{background:'linear-gradient(135deg,#4F8EF7,#3A6ED4)',border:'none',color:'#fff',borderRadius:8,padding:'9px 18px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'opacity 0.15s'}}>
-                        Uploader un document
-                      </button>
+          <div id="browse-results">
+            {!hasActiveFilter ? (
+              <EmptyState icon="search" title="Sélectionne ton université pour commencer">
+                Utilise les filtres pour trouver tes modules.
+              </EmptyState>
+            ) : loading ? (
+              <div className={`bw-grid${viewMode === 'list' ? ' bw-grid--list' : ''}`}>
+                {Array(9).fill(0).map((_, i) => <Card key={i}><Skeleton height={110} /></Card>)}
+              </div>
+            ) : displayed.length === 0 ? (
+              isUniEmpty ? (
+                <EmptyState icon="inbox" title="Cette université n'a pas encore de contenu">
+                  Sois le premier à contribuer !
+                  <div className="bw-empty-actions">
+                    <Button variant="secondary" onClick={() => setShowEmptyFilForm(v => !v)}>Suggérer une filière</Button>
+                    <Button variant="primary" as={Link} to="/upload">Partager un document</Button>
+                  </div>
+                  {showEmptyFilForm && !filReqSent && (
+                    <div style={{ maxWidth: 320, margin: '0 auto', textAlign: 'left' }}>{requestForm('fil')}</div>
+                  )}
+                </EmptyState>
+              ) : (
+                <EmptyState icon="search" title={debouncedQuery.trim() ? `Aucun module pour "${debouncedQuery}"` : 'Aucun module trouvé'}>
+                  Vérifie l'orthographe ou demande-le : on l'ajoute vite.
+                  {debouncedQuery.trim() && (selFil || fils.length > 0) && !modReqSent && (
+                    <div style={{ marginTop: 'var(--space-4)', maxWidth: 380, margin: 'var(--space-4) auto 0', textAlign: 'left' }}>
+                      {!showModReq ? (
+                        <div style={{ textAlign: 'center' }}>
+                          <Button variant="secondary" onClick={() => { setShowModReq(true); setModReqName(debouncedQuery.trim()); setModReqFilId(selFil) }}>Demander ce module</Button>
+                        </div>
+                      ) : (
+                        <div className="bw-req-form">
+                          {!user ? (
+                            <span className="t-body-sm qz-subtle"><Link to="/login" style={{ color: 'var(--brand-text)' }}>Connecte-toi</Link> pour ajouter ce module.</span>
+                          ) : (
+                            <>
+                              {modReqDup && (
+                                <span className="t-body-sm" style={{ color: 'var(--warning)' }}>
+                                  Ce module existe déjà. <Button variant="link" size="sm" onClick={() => navigate(`/module/${modReqDup.slug || modReqDup.id}`)}>Voir le module</Button>
+                                </span>
+                              )}
+                              <Input value={modReqName} onChange={e => setModReqName(e.target.value)} placeholder="Nom du module" maxLength={120} />
+                              {!selFil && fils.length > 0 && (
+                                <Select value={modReqFilId} onChange={e => setModReqFilId(e.target.value)} options={[{ value: '', label: 'Sélectionne la filière' }, ...fils.map(f => ({ value: f.id, label: f.name }))]} />
+                              )}
+                              <Select value={modReqSem} onChange={e => setModReqSem(e.target.value)} options={SEMESTERS} />
+                              <div className="bw-search-row">
+                                <Button variant="primary" size="sm" loading={modReqBusy} disabled={!modReqName.trim() || (!selFil && !modReqFilId)} onClick={handleModRequest}>Envoyer la demande</Button>
+                                <Button variant="ghost" size="sm" onClick={() => { setShowModReq(false); setModReqDup(null) }}>Annuler</Button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {showEmptyFilForm && !filReqSent && (
-                      <div style={{marginTop:'1rem',background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.18)',borderRadius:8,padding:'12px 14px',width:'100%',maxWidth:300,textAlign:'left'}}>
-                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:8}}>// filière manquante</div>
-                        {!user ? (
-                          <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
-                            <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une suggestion
-                          </div>
-                        ) : (
-                          <>
-                            <input className="req-input" placeholder="Nom de la filière *" value={filReqName} onChange={e => setFilReqName(e.target.value)} />
-                            <div>
-                              <button className="req-send" onClick={handleFilRequest} disabled={!filReqName.trim() || filReqBusy}>
-                                {filReqBusy ? '...' : 'Envoyer'}
-                              </button>
-                              <button className="req-cancel" onClick={() => { setShowEmptyFilForm(false); setFilReqName(''); }}>Annuler</button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                    {filReqSent && <div className="req-ok" style={{marginTop:'0.75rem'}}>✓ Filière ajoutée !</div>}
+                  )}
+                  {modReqSent && (
+                    <div className="bw-empty-actions">
+                      <Badge tone="success" icon="check">Module ajouté</Badge>
+                      <Button variant="secondary" as={Link} to="/upload">Partager un document</Button>
+                    </div>
+                  )}
+                </EmptyState>
+              )
+            ) : (
+              <div className={`bw-grid${viewMode === 'list' ? ' bw-grid--list' : ''}`}>
+                {viewMode === 'list' ? (
+                  <div className="qz-list">
+                    {displayed.map(m => (
+                      <DocumentRow
+                        key={m.id}
+                        href={`/module/${m.slug || m.id}`}
+                        linkAs={Link}
+                        hideActions
+                        type={(docStats[m.id]?.types && [...docStats[m.id].types][0]) || 'cours'}
+                        title={m.name}
+                        year={`S${m.semester}`}
+                        professor={m.filieres?.name}
+                        downloads={docStats[m.id]?.count}
+                      />
+                    ))}
                   </div>
                 ) : (
-                  <div className="empty">
-                    <div className="empty-code">// 0 results</div>
-                    <div className="empty-title">
-                      {debouncedQuery.trim() ? `Aucun module pour "${debouncedQuery}"` : 'Aucun module trouvé'}
-                    </div>
-                    <div className="empty-sub">Modifie ta recherche ou réinitialise les filtres</div>
-
-                    {debouncedQuery.trim() && (selFil || fils.length > 0) && !modReqSent && (
-                      <div style={{ marginTop: '1.25rem', width: '100%', maxWidth: 420 }}>
-                        {!showModReq ? (
-                          <button
-                            onClick={() => {
-                              setShowModReq(true)
-                              setModReqName(debouncedQuery.trim())
-                              setModReqFilId(selFil)
-                            }}
-                            style={{ background: 'rgba(79,142,247,0.1)', border: '1px solid rgba(79,142,247,0.3)', color: 'var(--accent2)', borderRadius: 8, padding: '8px 18px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit,sans-serif' }}
-                          >
-                            + Ajouter "{debouncedQuery}" comme module
-                          </button>
-                        ) : (
-                          <div className="req-form" style={{ marginTop: 0, textAlign: 'left' }}>
-                            <div className="req-form-title">// nouveau module</div>
-                            {!user ? (
-                              <p style={{ color: 'var(--text2)', fontSize: '0.85rem', margin: '0.5rem 0' }}>
-                                <span style={{ color: '#F87171' }}>Connecte-toi</span> pour ajouter ce module.
-                              </p>
-                            ) : (
-                              <>
-                                {modReqDup && (
-                                  <div style={{ color: '#FBBF24', fontSize: '0.82rem', marginBottom: '0.6rem' }}>
-                                    Ce module existe déjà.{' '}
-                                    <span
-                                      onClick={() => navigate(`/module/${modReqDup.slug || modReqDup.id}`)}
-                                      style={{ color: 'var(--accent2)', cursor: 'pointer', textDecoration: 'underline' }}
-                                    >
-                                      Voir le module →
-                                    </span>
-                                  </div>
-                                )}
-                                <input
-                                  className="req-input"
-                                  value={modReqName}
-                                  onChange={e => setModReqName(e.target.value)}
-                                  placeholder="Nom du module *"
-                                  maxLength={120}
-                                />
-                                {!selFil && fils.length > 0 && (
-                                  <select
-                                    className="req-input"
-                                    value={modReqFilId}
-                                    onChange={e => setModReqFilId(e.target.value)}
-                                    style={{ marginTop: '0.5rem' }}
-                                  >
-                                    <option value="">Sélectionne la filière *</option>
-                                    {fils.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                                  </select>
-                                )}
-                                <select
-                                  className="req-input"
-                                  value={modReqSem}
-                                  onChange={e => setModReqSem(e.target.value)}
-                                  style={{ marginTop: '0.5rem' }}
-                                >
-                                  {['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10'].map(s => (
-                                    <option key={s} value={s}>{s}</option>
-                                  ))}
-                                </select>
-                                <div style={{ display: 'flex', gap: 8, marginTop: '0.5rem' }}>
-                                  <button
-                                    className="req-send"
-                                    onClick={handleModRequest}
-                                    disabled={!modReqName.trim() || modReqBusy || (!selFil && !modReqFilId)}
-                                  >
-                                    {modReqBusy ? '...' : 'Ajouter'}
-                                  </button>
-                                  <button
-                                    className="req-cancel"
-                                    onClick={() => { setShowModReq(false); setModReqDup(null) }}
-                                  >
-                                    Annuler
-                                  </button>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {modReqSent && (
-                      <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
-                        <div className="req-ok">✓ Module ajouté !</div>
-                        <button
-                          onClick={() => navigate('/upload')}
-                          style={{ marginTop: '0.75rem', background: 'rgba(79,142,247,0.12)', border: '1px solid rgba(79,142,247,0.3)', color: 'var(--accent2)', borderRadius: 8, padding: '7px 16px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'Outfit,sans-serif' }}
-                        >
-                          Uploader des documents →
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )
-              ) : displayed.map((m, i) => (
-                <motion.div
-                  key={m.id}
-                  className="mod-card"
-                  initial="hidden"
-                  animate="show"
-                  variants={cardReveal}
-                  transition={{ delay: Math.min(i, 12) * 0.02 }}
-                  whileHover={{ y: -2 }}
-                  onClick={() => navigate(`/module/${m.slug || m.id}`)}
-                >
-                  <div className="mod-top">
-                    <span className="mod-sem">{m.semester}</span>
-                    <span className={`mod-type-tag ${m.type==='projet'?'tag-projet':'tag-cours'}`}>
-                      {m.type}
-                    </span>
-                  </div>
-                  <div className="mod-name">{m.name}</div>
-                  <div className="mod-path">
-                    {m.filieres?.faculties?.name && m.filieres.faculties.name !== '__root__'
-                      ? `${m.filieres?.name} · ${m.filieres.faculties.name}`
-                      : m.filieres?.name}
-                  </div>
-                  {corrigeSet.has(m.id) && <span className="mod-corrige-tag">corrigé dispo</span>}
-                  <div className="mod-footer">
-                    <span className="mod-docs">{m.filieres?.faculties?.universities?.name || ''}</span>
-                    <span className="mod-arr"><FiArrowRight size={14} /></span>
-                  </div>
-                </motion.div>
-              ))}
-              {hasActiveFilter && !loading && displayed.length > 0 && (
-                <div className="mod-card nudge-card" onClick={() => navigate('/upload')}>
-                  <div className="nudge-label">// il manque un doc ?</div>
-                  <div className="nudge-title">Uploade-le pour ta promo</div>
-                  <span className="nudge-btn">+50 points</span>
-                </div>
-              )}
-            </div>
+                  displayed.map(m => (
+                    <ModuleCard
+                      key={m.id}
+                      linkAs={Link}
+                      href={`/module/${m.slug || m.id}`}
+                      name={m.name}
+                      semester={m.semester}
+                      school={m.filieres?.faculties?.universities?.name}
+                      filiere={m.filieres?.faculties?.name && m.filieres.faculties.name !== '__root__' ? `${m.filieres?.name} · ${m.filieres.faculties.name}` : m.filieres?.name}
+                      types={docStats[m.id] ? [...docStats[m.id].types] : []}
+                      docs={docStats[m.id]?.count || 0}
+                      completeness={Math.round(((docStats[m.id]?.types.size) || 0) / DOC_TYPES.length * 100)}
+                      bookmarked={bookmarked.has(m.id)}
+                    />
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </main>
 
-        {selSem && coverage.length > 0 && (
-          <aside className="right-rail">
-            <div className="rail-title">Couverture{uniName ? ` — ${filName || uniName}` : ''} · {selSem}</div>
-            {coverage.map(c => (
-              <div key={c.id} className="rail-row">
-                <div className="rail-name">{c.name}</div>
-                <div className="rail-bar-wrap">
-                  <div className="rail-bar" style={{ width:`${c.pct}%` }} />
+        {hasActiveFilter && displayed.length > 0 && (
+          <aside className="bw-rail">
+            {selSem && coverageRows.length > 0 && (
+              <Card>
+                <span className="t-eyebrow qz-subtle">Complétude {filName ? `— ${filName}` : uniName ? `— ${uniName}` : ''} · {selSem}</span>
+                <div style={{ marginTop: 'var(--space-3)' }}>
+                  {coverageRows.map(c => (
+                    <div key={c.id} className="bw-rail-row">
+                      <div className="bw-rail-row__top">
+                        <span className="t-body-sm qz-muted">{c.name}</span>
+                        <span className="t-mono qz-subtle">{c.pct}%</span>
+                      </div>
+                      <ProgressBar value={c.pct} />
+                    </div>
+                  ))}
                 </div>
-                <div className="rail-pct">{c.pct}%</div>
-              </div>
-            ))}
+              </Card>
+            )}
+            <Card>
+              <h3 className="t-h3">Tu as un examen de ce module ?</h3>
+              <p className="t-body-sm qz-muted" style={{ margin: 'var(--space-2) 0 var(--space-3)' }}>Aide ta promo en le partageant.</p>
+              <Button variant="secondary" block as={Link} to="/upload">Partager</Button>
+            </Card>
           </aside>
         )}
       </div>
 
-      {showScrollHint && <div className="scroll-hint">👇 Voir les résultats</div>}
+      <Button className="bw-mobile-filter-btn" variant="primary" icon="menu" onClick={() => setShowDrawer(true)}>
+        Filtres{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+      </Button>
 
-      {/* Mobile floating filter button */}
-      <button className="mob-filter-btn" onClick={() => setShowDrawer(true)}>
-        <FiSliders size={14} style={{marginRight:6, verticalAlign:'-2px'}}/> Filtres
-        {activeFilterCount > 0 && <span className="mob-badge">{activeFilterCount}</span>}
-      </button>
-
-      {/* Mobile filter drawer */}
       {showDrawer && (
-        <>
-          <motion.div className="mob-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDrawer(false)} />
-          <motion.div className="mob-drawer" initial={{ y: '100%' }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 350, damping: 38 }}>
-            <div className="mob-handle" />
-            <div className="mob-drawer-head">
-              <span className="mob-drawer-title">// Filtres</span>
-              <button className="mob-drawer-reset" onClick={() => { reset(); setShowDrawer(false) }}>Tout effacer</button>
-            </div>
-
-            <div className="filter-block">
-              <span className="filter-label">Université</span>
-              <div className="uni-wrap">
-                <input className="uni-input"
-                  placeholder="Toutes les universités"
-                  value={selUni ? (unis.find(u => String(u.id) === selUni)?.name ?? uniSearch) : uniSearch}
-                  onChange={e => { setUniSearch(e.target.value); setSelUni(''); setShowUniDd(true) }}
-                  onFocus={() => setShowUniDd(true)}
-                  onBlur={() => setTimeout(() => setShowUniDd(false), 150)} />
-                {showUniDd && (
-                  <div className="uni-dd">
-                    <div className="uni-dd-item reset" onMouseDown={() => { setSelUni(''); setUniSearch(''); setShowUniDd(false) }}>Toutes les universités</div>
-                    {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).map(u => (
-                      <div key={u.id} className="uni-dd-item"
-                        onMouseDown={() => { setSelUni(String(u.id)); setUniSearch(u.name); setShowUniDd(false) }}>
-                        {u.name}
-                      </div>
-                    ))}
-                    {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).length === 0 && (
-                      <div className="uni-dd-empty">Aucun résultat</div>
-                    )}
-                    <div className="uni-dd-ask"
-                      onMouseDown={() => { setShowUniDd(false); setShowUniReq(true); setUniReqSent(false) }}>
-                      + Tu ne trouves pas ton université ?
-                    </div>
-                  </div>
-                )}
-                {showUniReq && (
-                  <div className="req-form">
-                    {uniReqSent ? (
-                      <div className="req-ok">✓ Université ajoutée !</div>
-                    ) : !user ? (
-                      <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
-                        <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
-                      </div>
-                    ) : (
-                      <>
-                        <div className="req-form-title">// université manquante</div>
-                        <input className="req-input" placeholder="Nom de l'université *" value={uniReqName} onChange={e => setUniReqName(e.target.value)} />
-                        <input className="req-input" placeholder="Ville (optionnel)" value={uniReqCity} onChange={e => setUniReqCity(e.target.value)} />
-                        <div>
-                          <button className="req-send" onClick={handleUniRequest} disabled={!uniReqName.trim() || uniReqBusy}>
-                            {uniReqBusy ? '...' : 'Envoyer'}
-                          </button>
-                          <button className="req-cancel" onClick={() => { setShowUniReq(false); setUniReqName(''); setUniReqCity('') }}>Annuler</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {selUni && facsReady && facs.filter(f => f.name !== '__root__').length > 0 && (
-              <div className="filter-block">
-                <span className="filter-label">Faculté / École</span>
-                <select className="filter-select" value={selFac} onChange={e => setSelFac(e.target.value)}>
-                  <option value="">Toutes les facultés</option>
-                  {facs.filter(f => f.name !== '__root__').map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                </select>
-                {!showFacReq && !facReqSent && (
-                  <button className="req-link" onClick={() => setShowFacReq(true)}>Faculté introuvable ?</button>
-                )}
-                {facReqSent && <div className="req-ok">✓ Faculté ajoutée !</div>}
-                {showFacReq && !facReqSent && (
-                  <div className="req-form">
-                    <div className="req-form-title">// faculté manquante</div>
-                    {!user ? (
-                      <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
-                        <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
-                      </div>
-                    ) : (
-                      <>
-                        <input className="req-input" placeholder="Nom de la faculté / école *" value={facReqName} onChange={e => setFacReqName(e.target.value)} />
-                        <div>
-                          <button className="req-send" onClick={handleFacRequest} disabled={!facReqName.trim() || facReqBusy}>
-                            {facReqBusy ? '...' : 'Envoyer'}
-                          </button>
-                          <button className="req-cancel" onClick={() => { setShowFacReq(false); setFacReqName('') }}>Annuler</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {selUni && facsReady && facs.length === 0 && (
-              <div className="filter-block">
-                {!showFilReq && !filReqSent && (
-                  <button className="req-link" onClick={() => { setShowFilReq(true); setShowFacReq(false) }}>+ Ajouter une filière</button>
-                )}
-                {showFilReq && !filReqSent && (
-                  <div className="req-form">
-                    <div className="req-form-title">// filière manquante</div>
-                    {!user ? (
-                      <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
-                        <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
-                      </div>
-                    ) : (
-                      <>
-                        <input className="req-input" placeholder="Nom de la filière *" value={filReqName} onChange={e => setFilReqName(e.target.value)} />
-                        <div>
-                          <button className="req-send" onClick={handleFilRequest} disabled={!filReqName.trim() || filReqBusy}>{filReqBusy ? '...' : 'Envoyer'}</button>
-                          <button className="req-cancel" onClick={() => { setShowFilReq(false); setFilReqName('') }}>Annuler</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-                {filReqSent && <div className="req-ok">✓ Filière ajoutée !</div>}
-                {!showFacReq && !facReqSent && (
-                  <button className="req-link" onClick={() => { setShowFacReq(true); setShowFilReq(false) }}>+ Ajouter une faculté / école</button>
-                )}
-                {showFacReq && !facReqSent && (
-                  <div className="req-form">
-                    <div className="req-form-title">// faculté manquante</div>
-                    {!user ? (
-                      <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
-                        <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
-                      </div>
-                    ) : (
-                      <>
-                        <input className="req-input" placeholder="Nom de la faculté / école *" value={facReqName} onChange={e => setFacReqName(e.target.value)} />
-                        <div>
-                          <button className="req-send" onClick={handleFacRequest} disabled={!facReqName.trim() || facReqBusy}>{facReqBusy ? '...' : 'Envoyer'}</button>
-                          <button className="req-cancel" onClick={() => { setShowFacReq(false); setFacReqName('') }}>Annuler</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-                {facReqSent && <div className="req-ok">✓ Faculté ajoutée !</div>}
-              </div>
-            )}
-
-            {fils.length > 0 && (
-              <div className="filter-block">
-                <span className="filter-label">Filière</span>
-                <select className="filter-select" value={selFil} onChange={e => setSelFil(e.target.value)}>
-                  <option value="">Toutes les filières</option>
-                  {fils.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                </select>
-                {!showFilReq && !filReqSent && (
-                  <button className="req-link" onClick={() => setShowFilReq(true)}>Filière introuvable ?</button>
-                )}
-                {filReqSent && <div className="req-ok">✓ Filière ajoutée !</div>}
-                {showFilReq && !filReqSent && (
-                  <div className="req-form">
-                    {!user ? (
-                      <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',color:'var(--text3)'}}>
-                        <a href="/login" style={{color:'var(--accent2)',textDecoration:'none'}}>Connecte-toi</a> pour envoyer une demande
-                      </div>
-                    ) : (
-                      <>
-                        <div className="req-form-title">// filière manquante</div>
-                        <input className="req-input" placeholder="Nom de la filière *" value={filReqName} onChange={e => setFilReqName(e.target.value)} />
-                        <div>
-                          <button className="req-send" onClick={handleFilRequest} disabled={!filReqName.trim() || filReqBusy}>
-                            {filReqBusy ? '...' : 'Envoyer'}
-                          </button>
-                          <button className="req-cancel" onClick={() => { setShowFilReq(false); setFilReqName('') }}>Annuler</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="filter-block">
-              <span className="filter-label">Semestre</span>
-              <div className="sem-wrap">
-                {['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10'].map(s => (
-                  <button key={s} className={`sem-btn ${selSem===s?'on':''}`}
-                    onClick={() => setSelSem(selSem===s?'':s)}>{s}</button>
-                ))}
-              </div>
-            </div>
-
-            <div className="filter-block">
-              <span className="filter-label">Type de document</span>
-              <div className="type-wrap">
-                {DOC_TYPES.map(t => (
-                  <div key={t.k} className={`type-row ${selType===t.k?'on':''}`}
-                    onClick={() => setSelType(selType===t.k?'':t.k)}>
-                    <div className="type-dot" />
-                    <span className="type-name">{t.l}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button className="mob-apply" onClick={() => {
+        <Sheet title="Filtres" onClose={() => setShowDrawer(false)}>
+          {renderFilters()}
+          <div className="bw-sheet-footer">
+            <Button variant="ghost" onClick={() => { reset(); setShowDrawer(false) }}>Réinitialiser</Button>
+            <Button variant="primary" onClick={() => {
               setShowDrawer(false)
-              setShowScrollHint(true)
-              setTimeout(() => setShowScrollHint(false), 1500)
-              setTimeout(() => {
-                const el = document.getElementById('browse-results')
-                if (el) el.scrollIntoView({ behavior: 'smooth' })
-              }, 100)
-            }}>
-              Appliquer{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-            </button>
-          </motion.div>
-        </>
+              setTimeout(() => document.getElementById('browse-results')?.scrollIntoView({ behavior: 'smooth' }), 100)
+            }}>Voir {displayed.length} résultat{displayed.length !== 1 ? 's' : ''}</Button>
+          </div>
+        </Sheet>
       )}
     </div>
   )

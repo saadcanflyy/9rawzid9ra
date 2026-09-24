@@ -218,7 +218,7 @@ textarea.qz-input { height: auto; min-height: 96px; padding: 10px var(--space-3)
 .qz-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-3); padding: var(--space-12) var(--space-6); border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); }
 .qz-empty__icon { width: 44px; height: 44px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; background: var(--surface-2); color: var(--text-muted); }
 .qz-empty__icon svg { width: 20px; height: 20px; }
-.qz-empty p { margin: 0; max-width: 380px; color: var(--text-muted); font-size: 14px; line-height: 22px; }
+.qz-empty__body { margin: 0; max-width: 420px; color: var(--text-muted); font-size: 14px; line-height: 22px; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
 
 /* ---------- Modal ---------- */
 .qz-scrim { position: absolute; inset: 0; background: var(--overlay); display: flex; align-items: center; justify-content: center; padding: var(--space-4); }
