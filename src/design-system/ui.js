@@ -85,15 +85,16 @@ import React from 'react';
   /* ---- Input ---- */
   function Input(props) {
     var id = props.id || ('qz-' + String(props.label || 'field').toLowerCase().replace(/[^a-z0-9]+/g, '-'));
-    var p = rest(props, ['label', 'optional', 'hint', 'error', 'multiline', 'maxLength', 'counter', 'id']);
-    p.id = id; p.className = 'qz-input';
+    var p = rest(props, ['label', 'optional', 'hint', 'error', 'multiline', 'maxLength', 'counter', 'id', 'endAction']);
+    p.id = id; p.className = cx('qz-input', props.endAction && 'qz-input--with-action');
     if (props.error) p['aria-invalid'] = 'true';
     if (props.hint || props.error) p['aria-describedby'] = id + '-hint';
     if (props.maxLength) p.maxLength = props.maxLength;
     var len = typeof props.value === 'string' ? props.value.length : (typeof props.defaultValue === 'string' ? props.defaultValue.length : 0);
+    var field = h(props.multiline ? 'textarea' : 'input', p);
     return h('div', { className: 'qz-field' },
       props.label ? h('label', { className: 'qz-label', htmlFor: id }, props.label, props.optional ? h('small', null, '(optionnel)') : null) : null,
-      h(props.multiline ? 'textarea' : 'input', p),
+      props.endAction ? h('div', { className: 'qz-input-wrap' }, field, h('div', { className: 'qz-input-wrap__action' }, props.endAction)) : field,
       (props.hint || props.error || props.counter) ? h('div', { style: { display: 'flex', gap: 8 } },
         (props.hint || props.error) ? h('span', { id: id + '-hint', className: cx('qz-hint', props.error && 'qz-hint--error') }, props.error || props.hint) : null,
         props.counter && props.maxLength ? h('span', { className: 'qz-counter' }, len + '/' + props.maxLength) : null) : null);
