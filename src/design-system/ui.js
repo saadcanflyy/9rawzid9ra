@@ -393,8 +393,10 @@ import React from 'react';
       h('div', null, h('h3', { className: 'qz-h2' }, props.title || 'AI Coach'), h('p', { className: 'qz-muted', style: { margin: '6px 0 0', fontSize: 14, lineHeight: '22px' } }, props.children)),
       h('div', { className: 'qz-price' }, h('b', null, props.price || '39'), h('span', null, 'MAD / mois')),
       h('ul', { className: 'qz-checks' }, (props.features || []).map(function (f, i) { return h('li', { key: i }, h(Icon, { name: 'check' }), f); })),
-      h(Button, { variant: 'primary', size: 'lg', block: true }, props.cta || 'Me prévenir au lancement'),
-      h('span', { className: 'qz-hint', style: { textAlign: 'center' } }, props.note || 'Version gratuite avec pubs disponible.'));
+      props.footer !== undefined ? props.footer : [
+        h(Button, { key: 'cta', variant: 'primary', size: 'lg', block: true, as: props.ctaAs, linkAs: props.ctaLinkAs, href: props.ctaHref, loading: props.ctaLoading, disabled: props.ctaDisabled, onClick: props.onCtaClick }, props.cta || 'Me prévenir au lancement'),
+        h('span', { key: 'note', className: 'qz-hint', style: { textAlign: 'center' } }, props.note || 'Version gratuite avec pubs disponible.'),
+      ]);
   }
 
   /* ---- Skeleton ---- */
