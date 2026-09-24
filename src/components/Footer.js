@@ -1,87 +1,5 @@
-import { useNavigate, useLocation } from 'react-router-dom'
-
-const css = `
-  .site-footer {
-    background: #050810;
-    border-top: 1px solid #1C2A45;
-    padding: 2.5rem 2rem 1.5rem;
-    font-family: 'Outfit', sans-serif;
-  }
-  .ft-inner {
-    max-width: 900px;
-    margin: 0 auto;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 2rem;
-  }
-  .ft-brand {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  .ft-logo {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.92rem;
-    font-weight: 500;
-    color: #FFFFFF;
-    letter-spacing: -0.3px;
-  }
-  .ft-logo b { color: #7BB3FF; font-weight: 700; }
-  .ft-tagline {
-    font-size: 0.78rem;
-    color: #4A5568;
-    max-width: 260px;
-    line-height: 1.5;
-  }
-  .ft-links {
-    display: flex;
-    gap: 2.5rem;
-    flex-wrap: wrap;
-  }
-  .ft-col-title {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.62rem;
-    color: #4A5568;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 0.75rem;
-  }
-  .ft-col { display: flex; flex-direction: column; gap: 0.45rem; }
-  .ft-link {
-    background: none;
-    border: none;
-    padding: 0;
-    font-size: 0.82rem;
-    color: #94A3B8;
-    cursor: pointer;
-    font-family: 'Outfit', sans-serif;
-    text-align: left;
-    transition: color 0.15s;
-  }
-  .ft-link:hover { color: #E2E8F0; }
-  .ft-bottom {
-    max-width: 900px;
-    margin: 1.5rem auto 0;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(28,42,69,0.5);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  .ft-copy {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.68rem;
-    color: #4A5568;
-  }
-  .ft-heart { color: #F87171; }
-  @media(max-width:600px) {
-    .ft-inner { flex-direction: column; gap: 1.5rem; }
-    .ft-links { gap: 1.5rem; }
-  }
-`
+import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { Wordmark } from '../design-system/ui'
 
 const HIDDEN_ON = ['/login', '/register', '/forgot-password']
 
@@ -92,43 +10,37 @@ export default function Footer() {
   if (HIDDEN_ON.includes(pathname)) return null
 
   return (
-    <>
-      <style>{css}</style>
-      <footer className="site-footer">
-        <div className="ft-inner">
-          <div className="ft-brand">
-            <div className="ft-logo">9raw<b>Zid</b>9ra</div>
-            <div className="ft-tagline">
-              La plateforme gratuite pour les étudiants marocains.
-              Partage et télécharge des examens, cours et annales.
-            </div>
+    <footer className="qz-footer">
+      <div className="qz-footer__inner">
+        <div className="qz-footer__brand">
+          <Wordmark linkAs={Link} href="/" size="lg" />
+          <p className="t-body-sm qz-muted">
+            Annales, examens et cours pour les étudiants marocains. Gratuit, pour toujours.
+          </p>
+        </div>
+        <div className="qz-footer__links">
+          <div className="qz-footer__col">
+            <span className="t-eyebrow qz-subtle">Plateforme</span>
+            <button type="button" onClick={() => navigate('/browse')}>Explorer</button>
+            <button type="button" onClick={() => navigate('/upload')}>Partager</button>
+            <button type="button" onClick={() => navigate('/senpai')}>Senpai Zone</button>
           </div>
-          <div className="ft-links">
-            <div className="ft-col">
-              <div className="ft-col-title">Plateforme</div>
-              <button className="ft-link" onClick={() => navigate('/browse')}>Explorer</button>
-              <button className="ft-link" onClick={() => navigate('/upload')}>Uploader</button>
-              <button className="ft-link" onClick={() => navigate('/senpai')}>Senpai Zone</button>
-            </div>
-            <div className="ft-col">
-              <div className="ft-col-title">Infos</div>
-              <button className="ft-link" onClick={() => navigate('/about')}>À propos</button>
-              <button className="ft-link" onClick={() => navigate('/contact')}>Contact</button>
-            </div>
-            <div className="ft-col">
-              <div className="ft-col-title">Légal</div>
-              <button className="ft-link" onClick={() => navigate('/privacy-policy')}>Confidentialité</button>
-              <button className="ft-link" onClick={() => navigate('/terms')}>Conditions</button>
-            </div>
+          <div className="qz-footer__col">
+            <span className="t-eyebrow qz-subtle">Infos</span>
+            <button type="button" onClick={() => navigate('/about')}>À propos</button>
+            <button type="button" onClick={() => navigate('/contact')}>Contact</button>
+          </div>
+          <div className="qz-footer__col">
+            <span className="t-eyebrow qz-subtle">Légal</span>
+            <button type="button" onClick={() => navigate('/privacy-policy')}>Confidentialité</button>
+            <button type="button" onClick={() => navigate('/terms')}>Conditions</button>
           </div>
         </div>
-        <div className="ft-bottom">
-          <span className="ft-copy">© 2026 9rawZid9ra</span>
-          <span className="ft-copy">
-            fait avec <span className="ft-heart">♥</span> pour les étudiants marocains
-          </span>
-        </div>
-      </footer>
-    </>
+      </div>
+      <div className="qz-footer__bottom">
+        <span className="t-caption qz-subtle">© 2026 9rawZid9ra</span>
+        <span className="t-caption qz-subtle">Fait pour les étudiants marocains</span>
+      </div>
+    </footer>
   )
 }

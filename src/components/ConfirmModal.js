@@ -1,52 +1,4 @@
-import { useEffect } from 'react'
-
-const css = `
-  .cm-overlay {
-    position: fixed; inset: 0; z-index: 9999;
-    background: rgba(2,4,10,0.85);
-    backdrop-filter: blur(6px);
-    display: flex; align-items: center; justify-content: center;
-    padding: 1rem;
-    animation: cm-fade 0.18s ease;
-  }
-  @keyframes cm-fade { from { opacity:0 } to { opacity:1 } }
-  .cm-card {
-    background: #070C18;
-    border: 1px solid #1C2A45;
-    border-radius: 14px;
-    padding: 1.75rem;
-    max-width: 380px;
-    width: 100%;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
-    animation: cm-up 0.2s cubic-bezier(0.16,1,0.3,1);
-    font-family: 'Outfit', sans-serif;
-  }
-  @keyframes cm-up { from { opacity:0; transform:translateY(16px) } to { opacity:1; transform:translateY(0) } }
-  .cm-title {
-    font-size: 1rem; font-weight: 700; color: #FFFFFF; margin-bottom: 0.4rem;
-  }
-  .cm-msg {
-    font-size: 0.85rem; color: #94A3B8; line-height: 1.6; margin-bottom: 1.5rem;
-  }
-  .cm-title:last-child, .cm-title + .cm-actions { margin-bottom: 0; }
-  .cm-actions {
-    display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.5rem;
-  }
-  .cm-cancel {
-    background: none; border: 1px solid #1C2A45; color: #94A3B8;
-    border-radius: 8px; padding: 8px 18px; font-size: 0.85rem;
-    font-family: 'Outfit', sans-serif; cursor: pointer;
-    transition: all 0.15s;
-  }
-  .cm-cancel:hover { border-color: #2D4A7A; color: #E2E8F0; }
-  .cm-confirm {
-    border: none; border-radius: 8px; padding: 8px 18px;
-    font-size: 0.85rem; font-weight: 600;
-    font-family: 'Outfit', sans-serif; cursor: pointer;
-    color: #fff; transition: opacity 0.15s;
-  }
-  .cm-confirm:hover { opacity: 0.85; }
-`
+import { useEffect, useRef } from 'react'
 
 export default function ConfirmModal({
   title,
@@ -56,29 +8,30 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }) {
+  const danger = confirmColor === '#F87171'
+  const cancelRef = useRef(null)
+
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') (onCancel || onConfirm)?.() }
     window.addEventListener('keydown', handler)
+    if (danger) cancelRef.current?.focus()
     return () => window.removeEventListener('keydown', handler)
-  }, [onCancel, onConfirm])
+  }, [onCancel, onConfirm, danger])
 
   return (
-    <>
-      <style>{css}</style>
-      <div className="cm-overlay" onClick={onCancel ?? onConfirm}>
-        <div className="cm-card" onClick={e => e.stopPropagation()}>
-          {title   && <div className="cm-title">{title}</div>}
-          {message && <div className="cm-msg">{message}</div>}
-          <div className="cm-actions">
-            {onCancel && (
-              <button className="cm-cancel" onClick={onCancel}>Annuler</button>
-            )}
-            <button className="cm-confirm" style={{ background: confirmColor }} onClick={onConfirm}>
-              {confirmText}
-            </button>
-          </div>
+    <div className="qz-scrim" onClick={onCancel ?? onConfirm}>
+      <div className="qz-modal" role="dialog" aria-modal="true" aria-labelledby="cm-title" onClick={e => e.stopPropagation()}>
+        {title && <h2 className="qz-modal__title" id="cm-title">{title}</h2>}
+        {message && <p className="qz-modal__body">{message}</p>}
+        <div className="qz-modal__actions">
+          {onCancel && (
+            <button type="button" ref={cancelRef} className="qz-btn qz-btn--secondary" onClick={onCancel}>Annuler</button>
+          )}
+          <button type="button" className={`qz-btn qz-btn--${danger ? 'danger' : 'primary'}`} onClick={onConfirm}>
+            {confirmText}
+          </button>
         </div>
       </div>
-    </>
+    </div>
   )
 }

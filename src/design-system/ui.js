@@ -3,6 +3,8 @@ import React from 'react';
 
   var h = React.createElement;
   var useState = React.useState;
+  var useEffect = React.useEffect;
+  var useRef = React.useRef;
 
   function cx() {
     var out = [];
@@ -43,7 +45,11 @@ import React from 'react';
     sun: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42',
     moon: 'M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z',
     monitor: 'M3 4h18a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zM8 21h8M12 17v4',
-    menu: 'M3 12h18M3 6h18M3 18h18'
+    menu: 'M3 12h18M3 6h18M3 18h18',
+    user: 'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
+    shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
+    'log-out': 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9',
+    heart: 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z'
   };
   function Icon(props) {
     return h('svg', { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.75, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true', width: props.size || 16, height: props.size || 16 },
@@ -96,9 +102,9 @@ import React from 'react';
   /* ---- SearchBar ---- */
   function SearchBar(props) {
     var compact = props.variant === 'compact';
-    return h('form', { className: cx('qz-search', compact && 'qz-search--compact'), role: 'search', onSubmit: function (e) { e.preventDefault(); if (props.onSubmit) props.onSubmit(e); } },
+    return h('form', { className: cx('qz-search', compact && 'qz-search--compact'), role: 'search', onSubmit: function (e) { e.preventDefault(); var input = e.currentTarget.querySelector('input'); if (props.onSubmit) props.onSubmit(input ? input.value : '', e); } },
       h(Icon, { name: 'search', size: 18 }),
-      h('input', { type: 'search', placeholder: props.placeholder || 'Module, filière ou école…', defaultValue: props.defaultValue, 'aria-label': props.placeholder || 'Rechercher' }),
+      h('input', { ref: props.inputRef, type: 'search', placeholder: props.placeholder || 'Module, filière ou école…', defaultValue: props.defaultValue, onChange: props.onChange, 'aria-label': props.placeholder || 'Rechercher' }),
       props.shortcut ? h('span', { className: 'qz-kbd' }, props.shortcut) : null,
       compact ? null : h(Button, { type: 'submit', variant: 'primary' }, props.submitLabel || 'Rechercher'));
   }
@@ -212,14 +218,15 @@ import React from 'react';
     var links = props.links || [{ label: 'Explorer', href: '/browse' }, { label: 'Senpai Zone', href: '/senpai' }, { label: 'Mes modules', href: '/my-modules' }, { label: 'AI Coach', href: '/ai-coach' }];
     var LinkTag = props.linkAs || 'a';
     function navLink(l) {
+      if (l.onClick) return h('button', { key: l.href || l.label, type: 'button', 'aria-current': props.current === l.href ? 'page' : undefined, onClick: l.onClick }, l.label);
       var p = { key: l.href, 'aria-current': props.current === l.href ? 'page' : undefined };
       if (LinkTag === 'a') p.href = l.href; else p.to = l.href;
       return h(LinkTag, p, l.label);
     }
-    return h('header', { className: 'qz-navbar' },
+    return h('header', { className: cx('qz-navbar', props.className) },
       h(Wordmark, { logoSrc: props.logoSrc, linkAs: props.linkAs, href: '/' }),
       h('nav', { className: 'qz-nav', 'aria-label': 'Principal' }, links.map(navLink)),
-      h('div', { className: 'qz-navbar__search' }, h(SearchBar, { variant: 'compact', placeholder: 'Rechercher un module', shortcut: '/', onSubmit: props.onSearch })),
+      h('div', { className: 'qz-navbar__search' }, h(SearchBar, { variant: 'compact', placeholder: 'Rechercher un module', shortcut: '/', onSubmit: props.onSearch, inputRef: props.searchRef })),
       h('div', { className: 'qz-navbar__end' },
         props.onToggleTheme ? h(ThemeToggle, { mode: props.themeMode, onToggle: props.onToggleTheme }) : null,
         props.user ? [
@@ -258,13 +265,20 @@ import React from 'react';
 
   /* ---- Modal ---- */
   function Modal(props) {
-    return h('div', { className: 'qz-scrim' },
-      h('div', { className: 'qz-modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'qz-modal-t' },
+    var cancelRef = useRef(null);
+    useEffect(function () {
+      function onKey(e) { if (e.key === 'Escape' && props.onClose) props.onClose(); }
+      window.addEventListener('keydown', onKey);
+      var t = setTimeout(function () { if (cancelRef.current) cancelRef.current.focus(); }, 0);
+      return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); };
+    }, []);
+    return h('div', { className: 'qz-scrim', onClick: props.onClose },
+      h('div', { className: 'qz-modal', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'qz-modal-t', onClick: function (e) { e.stopPropagation(); } },
         h('h2', { className: 'qz-modal__title', id: 'qz-modal-t' }, props.title),
         h('p', { className: 'qz-modal__body' }, props.children),
         h('div', { className: 'qz-modal__actions' },
-          h(Button, { variant: 'secondary' }, props.cancelLabel || 'Annuler'),
-          h(Button, { variant: props.danger ? 'danger' : 'primary' }, props.confirmLabel || 'Confirmer'))));
+          props.onClose ? h('button', { type: 'button', ref: cancelRef, className: 'qz-btn qz-btn--secondary', onClick: props.onClose }, props.cancelLabel || 'Annuler') : null,
+          h('button', { type: 'button', className: 'qz-btn qz-btn--' + (props.danger ? 'danger' : 'primary'), onClick: props.onConfirm }, props.confirmLabel || 'Confirmer'))));
   }
 
   /* ---- Toast ---- */
@@ -393,6 +407,11 @@ import React from 'react';
 
   /* ---- Sheet (bottom sheet / side drawer) ---- */
   function Sheet(props) {
+    useEffect(function () {
+      function onKey(e) { if (e.key === 'Escape' && props.onClose) props.onClose(); }
+      window.addEventListener('keydown', onKey);
+      return function () { window.removeEventListener('keydown', onKey); };
+    }, []);
     return h('div', { className: 'qz-scrim', onClick: props.onClose },
       h('div', { className: cx('qz-sheet', props.side === 'right' && 'qz-sheet--right'), role: 'dialog', 'aria-modal': 'true', 'aria-label': props.title, onClick: function (e) { e.stopPropagation(); } },
         props.title ? h('div', { className: 'qz-sheet__head' },
@@ -405,7 +424,7 @@ import React from 'react';
   function Dropdown(props) {
     return h('div', { className: cx('qz-dropdown', props.className), role: 'menu' }, (props.items || []).map(function (it, i) {
       if (it.divider) return h('div', { key: i, className: 'qz-dropdown__sep', role: 'separator' });
-      return h('button', { key: i, type: 'button', className: 'qz-dropdown__item', role: 'menuitem', onClick: it.onClick }, it.icon ? h(Icon, { name: it.icon }) : null, it.label);
+      return h('button', { key: i, type: 'button', className: cx('qz-dropdown__item', it.danger && 'qz-dropdown__item--danger'), role: 'menuitem', onClick: it.onClick }, it.icon ? h(Icon, { name: it.icon }) : null, it.label);
     }));
   }
 

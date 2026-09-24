@@ -1,251 +1,77 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
-
-const css = `
-  .wm-overlay {
-    position: fixed; inset: 0; z-index: 9000;
-    background: rgba(2,4,10,0.92);
-    backdrop-filter: blur(12px);
-    display: flex; align-items: center; justify-content: center;
-    padding: 1rem;
-    animation: wm-fade-in 0.25s ease;
-  }
-  @keyframes wm-fade-in { from { opacity:0 } to { opacity:1 } }
-
-  .wm-card {
-    background: #070C18;
-    border: 1px solid #1C2A45;
-    border-radius: 20px;
-    padding: 2rem 2rem 1.5rem;
-    max-width: 440px;
-    width: 100%;
-    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
-    animation: wm-slide-up 0.28s cubic-bezier(0.16,1,0.3,1);
-    font-family: 'Outfit', sans-serif;
-    position: relative;
-    overflow: hidden;
-  }
-  @keyframes wm-slide-up { from { opacity:0; transform:translateY(24px) } to { opacity:1; transform:translateY(0) } }
-
-  .wm-progress {
-    position: absolute;
-    top: 0; left: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #4F8EF7, #4F8EF7);
-    border-radius: 0 2px 2px 0;
-    transition: width 0.3s ease;
-  }
-
-  .wm-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: 1.5rem;
-  }
-  .wm-logo {
-    display: flex; align-items: center; gap: 10px;
-  }
-  .wm-logo-box {
-    width: 32px; height: 32px; border-radius: 8px;
-    background: linear-gradient(135deg,#4F8EF7,#2DD4BF);
-    display: flex; align-items: center; justify-content: center;
-  }
-  .wm-logo-text {
-    font-family: 'DM Mono', monospace; font-size: 0.95rem; font-weight: 500; color: #fff;
-  }
-  .wm-logo-text b { color: #7BB3FF; font-weight: 500; }
-  .wm-step-count {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.65rem;
-    color: #4A5568;
-    letter-spacing: 1px;
-  }
-
-  .wm-slide { animation: wm-slide-in 0.22s ease; }
-  @keyframes wm-slide-in { from { opacity:0; transform:translateX(12px) } to { opacity:1; transform:translateX(0) } }
-
-  .wm-slide-icon {
-    width: 56px; height: 56px; border-radius: 14px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.5rem; margin: 0 auto 1rem;
-  }
-  .wm-slide-tag {
-    font-family: 'DM Mono', monospace;
-    font-size: 0.6rem;
-    color: #4F8EF7;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    text-align: center;
-    margin-bottom: 0.4rem;
-  }
-  .wm-slide-title {
-    font-size: 1.2rem; font-weight: 700; color: #FFFFFF;
-    text-align: center; margin-bottom: 0.6rem; line-height: 1.3;
-  }
-  .wm-slide-desc {
-    font-size: 0.84rem; color: #94A3B8; text-align: center;
-    line-height: 1.7; margin-bottom: 0.75rem;
-  }
-
-  .wm-features {
-    display: flex; flex-direction: column; gap: 6px;
-    margin-bottom: 1.5rem;
-  }
-  .wm-feat {
-    display: flex; align-items: center; gap: 10px;
-    padding: 7px 10px;
-    background: rgba(79,142,247,0.04);
-    border: 1px solid rgba(28,42,69,0.5);
-    border-radius: 8px;
-    font-size: 0.78rem;
-    color: #94A3B8;
-  }
-  .wm-feat-icon {
-    width: 22px; height: 22px; border-radius: 5px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.7rem; flex-shrink: 0;
-  }
-  .wm-feat b { color: #E2E8F0; font-weight: 600; }
-
-  .wm-dots {
-    display: flex; justify-content: center; gap: 5px; margin-bottom: 1rem;
-  }
-  .wm-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: #1C2A45; transition: all 0.25s;
-    border: none; padding: 0; cursor: pointer;
-  }
-  .wm-dot.on { background: #4F8EF7; width: 20px; border-radius: 3px; }
-  .wm-dot.done { background: #4F8EF7; }
-
-  .wm-actions { display: flex; gap: 8px; }
-  .wm-back {
-    background: none; border: 1px solid #1C2A45; color: #94A3B8;
-    border-radius: 10px; padding: 11px 16px; font-size: 0.85rem;
-    font-weight: 500; cursor: pointer; font-family: 'Outfit',sans-serif;
-    transition: all 0.15s;
-  }
-  .wm-back:hover { border-color: #2D4A7A; color: #E2E8F0; }
-  .wm-cta {
-    flex: 1;
-    background: linear-gradient(135deg,#4F8EF7,#3A6ED4);
-    color: #fff; border: none; border-radius: 10px;
-    padding: 11px; font-size: 0.88rem; font-weight: 600;
-    cursor: pointer; font-family: 'Outfit',sans-serif;
-    transition: opacity 0.15s;
-  }
-  .wm-cta:hover { opacity: 0.9; }
-  .wm-cta:disabled { opacity: 0.5; cursor: not-allowed; }
-  .wm-skip {
-    display: block; text-align: center; margin-top: 8px;
-    font-size: 0.72rem; color: #4A5568; background: none; border: none;
-    cursor: pointer; font-family: 'Outfit',sans-serif; width: 100%;
-    transition: color 0.15s;
-  }
-  .wm-skip:hover { color: #94A3B8; }
-
-  .wm-uni-wrap { position: relative; margin-bottom: 1.25rem; }
-  .wm-uni-input {
-    width: 100%; background: #0C1222; border: 1px solid #1C2A45; border-radius: 10px;
-    padding: 11px 14px; color: #E2E8F0; font-size: 0.875rem;
-    font-family: 'Outfit',sans-serif; outline: none; transition: border-color 0.15s;
-  }
-  .wm-uni-input:focus { border-color: #4F8EF7; }
-  .wm-uni-dd {
-    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
-    background: #0C1222; border: 1px solid #1C2A45; border-radius: 10px;
-    max-height: 180px; overflow-y: auto; z-index: 10;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
-  }
-  .wm-uni-dd-item {
-    padding: 9px 14px; cursor: pointer; font-size: 0.85rem; color: #E2E8F0;
-    font-family: 'Outfit',sans-serif; border-bottom: 1px solid #1C2A45; transition: background 0.1s;
-  }
-  .wm-uni-dd-item:last-child { border-bottom: none; }
-  .wm-uni-dd-item:hover { background: rgba(79,142,247,0.08); }
-  .wm-uni-dd-empty { padding: 9px 14px; font-size: 0.75rem; color: #4A5568; font-family: 'DM Mono',monospace; }
-
-  @media(max-width:480px) {
-    .wm-card { padding: 1.5rem 1.25rem 1.25rem; border-radius: 16px; }
-    .wm-slide-title { font-size: 1.1rem; }
-    .wm-slide-desc { font-size: 0.8rem; }
-  }
-`
+import { Wordmark, Button, Input, Icon, ProgressBar, Sheet } from '../design-system/ui'
 
 const SLIDES = [
   {
-    icon: '👋',
-    bg: 'rgba(79,142,247,0.1)',
-    tag: 'BIENVENUE',
+    icon: 'sparkle', tone: 'brand',
+    tag: 'Bienvenue',
     title: 'Bienvenue sur 9rawZid9ra !',
     desc: 'La plateforme 100% gratuite créée par un étudiant marocain pour aider les étudiants à trouver, partager et réussir.',
     features: [
-      { icon: '📚', bg: 'rgba(79,142,247,0.1)', text: '<b>Examens, CCs, TDs, TPs</b> — tout est là' },
-      { icon: '🎓', bg: 'rgba(79,142,247,0.1)', text: '<b>55+ universités</b> et écoles couvertes' },
-      { icon: '🆓', bg: 'rgba(167,139,250,0.1)', text: '<b>Gratuit pour toujours</b> — pas d\'abonnement' },
+      { icon: 'file', strong: 'Examens, CC, TD, TP', rest: '— tout est là.' },
+      { icon: 'search', strong: '55+ universités et écoles', rest: 'couvertes.' },
+      { icon: 'check', strong: 'Gratuit pour toujours', rest: '— pas d’abonnement.' },
     ],
   },
   {
-    icon: '🔍',
-    bg: 'rgba(79,142,247,0.1)',
-    tag: 'PAGE EXPLORER',
+    icon: 'search', tone: 'brand',
+    tag: 'Page Explorer',
     title: 'Trouve tes annales en secondes',
     desc: 'La page Explorer est ton point de départ pour trouver les documents de tes modules.',
     features: [
-      { icon: '🏫', bg: 'rgba(79,142,247,0.1)', text: 'Filtre par <b>université → faculté → filière</b>' },
-      { icon: '📅', bg: 'rgba(79,142,247,0.1)', text: 'Choisis ton <b>semestre</b> (S1 à S10)' },
-      { icon: '📄', bg: 'rgba(251,191,36,0.1)', text: 'Filtre par <b>type</b> : examen, CC, TD, TP, cours...' },
-      { icon: '➕', bg: 'rgba(167,139,250,0.1)', text: 'Module introuvable ? <b>Ajoute-le</b> directement' },
+      { icon: 'search', strong: 'Filtre par université, faculté et filière', rest: '' },
+      { icon: 'file', strong: 'Choisis ton semestre', rest: '(S1 à S12).' },
+      { icon: 'inbox', strong: 'Filtre par type', rest: ': examen, CC, TD, TP, cours…' },
+      { icon: 'plus', strong: 'Module introuvable ?', rest: 'Ajoute-le directement.' },
     ],
   },
   {
-    icon: '📤',
-    bg: 'rgba(79,142,247,0.1)',
-    tag: 'PAGE UPLOADER',
+    icon: 'upload', tone: 'brand',
+    tag: 'Page Uploader',
     title: 'Partage et gagne des points',
     desc: 'Chaque document que tu uploades aide un autre étudiant. Et toi, tu gagnes des points.',
     features: [
-      { icon: '⬆️', bg: 'rgba(79,142,247,0.1)', text: 'Upload un <b>PDF ou image</b> en 30 secondes' },
-      { icon: '🏷️', bg: 'rgba(79,142,247,0.1)', text: 'Choisis le <b>module, semestre et type</b>' },
-      { icon: '⭐', bg: 'rgba(251,191,36,0.1)', text: '<b>+50 points</b> par document uploadé' },
-      { icon: '👀', bg: 'rgba(167,139,250,0.1)', text: 'Ton document est <b>visible immédiatement</b>' },
+      { icon: 'upload', strong: 'Upload un PDF ou une image', rest: 'en 30 secondes.' },
+      { icon: 'file', strong: 'Choisis le module, semestre et type', rest: '' },
+      { icon: 'star', strong: '+50 points', rest: 'par document uploadé.' },
+      { icon: 'eye', strong: 'Visible immédiatement', rest: 'par toute ta filière.' },
     ],
   },
   {
-    icon: '💬',
-    bg: 'rgba(167,139,250,0.1)',
-    tag: 'SENPAI ZONE',
+    icon: 'message', tone: 'accent',
+    tag: 'Senpai Zone',
     title: 'La communauté étudiante',
     desc: 'Un forum où tu peux poser des questions, partager ton expérience et aider tes camarades.',
     features: [
-      { icon: '❓', bg: 'rgba(79,142,247,0.1)', text: '<b>Pose une question</b> sur un module ou un prof' },
-      { icon: '💡', bg: 'rgba(79,142,247,0.1)', text: '<b>Partage tes conseils</b> et astuces de révision' },
-      { icon: '🔔', bg: 'rgba(251,191,36,0.1)', text: '<b>Reçois des notifs</b> quand on te répond' },
-      { icon: '🏆', bg: 'rgba(167,139,250,0.1)', text: 'Les meilleurs posts montent en <b>votes</b>' },
+      { icon: 'message', strong: 'Pose une question', rest: 'sur un module ou un prof.' },
+      { icon: 'sparkle', strong: 'Partage tes conseils', rest: 'et astuces de révision.' },
+      { icon: 'bell', strong: 'Reçois des notifs', rest: 'quand on te répond.' },
+      { icon: 'up', strong: 'Les meilleurs posts', rest: 'montent en votes.' },
     ],
   },
   {
-    icon: '🤖',
-    bg: 'rgba(79,142,247,0.1)',
-    tag: 'IA COACH',
+    icon: 'sparkle', tone: 'warning',
+    tag: 'AI Coach',
     title: 'Ton assistant de révision',
-    desc: 'Un coach IA qui t\'aide à comprendre tes cours, résumer des chapitres et préparer tes examens.',
+    desc: 'Un coach IA qui t’aide à comprendre tes cours, résumer des chapitres et préparer tes examens.',
     features: [
-      { icon: '📖', bg: 'rgba(79,142,247,0.1)', text: '<b>Explique-moi</b> ce chapitre en simple' },
-      { icon: '📝', bg: 'rgba(79,142,247,0.1)', text: '<b>Résume</b> un cours ou un document' },
-      { icon: '🧠', bg: 'rgba(251,191,36,0.1)', text: '<b>Quiz-moi</b> pour tester mes connaissances' },
+      { icon: 'file', strong: 'Explique-moi', rest: 'ce chapitre en simple.' },
+      { icon: 'reply', strong: 'Résume', rest: 'un cours ou un document.' },
+      { icon: 'sparkle', strong: 'Quiz-moi', rest: 'pour tester mes connaissances.' },
     ],
   },
   {
-    icon: '👤',
-    bg: 'rgba(251,191,36,0.1)',
-    tag: 'TON ESPACE',
+    icon: 'user', tone: 'warning',
+    tag: 'Ton espace',
     title: 'Profil, modules et notifications',
     desc: 'Ton espace personnel pour suivre tes contributions et rester connecté à la communauté.',
     features: [
-      { icon: '📊', bg: 'rgba(79,142,247,0.1)', text: '<b>Mon profil</b> — tes stats, uploads et points' },
-      { icon: '📌', bg: 'rgba(79,142,247,0.1)', text: '<b>Mes modules</b> — accès rapide aux modules sauvegardés' },
-      { icon: '🔔', bg: 'rgba(251,191,36,0.1)', text: '<b>Notifications</b> — réponses, likes, nouveaux docs' },
-      { icon: '👥', bg: 'rgba(167,139,250,0.1)', text: '<b>Suis des profils</b> et vois leur activité' },
+      { icon: 'star', strong: 'Mon profil', rest: '— tes stats, uploads et points.' },
+      { icon: 'bookmark', strong: 'Mes modules', rest: '— accès rapide aux modules sauvegardés.' },
+      { icon: 'bell', strong: 'Notifications', rest: '— réponses, likes, nouveaux docs.' },
+      { icon: 'message', strong: 'Suis des profils', rest: 'et vois leur activité.' },
     ],
   },
 ]
@@ -254,15 +80,15 @@ const TOTAL = SLIDES.length + 1
 
 export default function WelcomeModal() {
   const navigate = useNavigate()
-  const [show,        setShow]        = useState(false)
-  const [slide,       setSlide]       = useState(0)
+  const [show, setShow] = useState(false)
+  const [slide, setSlide] = useState(0)
   const [showUniStep, setShowUniStep] = useState(false)
 
-  const [unis,       setUnis]       = useState([])
-  const [uniSearch,  setUniSearch]  = useState('')
-  const [showUniDd,  setShowUniDd]  = useState(false)
-  const [selUni,     setSelUni]     = useState('')
-  const [uniSaving,  setUniSaving]  = useState(false)
+  const [unis, setUnis] = useState([])
+  const [uniSearch, setUniSearch] = useState('')
+  const [showUniDd, setShowUniDd] = useState(false)
+  const [selUni, setSelUni] = useState('')
+  const [uniSaving, setUniSaving] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -307,109 +133,80 @@ export default function WelcomeModal() {
   const currentStep = showUniStep ? SLIDES.length : slide
   const progress = ((currentStep + 1) / TOTAL) * 100
   const filteredUnis = unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase()))
+  const s = SLIDES[slide]
 
   return (
-    <>
-      <style>{css}</style>
-      <div className="wm-overlay" onClick={dismiss}>
-        <div className="wm-card" onClick={e => e.stopPropagation()}>
-          <div className="wm-progress" style={{ width: `${progress}%` }} />
-
-          <div className="wm-header">
-            <div className="wm-logo">
-              <div className="wm-logo-box">
-                <svg width="16" height="16" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                  <text x="16" y="22" textAnchor="middle" fontFamily="'DM Mono',monospace" fontWeight="800" fontSize="14" fill="#ffffff" letterSpacing="-0.5">9Z</text>
-                </svg>
-              </div>
-              <span className="wm-logo-text">9raw<b>Zid</b>9ra</span>
-            </div>
-            <span className="wm-step-count">{currentStep + 1} / {TOTAL}</span>
-          </div>
-
-          {showUniStep ? (
-            <div className="wm-slide" key="uni">
-              <div className="wm-slide-icon" style={{ background:'rgba(79,142,247,0.1)' }}>🎓</div>
-              <div className="wm-slide-tag">DERNIÈRE ÉTAPE</div>
-              <div className="wm-slide-title">Quelle est ton université ?</div>
-              <div className="wm-slide-desc">
-                On personnalise ta page Explorer pour afficher directement les modules de ton établissement.
-              </div>
-
-              <div className="wm-uni-wrap">
-                <input
-                  className="wm-uni-input"
-                  placeholder="Cherche ton université..."
-                  value={selUni ? (unis.find(u => String(u.id) === selUni)?.name ?? uniSearch) : uniSearch}
-                  onChange={e => { setUniSearch(e.target.value); setSelUni(''); setShowUniDd(true) }}
-                  onFocus={() => setShowUniDd(true)}
-                  onBlur={() => setTimeout(() => setShowUniDd(false), 150)}
-                />
-                {showUniDd && (
-                  <div className="wm-uni-dd">
-                    {filteredUnis.length > 0
-                      ? filteredUnis.map(u => (
-                          <div key={u.id} className="wm-uni-dd-item"
-                            onMouseDown={() => { setSelUni(String(u.id)); setUniSearch(u.name); setShowUniDd(false) }}>
-                            {u.name}
-                          </div>
-                        ))
-                      : <div className="wm-uni-dd-empty">// Aucun résultat — tu pourras l'ajouter plus tard</div>
-                    }
-                  </div>
-                )}
-              </div>
-
-              <div className="wm-dots">
-                {SLIDES.map((_, i) => (
-                  <button key={i} className="wm-dot done" onClick={() => { setShowUniStep(false); setSlide(i) }} />
-                ))}
-                <button className="wm-dot on" />
-              </div>
-
-              <div className="wm-actions">
-                <button className="wm-back" onClick={back}>←</button>
-                <button className="wm-cta" onClick={saveUni} disabled={uniSaving}>
-                  {uniSaving ? 'Enregistrement...' : selUni ? 'C\'est parti ! →' : 'Passer et explorer →'}
-                </button>
-              </div>
-              <button className="wm-skip" onClick={dismiss}>Fermer le guide</button>
-            </div>
-          ) : (
-            <div className="wm-slide" key={slide}>
-              <div className="wm-slide-icon" style={{ background: SLIDES[slide].bg }}>{SLIDES[slide].icon}</div>
-              <div className="wm-slide-tag">{SLIDES[slide].tag}</div>
-              <div className="wm-slide-title">{SLIDES[slide].title}</div>
-              <div className="wm-slide-desc">{SLIDES[slide].desc}</div>
-
-              <div className="wm-features">
-                {SLIDES[slide].features.map((f, i) => (
-                  <div key={i} className="wm-feat">
-                    <div className="wm-feat-icon" style={{ background: f.bg }}>{f.icon}</div>
-                    <span dangerouslySetInnerHTML={{ __html: f.text }} />
-                  </div>
-                ))}
-              </div>
-
-              <div className="wm-dots">
-                {SLIDES.map((_, i) => (
-                  <button key={i} className={`wm-dot ${i === slide ? 'on' : i < slide ? 'done' : ''}`}
-                    onClick={() => setSlide(i)} />
-                ))}
-                <button className="wm-dot" onClick={() => setShowUniStep(true)} />
-              </div>
-
-              <div className="wm-actions">
-                {slide > 0 && <button className="wm-back" onClick={back}>←</button>}
-                <button className="wm-cta" onClick={next}>
-                  {slide < SLIDES.length - 1 ? 'Suivant →' : 'Presque fini →'}
-                </button>
-              </div>
-              <button className="wm-skip" onClick={dismiss}>Fermer le guide</button>
-            </div>
-          )}
+    <Sheet onClose={dismiss}>
+      <div className="qz-wm">
+        <div className="qz-wm__head">
+          <Wordmark />
+          <span className="t-mono qz-subtle">{currentStep + 1} / {TOTAL}</span>
         </div>
+        <ProgressBar value={progress} />
+
+        {showUniStep ? (
+          <div className="qz-wm__slide">
+            <span className="qz-icon-tile" style={{ background: 'var(--brand-soft)', color: 'var(--brand-text)' }}><Icon name="user" /></span>
+            <span className="t-eyebrow qz-subtle" style={{ textAlign: 'center' }}>Dernière étape</span>
+            <h2 className="t-h2" style={{ textAlign: 'center' }}>Quelle est ton université ?</h2>
+            <p className="t-body qz-muted" style={{ textAlign: 'center' }}>
+              On personnalise ta page Explorer pour afficher directement les modules de ton établissement.
+            </p>
+
+            <div style={{ position: 'relative' }}>
+              <Input
+                placeholder="Cherche ton université…"
+                value={selUni ? (unis.find(u => String(u.id) === selUni)?.name ?? uniSearch) : uniSearch}
+                onChange={e => { setUniSearch(e.target.value); setSelUni(''); setShowUniDd(true) }}
+                onFocus={() => setShowUniDd(true)}
+                onBlur={() => setTimeout(() => setShowUniDd(false), 150)}
+              />
+              {showUniDd && (
+                <div className="qz-dropdown" style={{ position: 'absolute', left: 0, right: 0, width: 'auto' }}>
+                  {filteredUnis.length > 0
+                    ? filteredUnis.map(u => (
+                        <button type="button" key={u.id} className="qz-dropdown__item"
+                          onMouseDown={() => { setSelUni(String(u.id)); setUniSearch(u.name); setShowUniDd(false) }}>
+                          {u.name}
+                        </button>
+                      ))
+                    : <div style={{ padding: '8px 12px' }}><span className="t-body-sm qz-subtle">Aucun résultat — tu pourras l'ajouter plus tard</span></div>
+                  }
+                </div>
+              )}
+            </div>
+
+            <div className="qz-wm__actions">
+              <Button variant="ghost" onClick={back}>Retour</Button>
+              <Button variant="primary" block loading={uniSaving} onClick={saveUni}>
+                {selUni ? 'C’est parti' : 'Passer et explorer'}
+              </Button>
+            </div>
+            <Button variant="link" block onClick={dismiss}>Fermer le guide</Button>
+          </div>
+        ) : (
+          <div className="qz-wm__slide">
+            <span className="qz-icon-tile" style={{ background: `var(--${s.tone}-soft)`, color: s.tone === 'brand' ? 'var(--brand-text)' : `var(--${s.tone})` }}><Icon name={s.icon} /></span>
+            <span className="t-eyebrow qz-subtle" style={{ textAlign: 'center' }}>{s.tag}</span>
+            <h2 className="t-h2" style={{ textAlign: 'center' }}>{s.title}</h2>
+            <p className="t-body qz-muted" style={{ textAlign: 'center' }}>{s.desc}</p>
+
+            <ul className="qz-checks">
+              {s.features.map((f, i) => (
+                <li key={i}><Icon name={f.icon} /><span><b>{f.strong}</b> {f.rest}</span></li>
+              ))}
+            </ul>
+
+            <div className="qz-wm__actions">
+              {slide > 0 && <Button variant="ghost" onClick={back}>Retour</Button>}
+              <Button variant="primary" block onClick={next}>
+                {slide < SLIDES.length - 1 ? 'Suivant' : 'Presque fini'}
+              </Button>
+            </div>
+            <Button variant="link" block onClick={dismiss}>Fermer le guide</Button>
+          </div>
+        )}
       </div>
-    </>
+    </Sheet>
   )
 }
