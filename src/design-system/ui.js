@@ -309,19 +309,20 @@ import React from 'react';
   /* ---- Dropzone ---- */
   function Dropzone(props) {
     var st = useState(false); var over = st[0]; var setOver = st[1];
+    function emit(fileList) { if (props.onFiles && fileList && fileList.length) props.onFiles(fileList); }
     return h('div', null,
-      h('label', { className: 'qz-drop', 'data-over': over ? 'true' : 'false', onDragOver: function (e) { e.preventDefault(); setOver(true); }, onDragLeave: function () { setOver(false); }, onDrop: function (e) { e.preventDefault(); setOver(false); } },
-        h('input', { type: 'file', multiple: true, hidden: true }),
+      h('label', { className: 'qz-drop', 'data-over': over ? 'true' : 'false', onDragOver: function (e) { e.preventDefault(); setOver(true); }, onDragLeave: function () { setOver(false); }, onDrop: function (e) { e.preventDefault(); setOver(false); emit(e.dataTransfer.files); } },
+        h('input', { type: 'file', multiple: props.multiple !== false, accept: props.accept, hidden: true, onChange: function (e) { emit(e.target.files); e.target.value = ''; } }),
         h('span', { className: 'qz-drop__icon' }, h(Icon, { name: 'upload' })),
         h('strong', null, 'Glisse tes fichiers ici ou ', h('u', null, 'parcours')),
         h('span', { className: 'qz-hint' }, props.hint || 'PDF, DOCX, PPTX, XLSX, TXT, IPYNB ou images · 20 Mo max')),
       (props.files || []).length ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 } }, props.files.map(function (f, i) {
         return h('div', { className: 'qz-file', key: i },
-          h('span', { className: 'qz-file__ext' }, f.ext),
+          f.preview ? h('img', { src: f.preview, alt: '', style: { width: 40, height: 40, borderRadius: 'var(--radius-sm)', objectFit: 'cover', flexShrink: 0 } }) : h('span', { className: 'qz-file__ext' }, f.ext),
           h('div', { style: { flex: 1, minWidth: 0 } },
             h('div', { style: { fontSize: 14, lineHeight: '20px', fontWeight: 550, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, f.name),
-            f.progress != null && f.progress < 100 ? h('div', { className: 'qz-progress' }, h('span', { style: { width: f.progress + '%' } })) : h('span', { className: 'qz-meta' }, f.size)),
-          f.progress != null && f.progress < 100 ? h('span', { className: 'qz-meta' }, f.progress + '%') : h(Button, { variant: 'ghost', size: 'sm', icon: 'x', iconOnly: true, 'aria-label': 'Retirer ' + f.name }));
+            f.progress != null && f.progress < 100 ? h('div', { className: 'qz-progress' }, h('span', { style: { width: f.progress + '%' } })) : h('span', { className: 'qz-meta' }, f.size, f.note ? h('span', null, f.note) : null)),
+          f.progress != null && f.progress < 100 ? h('span', { className: 'qz-meta' }, f.progress + '%') : h(Button, { variant: 'ghost', size: 'sm', icon: 'x', iconOnly: true, 'aria-label': 'Retirer ' + f.name, onClick: function () { if (props.onRemove) props.onRemove(i); } }));
       })) : null);
   }
 

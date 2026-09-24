@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FiCheck } from 'react-icons/fi'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import ConfirmModal from '../components/ConfirmModal'
+import {
+  Card, Button, Input, Select, Chip, Dropzone, Badge, ProgressBar, Icon, Skeleton,
+} from '../design-system/ui'
+import { notify } from '../design-system/toast'
 
 // pdfjs-dist + pdf-lib are ~300KB gzipped combined — loaded on demand (dynamic
 // import) so every other page's bundle stays untouched. Only Upload pays for it.
@@ -17,204 +20,58 @@ const getPdfjs = async () => {
 }
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-  :root {
-    --bg:#02040A; --surface:#070C18; --s2:#0C1222; --s3:#111827;
-    --border:#1C2A45; --borderhi:#2D4A7A;
-    --accent:#4F8EF7; --accent2:#7BB3FF; --teal:#2DD4BF; --teal2:#5EEAD4;
-    --red:#F87171; --yellow:#FBD34D; --text:#E2E8F0; --text2:#94A3B8; --text3:#4A5568; --white:#FFFFFF;
-  }
-
-  html,body { background:var(--bg); font-family:'Outfit',sans-serif; min-height:100vh; }
-  .page { min-height:100vh; display:flex; flex-direction:column; }
-  .layout { max-width:1040px; margin:0 auto; padding:2.5rem 2rem; width:100%; flex:1; display:grid; grid-template-columns:1fr 280px; gap:2rem; align-items:start; }
-  .layout.no-sidebar { grid-template-columns:1fr; max-width:860px; }
-  .layout-main { min-width:0; }
-  .layout-side { display:flex; flex-direction:column; gap:1rem; position:sticky; top:1.5rem; }
-  @media(max-width:1000px) { .layout { grid-template-columns:1fr; max-width:860px; } .layout-side { position:static; } }
-  .side-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:1.1rem 1.25rem; }
-  .side-card-label { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:0.75rem; }
-  .reward-card { background:rgba(251,211,77,0.04); border-color:rgba(251,211,77,0.18); }
-  .reward-card .side-card-label { color:var(--yellow); }
-  .reward-pts { font-family:'DM Mono',monospace; font-size:1.3rem; font-weight:700; color:var(--yellow); margin-bottom:6px; }
-  .reward-sub { font-size:0.76rem; color:var(--text2); line-height:1.5; margin-bottom:0.75rem; }
-  .reward-sub b { color:var(--yellow); }
-  .reward-bar-wrap { height:5px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:4px; }
-  .reward-bar { height:100%; background:linear-gradient(90deg,var(--yellow),#F59E0B); border-radius:3px; transition:width 0.4s ease; }
-  .reward-bar-label { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); }
-  .checklist-row { display:flex; align-items:center; gap:8px; font-size:0.78rem; color:var(--text2); padding:5px 0; }
-  .checklist-row svg { color:var(--green); flex-shrink:0; }
-  .recent-upload-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-top:1px solid var(--border); }
-  .recent-upload-row:first-of-type { border-top:none; }
-  .recent-upload-name { font-size:0.78rem; color:var(--text2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .recent-upload-status { font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:600; padding:2px 7px; border-radius:4px; flex-shrink:0; }
-  .recent-upload-status.ok { background:rgba(74,222,128,0.1); color:var(--green); }
-  .recent-upload-status.pending { background:rgba(251,211,77,0.1); color:var(--yellow); }
-  .page-tag { font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--accent); letter-spacing:2px; text-transform:uppercase; margin-bottom:0.75rem; }
-  .page-title { font-size:1.75rem; font-weight:700; color:var(--white); letter-spacing:-0.5px; margin-bottom:0.5rem; }
-  .page-desc { font-size:0.875rem; color:var(--text2); margin-bottom:2.5rem; line-height:1.6; }
-
-  /* STEPPER */
-  .stepper { display:flex; align-items:center; gap:0; margin-bottom:2.5rem; }
-  .stepper-item { display:flex; align-items:center; gap:10px; flex:1; }
-  .stepper-item:last-child { flex:0; }
-  .s-num { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:0.75rem; font-weight:500; flex-shrink:0; transition:all 0.3s; }
-  .s-num.pending { background:var(--s2); border:1px solid var(--border); color:var(--text3); }
-  .s-num.active  { background:rgba(79,142,247,0.15); border:1px solid var(--accent); color:var(--accent2); }
-  .s-num.done    { background:rgba(79,142,247,0.12); border:1px solid var(--teal); color:var(--teal2); }
-  .s-info { display:flex; flex-direction:column; }
-  .s-label { font-size:0.78rem; font-weight:600; color:var(--text2); }
-  .s-sub { font-family:'DM Mono',monospace; font-size:0.62rem; color:var(--text3); }
-  .s-line { flex:1; height:1px; background:var(--border); margin:0 12px; transition:background 0.3s; }
-  .s-line.done { background:linear-gradient(90deg,var(--teal),var(--accent)); }
-
-  .card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:1.75rem; margin-bottom:1.5rem; }
-  .card-title { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:1.25rem; }
-
-  .field { margin-bottom:1.25rem; }
-  .field:last-child { margin-bottom:0; }
-  .field-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.25rem; }
-  .label { display:block; font-family:'DM Mono',monospace; font-size:0.63rem; color:var(--text3); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:0.5rem; }
-  .select { width:100%; background:var(--s2); border:1px solid var(--border); border-radius:9px; padding:10px 12px; color:var(--text); font-size:0.875rem; font-family:'Outfit',sans-serif; outline:none; cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234A5568' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:28px; transition:border-color 0.15s; }
-  .select:focus { border-color:var(--accent); outline:none; }
-  .select:disabled { opacity:0.4; cursor:not-allowed; }
-  .select option { background:var(--s2); }
-  .input { width:100%; background:var(--s2); border:1px solid var(--border); border-radius:9px; padding:10px 12px; color:var(--text); font-size:0.875rem; font-family:'Outfit',sans-serif; outline:none; transition:border-color 0.15s; }
-  .input:focus { border-color:var(--accent); }
-  .input::placeholder { color:var(--text3); }
-  .input:disabled { opacity:0.4; cursor:not-allowed; }
-  .hint { font-size:0.7rem; color:var(--text3); margin-top:5px; font-family:'DM Mono',monospace; }
-
-  /* MODULE SEARCH */
-  .module-search-wrap { position:relative; }
-  .module-results { position:absolute; top:100%; left:0; right:0; z-index:50; background:var(--s2); border:1px solid var(--borderhi); border-radius:9px; margin-top:4px; overflow:hidden; max-height:220px; overflow-y:auto; }
-  .module-result { padding:10px 12px; cursor:pointer; transition:background 0.15s; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
-  .module-result:last-child { border-bottom:none; }
-  .module-result:hover { background:var(--s3); }
-  .module-result-name { font-size:0.85rem; color:var(--text); }
-  .module-result-sem { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--accent2); }
-  .module-selected { background:rgba(79,142,247,0.06); border:1px solid rgba(79,142,247,0.2); border-radius:9px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; }
-  .module-selected-name { font-size:0.875rem; color:var(--white); font-weight:500; }
-  .module-selected-clear { background:none; border:none; color:var(--text3); cursor:pointer; font-size:0.75rem; font-family:'DM Mono',monospace; transition:color 0.15s; }
-  .module-selected-clear:hover { color:var(--red); }
-
-  /* PROFESSOR AUTOCOMPLETE */
-  .prof-wrap { position:relative; }
-  .prof-dd { position:absolute; top:100%; left:0; right:0; z-index:50; background:var(--s2); border:1px solid var(--borderhi); border-radius:9px; margin-top:4px; box-shadow:0 8px 24px rgba(0,0,0,0.4); }
-  .prof-chips { display:flex; flex-wrap:wrap; gap:6px; padding:8px 10px; }
-  .prof-chip { background:rgba(79,142,247,0.08); border:1px solid rgba(79,142,247,0.2); color:var(--accent2); border-radius:20px; padding:4px 10px; font-size:0.75rem; cursor:pointer; transition:all 0.15s; font-family:'DM Mono',monospace; }
-  .prof-chip:hover { background:rgba(79,142,247,0.18); border-color:var(--accent); }
-
-  /* FILE UPLOAD */
-  .upload-zone { border:2px dashed var(--border); border-radius:12px; padding:2.5rem; text-align:center; cursor:pointer; transition:all 0.2s; background:var(--s2); }
-  .upload-zone:hover, .upload-zone.drag { border-color:var(--accent); background:rgba(79,142,247,0.04); }
-  .upload-zone-icon { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); margin-bottom:0.75rem; letter-spacing:2px; }
-  .upload-zone-title { font-size:0.95rem; font-weight:600; color:var(--text2); margin-bottom:6px; }
-  .upload-zone-sub { font-size:0.78rem; color:var(--text3); }
-  .upload-zone-sub b { color:var(--accent2); }
-  .detected-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:8px; }
-  .detected-label { font-family:'DM Mono',monospace; font-size:0.6rem; color:var(--text3); }
-  .detected-chip { font-family:'DM Mono',monospace; font-size:0.65rem; font-weight:600; color:var(--teal2); background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.25); border-radius:4px; padding:2px 8px; }
-  .file-list { display:flex; flex-direction:column; gap:8px; margin-top:1rem; }
-  .file-item { display:flex; align-items:center; gap:12px; background:var(--s2); border:1px solid var(--border); border-radius:9px; padding:10px 12px; }
-  .file-preview { width:40px; height:40px; border-radius:7px; object-fit:cover; flex-shrink:0; }
-  .file-icon { width:40px; height:40px; border-radius:7px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:'DM Mono',monospace; font-size:0.6rem; font-weight:500; }
-  .file-icon-pdf  { background:rgba(248,113,113,0.1); color:var(--red);     border:1px solid rgba(248,113,113,0.2); }
-  .file-icon-ppt  { background:rgba(234,88,12,0.1);  color:#FB923C;        border:1px solid rgba(234,88,12,0.2);  }
-  .file-icon-doc  { background:rgba(79,142,247,0.1); color:var(--accent2); border:1px solid rgba(79,142,247,0.2); }
-  .file-icon-xls  { background:rgba(74,222,128,0.1); color:#4ADE80;        border:1px solid rgba(74,222,128,0.2); }
-  .file-icon-nb   { background:rgba(251,211,77,0.1); color:var(--yellow);  border:1px solid rgba(251,211,77,0.2); }
-  .file-info { flex:1; min-width:0; }
-  .file-name { font-size:0.82rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .file-size { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); }
-  .file-remove { background:none; border:none; color:var(--text3); cursor:pointer; font-size:0.75rem; transition:color 0.15s; padding:4px; }
-  .file-remove:hover { color:var(--red); }
-  .file-limit { font-size:0.72rem; color:var(--text3); font-family:'DM Mono',monospace; margin-top:6px; text-align:center; }
-
-  /* SUMMARY */
-  .summary-row { display:flex; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
-  .summary-row:first-child { padding-top:0; }
-  .summary-row:last-child { border-bottom:none; padding-bottom:0; }
-  .summary-key { font-family:'DM Mono',monospace; font-size:0.65rem; color:var(--text3); text-transform:uppercase; letter-spacing:1px; }
-  .summary-val { font-size:0.85rem; color:var(--text); font-weight:500; }
-
-  /* PROGRESS */
-  .progress-wrap { background:var(--s2); border-radius:100px; height:4px; overflow:hidden; margin-top:1rem; }
-  .progress-bar { height:100%; background:linear-gradient(90deg,var(--accent),var(--teal)); border-radius:100px; transition:width 0.3s ease; }
-
-  /* BUTTONS */
-  .submit-section { display:flex; gap:12px; align-items:center; justify-content:flex-end; margin-top:1.5rem; }
-  .btn-back { background:none; border:1px solid var(--border); color:var(--text2); border-radius:9px; padding:11px 24px; font-size:0.875rem; font-weight:500; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s; }
-  .btn-back:hover { border-color:var(--borderhi); color:var(--text); }
-  .btn-submit { background:linear-gradient(135deg,var(--accent),#3A6ED4); color:var(--white); border:none; border-radius:9px; padding:11px 28px; font-size:0.875rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; position:relative; overflow:hidden; }
-  .btn-submit::before { content:''; position:absolute; inset:0; background:linear-gradient(to bottom,rgba(255,255,255,0.1),transparent); }
-  .btn-submit:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 24px rgba(79,142,247,0.4); }
-  .btn-submit:disabled { opacity:0.5; cursor:not-allowed; }
-
-  /* ALERT */
-  .alert { padding:10px 14px; border-radius:8px; font-size:0.82rem; margin-bottom:1rem; font-family:'DM Mono',monospace; }
-  .err  { background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.2); color:var(--red); }
-  .warn { background:rgba(251,211,77,0.06); border:1px solid rgba(251,211,77,0.2); color:var(--yellow); }
-
-  /* TOAST */
-  @keyframes toastIn { from{opacity:0;transform:translateX(-50%) translateY(12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
-  .toast { position:fixed; bottom:2rem; left:50%; transform:translateX(-50%); background:rgba(79,142,247,0.12); border:1px solid rgba(79,142,247,0.35); color:var(--teal2); border-radius:10px; padding:12px 22px; font-size:0.82rem; font-weight:600; font-family:'DM Mono',monospace; z-index:9999; white-space:nowrap; box-shadow:0 8px 32px rgba(0,0,0,0.5); animation:toastIn 0.2s ease; pointer-events:none; }
-
-  /* SUCCESS */
-  .success-wrap { text-align:center; padding:3rem 2rem; }
-  .success-icon { width:64px; height:64px; border-radius:16px; background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.2); display:flex; align-items:center; justify-content:center; margin:0 auto 1.25rem; font-family:'DM Mono',monospace; font-size:1.5rem; color:var(--teal2); }
-  .success-title { font-size:1.3rem; font-weight:700; color:var(--white); margin-bottom:6px; }
-  .success-desc { font-size:0.85rem; color:var(--text2); line-height:1.6; margin-bottom:2rem; }
-  .success-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
-  .btn-primary { background:linear-gradient(135deg,var(--accent),#3A6ED4); color:var(--white); border:none; border-radius:9px; padding:11px 24px; font-size:0.875rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.2s; }
-  .btn-primary:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(79,142,247,0.4); }
-
-  @media(max-width:768px) {
-    .layout { padding:1.5rem 1rem; }
-    .page-title { font-size:1.4rem; }
-    .field-grid { grid-template-columns:1fr; }
-    .stepper { gap:0; overflow-x:auto; }
-    .s-info { display:none; }
-    .submit-section { flex-direction:column-reverse; gap:8px; }
-    .btn-back, .btn-submit { width:100%; text-align:center; }
-    .upload-zone { padding:1.5rem 1rem; }
-  }
-  @media(max-width:480px) {
-    .card { padding:1.25rem; }
-    .success-actions { flex-direction:column; }
-    .success-actions .btn-primary { width:100%; text-align:center; }
-  }
+  .up-layout { max-width: 1040px; margin: 0 auto; padding: var(--space-8) var(--space-6); display: grid; grid-template-columns: 1fr 280px; gap: var(--space-8); align-items: start; }
+  .up-layout--full { grid-template-columns: 1fr; max-width: 860px; }
+  @media (max-width: 1000px) { .up-layout { grid-template-columns: 1fr; max-width: 860px; } }
+  .up-side { display: flex; flex-direction: column; gap: var(--space-4); position: sticky; top: var(--space-6); }
+  @media (max-width: 1000px) { .up-side { position: static; } }
+  .up-stepper { display: flex; align-items: center; gap: 0; margin-bottom: var(--space-8); }
+  .up-stepper__item { display: flex; align-items: center; gap: var(--space-2); flex: 1; }
+  .up-stepper__item:last-child { flex: 0; }
+  .up-stepper__line { flex: 1; height: 1px; background: var(--border); margin: 0 var(--space-2); }
+  .up-stepper__line--done { background: var(--brand); }
+  .up-stepper__num { width: 28px; height: 28px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; font: 500 12px/1 var(--font-mono); flex-shrink: 0; border: 1px solid var(--border); color: var(--text-subtle); }
+  .up-stepper__num--active, .up-stepper__num--done { border-color: var(--brand); color: var(--brand-text); background: var(--brand-soft); }
+  .up-stepper__info { display: flex; flex-direction: column; }
+  @media (max-width: 768px) { .up-stepper__info { display: none; } }
+  .up-field { margin-bottom: var(--space-5); }
+  .up-field:last-child { margin-bottom: 0; }
+  .up-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-5); }
+  @media (max-width: 768px) { .up-field-grid { grid-template-columns: 1fr; } }
+  .up-uni-wrap { position: relative; }
+  .up-mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); margin-bottom: var(--space-3); }
+  @media (max-width: 640px) { .up-mode-grid { grid-template-columns: 1fr; } }
+  .up-mode-card { text-align: left; padding: var(--space-4); border-radius: var(--radius-lg); border: 1px solid var(--border); background: var(--surface-2); cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+  .up-mode-card--on { border-color: var(--brand); background: var(--brand-soft); }
+  .up-fac-row { display: flex; gap: var(--space-2); align-items: center; margin-bottom: var(--space-2); }
+  .up-radio-row { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; text-align: left; background: none; width: 100%; margin-bottom: var(--space-2); }
+  .up-radio-row--on { border-color: var(--brand); background: var(--brand-soft); }
+  .up-radio-dot { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--border-control); flex-shrink: 0; margin-top: 2px; position: relative; }
+  .up-radio-dot--on { border-color: var(--brand); }
+  .up-radio-dot--on::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--brand); }
+  .up-type-grid { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .up-summary-row { display: flex; justify-content: space-between; gap: var(--space-4); padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .up-summary-row:last-child { border-bottom: 0; }
+  .up-submit-row { display: flex; gap: var(--space-2); justify-content: flex-end; margin-top: var(--space-6); }
+  @media (max-width: 768px) { .up-submit-row { flex-direction: column-reverse; } .up-submit-row > * { width: 100%; } }
+  .up-success { text-align: center; padding: var(--space-12) var(--space-6); }
+  .up-rank-card { text-align: left; margin-bottom: var(--space-6); }
+  .up-checklist-row { display: flex; align-items: center; gap: var(--space-2); padding: 5px 0; }
+  .up-checklist-row svg { color: var(--success); flex-shrink: 0; }
+  .up-recent-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: 6px 0; border-top: 1px solid var(--border); }
+  .up-recent-row:first-child { border-top: 0; }
+  .up-module-result { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 `
 
-const DOC_TYPE_TIPS = {
-  examen:         'Examen de fin de semestre',
-  cc:             'Contrôle continu en cours de semestre',
-  td:             'Travail dirigé — exercices en classe',
-  tp:             'Travail pratique — labo ou projet',
-  cours:          'Cours magistral',
-  corrige_examen: 'Corrigé officiel d\'un examen',
-  corrige_td:     'Corrigé d\'un TD',
-  corrige_tp:     'Corrigé d\'un TP',
-  quiz:           'Quiz ou interrogation de cours',
-  projet_final:   'Rapport ou livrable de projet final',
-}
-
 const DOC_TYPES = [
-  { k: 'examen',         l: 'Examen Final',     short: 'EXAM'  },
-  { k: 'cc',             l: 'Contrôle Continu',  short: 'CC'    },
-  { k: 'td',             l: 'Travail Dirigé',    short: 'TD'    },
-  { k: 'tp',             l: 'Travail Pratique',  short: 'TP'    },
-  { k: 'cours',          l: 'Cours',             short: 'COURS' },
-  { k: 'corrige_examen', l: 'Corrigé Examen',    short: 'COR.'  },
-  { k: 'corrige_td',     l: 'Corrigé TD',        short: 'C.TD'  },
-  { k: 'corrige_tp',     l: 'Corrigé TP',        short: 'C.TP'  },
-  { k: 'quiz',           l: 'Quiz / Interro',    short: 'QUIZ'  },
-  { k: 'projet_final',  l: 'Projet Final',      short: 'PROJ'  },
+  { k: 'examen', l: 'Examen final' }, { k: 'cc', l: 'Contrôle continu' }, { k: 'td', l: 'TD' },
+  { k: 'tp', l: 'TP' }, { k: 'cours', l: 'Cours' }, { k: 'corrige_examen', l: 'Corrigé examen' },
+  { k: 'corrige_td', l: 'Corrigé TD' }, { k: 'corrige_tp', l: 'Corrigé TP' },
+  { k: 'quiz', l: 'Quiz' }, { k: 'projet_final', l: 'Projet final' },
 ]
-const YEARS = ['2027/2028','2026/2027','2025/2026','2024/2025','2023/2024','2022/2023','2021/2022','2020/2021','2019/2020','2018/2019']
-const SEMESTERS = ['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10']
-const fmt = (b) => b < 1024*1024 ? (b/1024).toFixed(1)+' KB' : (b/(1024*1024)).toFixed(1)+' MB'
+const YEARS = ['2027/2028', '2026/2027', '2025/2026', '2024/2025', '2023/2024', '2022/2023', '2021/2022', '2020/2021', '2019/2020', '2018/2019']
+const SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10']
+const fmt = (b) => b < 1024 * 1024 ? (b / 1024).toFixed(1) + ' KB' : (b / (1024 * 1024)).toFixed(1) + ' MB'
 const stripHtml = (str) => str.replace(/<[^>]*>/g, '').trim()
 const fileKey = f => `${f.name}_${f.size}`
 
@@ -300,109 +157,89 @@ const ALLOWED_TYPES = new Set([
   'text/plain',
   'application/x-ipynb+json',
 ])
-const ALLOWED_EXTS = new Set(['pdf','ppt','pptx','doc','docx','xls','xlsx','ipynb','jpg','jpeg','png','gif','webp','bmp','heic'])
+const ALLOWED_EXTS = new Set(['pdf', 'ppt', 'pptx', 'doc', 'docx', 'xls', 'xlsx', 'ipynb', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic'])
 const getExt = f => f.name.split('.').pop().toLowerCase()
 const isAllowed = f => f.type.startsWith('image/') || ALLOWED_TYPES.has(f.type) || ALLOWED_EXTS.has(getExt(f))
 
-const FILE_ICON = (f) => {
-  if (f.type.startsWith('image/')) return null
-  const ext = getExt(f)
-  if (ext === 'pdf')               return { cls:'file-icon-pdf', label:'PDF' }
-  if (['ppt','pptx'].includes(ext)) return { cls:'file-icon-ppt', label:'PPT' }
-  if (['doc','docx'].includes(ext)) return { cls:'file-icon-doc', label:'DOC' }
-  if (['xls','xlsx'].includes(ext)) return { cls:'file-icon-xls', label:'XLS' }
-  if (ext === 'ipynb')             return { cls:'file-icon-nb',  label:'NB'  }
-  return { cls:'file-icon-pdf', label: ext.toUpperCase().slice(0,4) }
-}
-
 export default function Upload() {
   const navigate = useNavigate()
-  const fileRef             = useRef()
   const prefetchedForUniRef = useRef(null)
-  const isSubmittingRef     = useRef(false)
-  const isSubmittingFacRef  = useRef(false)
-  const fileFlagsRef        = useRef({})
-  const pendingScansRef     = useRef([])
+  const isSubmittingRef = useRef(false)
+  const isSubmittingFacRef = useRef(false)
+  const fileFlagsRef = useRef({})
+  const pendingScansRef = useRef([])
 
-  const [user,     setUser]     = useState(null)
+  const [user, setUser] = useState(null)
   const [authLoad, setAuthLoad] = useState(true)
-  const [profile,  setProfile]  = useState(null)
+  const [profile, setProfile] = useState(null)
   const [recentUploads, setRecentUploads] = useState([])
   const [detected, setDetected] = useState([])
-  const [step,     setStep]     = useState(1)
-  const [loading,  setLoading]  = useState(false)
-  const [error,    setError]    = useState('')
+  const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [progress, setProgress] = useState(0)
-  const [modal,    setModal]    = useState(null)
-  const [success,  setSuccess]  = useState(false)
+  const [modal, setModal] = useState(null)
+  const [success, setSuccess] = useState(false)
   const [heldForReview, setHeldForReview] = useState(false)
   const [uploadedModuleId, setUploadedModuleId] = useState(null)
 
   // Cascading selects
-  const [unis,   setUnis]   = useState([])
-  const [facs,       setFacs]       = useState([])
-  const [fils,       setFils]       = useState([])
+  const [unis, setUnis] = useState([])
+  const [facs, setFacs] = useState([])
+  const [fils, setFils] = useState([])
   const [facsFetched, setFacsFetched] = useState(false)
-  const [uniMode,       setUniMode]       = useState('') // '' | 'independent' | 'multi_faculty'
-  const [rootFacBusy,   setRootFacBusy]   = useState(false)
+  const [uniMode, setUniMode] = useState('') // '' | 'independent' | 'multi_faculty'
   const [showAddFacForm, setShowAddFacForm] = useState(false)
-  const [addFacName,     setAddFacName]     = useState('')
-  const [addFacType,     setAddFacType]     = useState('Faculté')
-  const [addFacBusy,     setAddFacBusy]     = useState(false)
+  const [addFacName, setAddFacName] = useState('')
+  const [addFacType, setAddFacType] = useState('Faculté')
+  const [addFacBusy, setAddFacBusy] = useState(false)
   const [selUni, setSelUni] = useState('')
   const [selFac, setSelFac] = useState('')
   const [selFil, setSelFil] = useState('')
   const [selSem, setSelSem] = useState('')
   const [selMod, setSelMod] = useState(null)
 
-  const [modSearch,    setModSearch]    = useState('')
-  const [modResults,   setModResults]   = useState([])
-  const [uniSearch,    setUniSearch]    = useState('')
-  const [showUniDd,    setShowUniDd]    = useState(false)
+  const [modSearch, setModSearch] = useState('')
+  const [modResults, setModResults] = useState([])
+  const [uniSearch, setUniSearch] = useState('')
+  const [showUniDd, setShowUniDd] = useState(false)
 
   // School request form
-  const [showSchoolForm,    setShowSchoolForm]    = useState(false)
-  const [schoolSent,        setSchoolSent]        = useState(false)
-  const [schoolCase,        setSchoolCase]        = useState('')
-  const [schoolSubmitting,  setSchoolSubmitting]  = useState(false)
+  const [showSchoolForm, setShowSchoolForm] = useState(false)
+  const [schoolSent, setSchoolSent] = useState(false)
+  const [schoolCase, setSchoolCase] = useState('')
+  const [schoolSubmitting, setSchoolSubmitting] = useState(false)
   // Case A — independent school
-  const [schAName,        setSchAName]        = useState('')
-  const [schACity,        setSchACity]        = useState('')
-  const [schAType,        setSchAType]        = useState('public')
+  const [schAName, setSchAName] = useState('')
+  const [schACity, setSchACity] = useState('')
+  const [schAType, setSchAType] = useState('public')
   // Case B — faculty of existing university
-  const [schBParentUni,   setSchBParentUni]   = useState('')
-  const [schBFaculties,   setSchBFaculties]   = useState([{ name: '', type: 'Faculté' }])
+  const [schBParentUni, setSchBParentUni] = useState('')
+  const [schBFaculties, setSchBFaculties] = useState([{ name: '', type: 'Faculté' }])
   // Case C — new university with its faculties
-  const [schCUniName,     setSchCUniName]     = useState('')
-  const [schCCity,        setSchCCity]        = useState('')
-  const [schCType,        setSchCType]        = useState('public')
-  const [schCFaculties,   setSchCFaculties]   = useState([{ name:'', type:'Faculté' }])
+  const [schCUniName, setSchCUniName] = useState('')
+  const [schCCity, setSchCCity] = useState('')
+  const [schCType, setSchCType] = useState('public')
+  const [schCFaculties, setSchCFaculties] = useState([{ name: '', type: 'Faculté' }])
 
   // Filière suggestion form
   const [showFiliereForm, setShowFiliereForm] = useState(false)
-  const [filiereName,     setFiliereName]     = useState('')
-  const [filiereNbSem,    setFiliereNbSem]    = useState('')
-  const [filiereSent,     setFiliereSent]     = useState(false)
-
-  const [typeTooltip, setTypeTooltip] = useState(null)
+  const [filiereName, setFiliereName] = useState('')
+  const [filiereNbSem, setFiliereNbSem] = useState('')
+  const [filiereSent, setFiliereSent] = useState(false)
 
   // Points state for success screen
   const [earnedPoints, setEarnedPoints] = useState(null)
 
-  // Toast
-  const [toast, setToast] = useState(null)
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(null), 3500) }
-
   // Doc info
-  const [docType,   setDocType]   = useState('')
-  const [year,      setYear]      = useState('')
-  const [professor,        setProfessor]        = useState('')
-  const [profSuggestions,  setProfSuggestions]  = useState([])
-  const [showProfDD,       setShowProfDD]       = useState(false)
+  const [docType, setDocType] = useState('')
+  const [year, setYear] = useState('')
+  const [professor, setProfessor] = useState('')
+  const [profSuggestions, setProfSuggestions] = useState([])
+  const [showProfDD, setShowProfDD] = useState(false)
   const [docNumber, setDocNumber] = useState('')
-  const [files,     setFiles]     = useState([])
-  const [previews,  setPreviews]  = useState([])
-  const [drag,      setDrag]      = useState(false)
+  const [files, setFiles] = useState([])
+  const [previews, setPreviews] = useState([])
 
   // Auth check — redirect to login if not logged in
   useEffect(() => {
@@ -411,7 +248,6 @@ export default function Upload() {
     const loginRedirect = () => {
       if (!done) { done = true; sessionStorage.setItem('redirectAfterLogin', '/upload'); navigate('/login', { state: { from: '/upload', message: 'Connecte-toi pour continuer' } }) }
     }
-    // 3-second fallback in case getSession hangs
     const timeout = setTimeout(loginRedirect, 3000)
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
@@ -444,14 +280,12 @@ export default function Upload() {
 
   useEffect(() => {
     if (!selUni) { setFacs([]); setSelFac(''); setFacsFetched(false); setUniMode(''); setShowAddFacForm(false); setAddFacName(''); setAddFacType('Faculté'); return }
-    // If facs were pre-loaded for this exact university (Case C), skip the fetch
     if (prefetchedForUniRef.current === selUni) {
       prefetchedForUniRef.current = null
       setSelFac(''); setSelFil(''); setSelSem(''); setSelMod(null); setUniMode(''); setShowAddFacForm(false); setAddFacName(''); setAddFacType('Faculté')
       return
     }
     setFacsFetched(false); setUniMode(''); setShowAddFacForm(false); setAddFacName(''); setAddFacType('Faculté')
-    // Exclude root faculties (used internally for independent schools)
     supabase.from('faculties').select('*').eq('university_id', selUni).neq('type', 'root').order('name')
       .then(({ data }) => {
         setFacs(data || [])
@@ -467,11 +301,8 @@ export default function Upload() {
     setSelFil(''); setSelSem(''); setSelMod(null)
   }, [selFac])
 
-  // Module search
   useEffect(() => {
-    if (!selFil || !selSem || modSearch.trim().length < 2) {
-      setModResults([]); return
-    }
+    if (!selFil || !selSem || modSearch.trim().length < 2) { setModResults([]); return }
     supabase.from('modules')
       .select('*')
       .eq('filiere_id', selFil)
@@ -481,7 +312,6 @@ export default function Upload() {
       .then(({ data }) => setModResults(data || []))
   }, [modSearch, selFil, selSem])
 
-  // Fetch distinct professor names for the selected module
   useEffect(() => {
     if (!selMod?.id || selMod.custom) { setProfSuggestions([]); return }
     supabase.from('documents')
@@ -494,7 +324,6 @@ export default function Upload() {
       })
   }, [selMod])
 
-  // File handling
   // Real filename-based detection (no OCR/AI — just parsing the filename text)
   // for the two fields that live on this step: document type and academic year.
   const detectFromFilename = (filename) => {
@@ -510,15 +339,15 @@ export default function Upload() {
     }
     const TYPE_HINTS = [
       [/CORRIG.{0,3}EXAM|EXAM.{0,3}CORRIG/i, 'corrige_examen', 'Corrigé Examen'],
-      [/CORRIG.{0,3}TD|TD.{0,3}CORRIG/i,     'corrige_td',     'Corrigé TD'],
-      [/CORRIG.{0,3}TP|TP.{0,3}CORRIG/i,     'corrige_tp',     'Corrigé TP'],
-      [/FINAL|EXAMEN|EXAM\b/i,               'examen',         'Examen Final'],
-      [/\bCC\b|CONTROLE.?CONTINU/i,          'cc',             'Contrôle Continu'],
-      [/QUIZ|INTERRO/i,                      'quiz',           'Quiz / Interro'],
-      [/PROJET/i,                            'projet_final',   'Projet Final'],
-      [/\bTD\b/i,                            'td',             'Travail Dirigé'],
-      [/\bTP\b/i,                            'tp',             'Travail Pratique'],
-      [/COURS|CHAPITRE/i,                    'cours',          'Cours'],
+      [/CORRIG.{0,3}TD|TD.{0,3}CORRIG/i, 'corrige_td', 'Corrigé TD'],
+      [/CORRIG.{0,3}TP|TP.{0,3}CORRIG/i, 'corrige_tp', 'Corrigé TP'],
+      [/FINAL|EXAMEN|EXAM\b/i, 'examen', 'Examen Final'],
+      [/\bCC\b|CONTROLE.?CONTINU/i, 'cc', 'Contrôle Continu'],
+      [/QUIZ|INTERRO/i, 'quiz', 'Quiz / Interro'],
+      [/PROJET/i, 'projet_final', 'Projet Final'],
+      [/\bTD\b/i, 'td', 'Travail Dirigé'],
+      [/\bTP\b/i, 'tp', 'Travail Pratique'],
+      [/COURS|CHAPITRE/i, 'cours', 'Cours'],
     ]
     for (const [re, key, label] of TYPE_HINTS) {
       if (re.test(filename)) {
@@ -536,7 +365,6 @@ export default function Upload() {
     if (valid.length !== arr.length) setError('Format non supporté. Acceptés : PDF, images, PPT, Word, Excel, Notebook (.ipynb)')
     else setError('')
 
-    // Size check (50MB each)
     const tooLarge = valid.filter(f => f.size > 50 * 1024 * 1024)
     if (tooLarge.length) { setError(`Fichier trop grand (max 50MB): ${tooLarge[0].name}`); return }
 
@@ -553,7 +381,6 @@ export default function Upload() {
     const combined = [...files, ...valid].slice(0, 20)
     setFiles(combined)
 
-    // Generate previews for images
     combined.forEach((f, i) => {
       if (f.type.startsWith('image/') && !previews[i]) {
         const reader = new FileReader()
@@ -570,22 +397,16 @@ export default function Upload() {
     setPreviews(p => p.filter((_, idx) => idx !== i))
   }
 
-  const handleDrop = (e) => {
-    e.preventDefault(); setDrag(false)
-    handleFiles(e.dataTransfer.files)
-  }
-
-  // Filière suggestion submit
   const handleFiliereRequest = async () => {
     if (!filiereName.trim()) return
     if (!user) { sessionStorage.setItem('redirectAfterLogin', '/upload'); navigate('/login', { state: { from: '/upload' } }); return }
     try {
-      const { error: sugErr } = await supabase.from('filiere_suggestions').insert({
-        suggested_by:    user.id,
-        faculty_id:      selFac ? parseInt(selFac) : null,
-        name:            filiereName.trim(),
+      await supabase.from('filiere_suggestions').insert({
+        suggested_by: user.id,
+        faculty_id: selFac ? parseInt(selFac) : null,
+        name: filiereName.trim(),
         total_semesters: filiereNbSem ? parseInt(filiereNbSem) : null,
-        status:          'approved',
+        status: 'approved',
       })
       if (selFac) {
         const payload = { faculty_id: parseInt(selFac), name: filiereName.trim(), total_semesters: filiereNbSem ? parseInt(filiereNbSem) : 6 }
@@ -595,7 +416,7 @@ export default function Upload() {
         if (updatedFils) setFils(updatedFils)
         if (newFil) setSelFil(String(newFil.id))
       }
-      showToast('✓ Filière ajoutée et disponible !')
+      notify.success('Filière ajoutée', 'Disponible immédiatement.')
       setFiliereSent(true)
       setTimeout(() => { setFiliereSent(false); setShowFiliereForm(false); setFiliereName(''); setFiliereNbSem('') }, 3000)
     } catch (e) {
@@ -606,7 +427,6 @@ export default function Upload() {
   // Option A: independent school — find or create a hidden root faculty, then use it directly
   const handleSelectIndependent = async () => {
     setUniMode('independent')
-    setRootFacBusy(true)
     const { data: existing } = await supabase
       .from('faculties')
       .select('id')
@@ -622,7 +442,6 @@ export default function Upload() {
         .select('id').single()
       if (newFac) setSelFac(String(newFac.id))
     }
-    setRootFacBusy(false)
   }
 
   // Option B: inline add faculty under the selected university
@@ -646,10 +465,10 @@ export default function Upload() {
 
   // School request submit (3 cases)
   const handleSchoolRequest = async () => {
-    if (isSubmittingRef.current) return   // synchronous guard (survives re-renders)
+    if (isSubmittingRef.current) return
     if (!user) { sessionStorage.setItem('redirectAfterLogin', '/upload'); navigate('/login', { state: { from: '/upload' } }); return }
     isSubmittingRef.current = true
-    setSchoolSubmitting(true)             // triggers re-render → button visually disabled
+    setSchoolSubmitting(true)
     try {
       if (schoolCase === 'independent') {
         if (!schAName.trim()) return
@@ -667,9 +486,8 @@ export default function Upload() {
         setSchoolCase(''); setSchAName(''); setSchACity(''); setSchAType('public')
         setShowSchoolForm(false)
         if (newUni) setSelUni(String(newUni.id))
-        showToast('✓ Établissement ajouté et disponible immédiatement !')
+        notify.success('Établissement ajouté', 'Disponible immédiatement.')
         return
-
       } else if (schoolCase === 'faculty') {
         if (!schBParentUni) return
         const validFacs = schBFaculties.filter(f => f.name.trim())
@@ -685,7 +503,7 @@ export default function Upload() {
               request_type: 'faculty', parent_university_id: parentUniId, status: 'approved',
             })
             const payload = { university_id: parentUniId, name: safeFacName, type: fac.type }
-            const { data: inserted, error: facErr } = await supabase.from('faculties').insert(payload).select().single()
+            const { error: facErr } = await supabase.from('faculties').insert(payload).select().single()
             if (facErr) { console.error('[Case B] error:', facErr); setError(`Erreur ajout "${fac.name}" : ${facErr.message}`); return }
           }
         } finally {
@@ -700,9 +518,8 @@ export default function Upload() {
         setSchoolCase(''); setSchBParentUni(''); setSchBFaculties([{ name: '', type: 'Faculté' }])
         setShowSchoolForm(false)
         setSelUni(String(parentUniId))
-        showToast('✓ Composantes ajoutées avec succès !')
+        notify.success('Composantes ajoutées')
         return
-
       } else if (schoolCase === 'university_with_faculties') {
         if (!schCUniName.trim()) return
         const validFacs = schCFaculties.filter(f => f.name.trim())
@@ -737,7 +554,7 @@ export default function Upload() {
       } else {
         return
       }
-      showToast('✓ Établissement ajouté et disponible immédiatement !')
+      notify.success('Établissement ajouté', 'Disponible immédiatement.')
       setSchoolSent(true)
     } catch (e) {
       console.error('[handleSchoolRequest] unexpected error:', e)
@@ -748,7 +565,6 @@ export default function Upload() {
     }
   }
 
-  // Step validations
   const validateStep1 = () => {
     if (!selUni) return setError('Sélectionne une université.')
     if (!selFac) return setError('Sélectionne une faculté.')
@@ -760,7 +576,7 @@ export default function Upload() {
 
   const validateStep2 = () => {
     if (!docType) return setError('Sélectionne le type de document.')
-    if (['examen','cc','corrige_examen'].includes(docType) && !year) {
+    if (['examen', 'cc', 'corrige_examen'].includes(docType) && !year) {
       return setError("L'année académique est obligatoire pour ce type de document.")
     }
     if (files.length === 0) return setError('Ajoute au moins un fichier.')
@@ -773,20 +589,18 @@ export default function Upload() {
     reader.onload = (e) => {
       const img = new Image()
       img.onload = () => {
-        // Scale down more aggressively for large files
         const isLarge = file.size > 5 * 1024 * 1024
         const MAX = isLarge ? 1200 : 1600
         const QUALITY = isLarge ? 0.75 : 0.82
         let w = img.width, h = img.height
         if (w > MAX || h > MAX) {
           if (w > h) { h = Math.round(h * MAX / w); w = MAX }
-          else       { w = Math.round(w * MAX / h); h = MAX }
+          else { w = Math.round(w * MAX / h); h = MAX }
         }
         const canvas = document.createElement('canvas')
         canvas.width = w; canvas.height = h
         canvas.getContext('2d').drawImage(img, 0, 0, w, h)
         canvas.toBlob((blob) => {
-          // Only use compressed version if it's actually smaller
           if (blob.size < file.size) {
             resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }))
           } else {
@@ -799,45 +613,39 @@ export default function Upload() {
     reader.readAsDataURL(file)
   })
 
-  // Images get canvas-based recompression; PDFs get the rasterize+rebuild
-  // pipeline above; everything else (DOCX/PPTX/XLSX/ipynb) uploads as-is.
   const compressFile = (file) => {
     if (file.type.startsWith('image/')) return compressImage(file)
     if (file.type === 'application/pdf') return compressPdf(file)
     return Promise.resolve(file)
   }
 
-  // Final submit
   const handleSubmit = async (skipDupCheck = false) => {
     setLoading(true); setError(''); setProgress(5)
     try {
-      // Rate limit: max 7 uploads per hour
       const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
-      const { count: recentUploads } = await supabase
+      const { count: recentUploadsCount } = await supabase
         .from('documents')
         .select('id', { count: 'exact', head: true })
         .eq('uploader_id', user.id)
         .gte('created_at', since)
-      if (recentUploads >= 7) {
+      if (recentUploadsCount >= 7) {
         setError('Limite de 7 uploads par heure atteinte. Réessaie dans une heure.')
         setLoading(false); setProgress(0); return
       }
 
-      // If custom module, insert it first
       let moduleId = selMod.id
       if (selMod.custom) {
         const { data: newMod, error: modErr } = await supabase.from('modules').insert({
           filiere_id: parseInt(selFil),
-          semester:   selSem,
-          name:       stripHtml(selMod.name).slice(0, 120),
-          type:       'cours',
-          verified:   true,
+          semester: selSem,
+          name: stripHtml(selMod.name).slice(0, 120),
+          type: 'cours',
+          verified: true,
         }).select().single()
         if (modErr) throw new Error('Erreur création module: ' + modErr.message)
         moduleId = newMod.id
       }
 
-      // Duplicate check: same module + doc_type + academic_year already uploaded?
       if (!skipDupCheck && !selMod?.custom && moduleId) {
         let dupQ = supabase.from('documents').select('id').eq('module_id', moduleId).eq('doc_type', docType)
         if (year) dupQ = dupQ.eq('academic_year', year)
@@ -862,7 +670,7 @@ export default function Upload() {
         const compressed = await compressFile(file)
         const ext = file.name.split('.').pop()
         const path = `documents/${user.id}/${Date.now()}_${i}.${ext}`
-        const fileBase  = Math.round(10 + (i / files.length) * 80)
+        const fileBase = Math.round(10 + (i / files.length) * 80)
         const fileChunk = Math.round(80 / files.length)
         const { error: upErr } = await supabase.storage
           .from('documents').upload(path, compressed, {
@@ -879,33 +687,32 @@ export default function Upload() {
         setProgress(Math.round(10 + ((i + 1) / files.length) * 80))
       }
 
-      const isPdf    = files.every(f => f.type === 'application/pdf')
+      const isPdf = files.every(f => f.type === 'application/pdf')
       const isImages = files.every(f => f.type.startsWith('image/'))
       const firstExt = getExt(files[0])
       const allSameExt = files.every(f => getExt(f) === firstExt)
       const fileType = isPdf ? 'pdf' : isImages ? 'images' : allSameExt ? firstExt : 'mixed'
 
-      // Wait for any still-running content scans, then check every file in this upload
       await Promise.all(pendingScansRef.current)
       const flaggedResult = files.map(f => fileFlagsRef.current[fileKey(f)]).find(r => r?.flagged)
       const isFlagged = !!flaggedResult
 
       const { data: docData, error: dbErr } = await supabase.from('documents').insert({
-        module_id:     moduleId,
-        uploader_id:   user.id,
-        doc_type:      docType,
-        doc_number:    docNumber.trim() || null,
+        module_id: moduleId,
+        uploader_id: user.id,
+        doc_type: docType,
+        doc_number: docNumber.trim() || null,
         academic_year: year,
-        professor:     professor.trim() || null,
-        file_type:     fileType,
-        files:         uploadedFiles.map(f => f.url),
-        file_names:    uploadedFiles.map(f => f.name),
-        pages_count:   files.length,
-        is_flagged:    isFlagged,
-        flag_reason:   flaggedResult?.reason || null,
-        is_verified:   !isFlagged,
-        downloads:     0,
-        likes:         0,
+        professor: professor.trim() || null,
+        file_type: fileType,
+        files: uploadedFiles.map(f => f.url),
+        file_names: uploadedFiles.map(f => f.name),
+        pages_count: files.length,
+        is_flagged: isFlagged,
+        flag_reason: flaggedResult?.reason || null,
+        is_verified: !isFlagged,
+        downloads: 0,
+        likes: 0,
       }).select('id').single()
       if (dbErr) throw new Error(dbErr.message)
       setHeldForReview(isFlagged)
@@ -917,7 +724,7 @@ export default function Upload() {
         const newPoints = (prof?.points || 0) + 50
         await Promise.all([
           supabase.from('user_profiles').update({
-            points:        newPoints,
+            points: newPoints,
             uploads_count: (prof?.uploads_count || 0) + 1,
           }).eq('id', user.id),
           supabase.from('points_log').insert({
@@ -948,807 +755,483 @@ export default function Upload() {
     setShowSchoolForm(false); setSchoolSent(false); setSchoolCase('')
     setSchAName(''); setSchACity(''); setSchAType('public')
     setSchBParentUni(''); setSchBFaculties([{ name: '', type: 'Faculté' }])
-    setSchCUniName(''); setSchCCity(''); setSchCType('public'); setSchCFaculties([{ name:'', type:'Faculté' }])
+    setSchCUniName(''); setSchCCity(''); setSchCType('public'); setSchCFaculties([{ name: '', type: 'Faculté' }])
     setShowFiliereForm(false); setFiliereName(''); setFiliereNbSem(''); setFiliereSent(false)
   }
 
   if (authLoad) return (
-    <div className="page"><style>{css}</style>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh', fontFamily:'DM Mono', fontSize:'0.75rem', color:'var(--text3)' }}>
-        Chargement...
-      </div>
+    <div><style>{css}</style><Navbar activePage="upload" />
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: 'var(--space-8) var(--space-6)' }}><Skeleton height={300} /></div>
     </div>
   )
 
   const STEPS = [
-    { n:'01', label:'Localisation', sub:'École · Filière · Module' },
-    { n:'02', label:'Document',     sub:'Type · Année · Fichier' },
-    { n:'03', label:'Confirmation', sub:'Vérifier et envoyer' },
+    { n: '1', label: 'Localisation', sub: 'École · Filière · Module' },
+    { n: '2', label: 'Document', sub: 'Type · Année · Fichier' },
+    { n: '3', label: 'Confirmation', sub: 'Vérifier et envoyer' },
+  ]
+  const RANKS = [
+    { min: 0, max: 99, label: 'Étudiant', next: 'Contributeur' },
+    { min: 100, max: 299, label: 'Contributeur', next: 'Senpai' },
+    { min: 300, max: 599, label: 'Senpai', next: 'Légende' },
+    { min: 600, max: Infinity, label: 'Légende', next: null },
   ]
 
   return (
-    <div className="page">
+    <div>
       <style>{css}</style>
       <Navbar activePage="upload" />
 
-      <div className={`layout ${success ? 'no-sidebar' : ''}`}>
-        <div className="layout-main">
-        {success ? (
-          <div className="card">
-            <div className="success-wrap">
-              <div className="success-icon">{heldForReview ? '🕓' : '✓'}</div>
-              <h2 className="success-title">{heldForReview ? 'Document reçu — en cours de vérification' : 'Document uploadé !'}</h2>
-              <p className="success-desc">
-                {heldForReview ? (
-                  <>Notre analyse automatique a signalé ce document pour vérification manuelle. Un modérateur va l'examiner avant publication — tu seras notifié, et tes <b>+50 points</b> seront crédités à l'approbation.</>
-                ) : (
-                  <>Ton document est maintenant visible sur la plateforme.<br /><span style={{color:'var(--teal2)',fontWeight:600}}>+50 points</span> ajoutés à ton compte !</>
-                )}
-              </p>
+      <div className={`up-layout${success ? ' up-layout--full' : ''}`}>
+        <div>
+          {success ? (
+            <Card>
+              <div className="up-success">
+                <span className="qz-icon-tile qz-icon-tile--lg" style={{ background: 'var(--brand-soft)', color: 'var(--brand-text)', margin: '0 auto var(--space-4)' }}>
+                  <Icon name={heldForReview ? 'info' : 'check'} />
+                </span>
+                <h2 className="t-h2">{heldForReview ? 'Document reçu — en cours de vérification' : 'Document publié'}</h2>
+                <p className="t-body qz-muted" style={{ margin: 'var(--space-3) auto var(--space-6)', maxWidth: 440 }}>
+                  {heldForReview
+                    ? <>Notre analyse automatique a signalé ce document pour vérification manuelle. Un modérateur va l'examiner avant publication — tu seras notifié, et tes <b>+50 points</b> seront crédités à l'approbation.</>
+                    : <>Ton document est maintenant visible sur la plateforme. <b style={{ color: 'var(--success)' }}>+50 points</b> ajoutés à ton compte.</>}
+                </p>
 
-              {/* Rank progress bar */}
-              {earnedPoints !== null && (() => {
-                const pts = earnedPoints
-                const RANKS = [
-                  { min:0,   max:99,  label:'Étudiant',     next:'Contributeur', cls:'rank-etudiant' },
-                  { min:100, max:299, label:'Contributeur',  next:'Senpai',       cls:'rank-contrib'  },
-                  { min:300, max:599, label:'Senpai',        next:'Légende',      cls:'rank-senpai'   },
-                  { min:600, max:Infinity, label:'Légende',  next:null,           cls:'rank-legende'  },
-                ]
-                const r = RANKS.find(r => pts >= r.min && pts <= r.max) || RANKS[0]
-                const pct = r.max === Infinity ? 100 : Math.round(((pts - r.min) / (r.max - r.min + 1)) * 100)
-                return (
-                  <div style={{background:'var(--s2)',border:'1px solid var(--border)',borderRadius:10,padding:'1rem 1.25rem',marginBottom:'1.5rem',textAlign:'left'}}>
-                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:8,alignItems:'center'}}>
-                      <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.65rem',color:'var(--text3)',textTransform:'uppercase',letterSpacing:'1px'}}>Ton niveau</span>
-                      <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.75rem',color:'var(--accent2)',fontWeight:700}}>{pts} pts</span>
-                    </div>
-                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
-                      <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.72rem',fontWeight:700,color:'var(--white)'}}>{r.label}</span>
-                      {r.next && <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--text3)'}}>→ {r.next} à {r.max + 1} pts</span>}
-                    </div>
-                    <div style={{background:'var(--border)',borderRadius:100,height:6,overflow:'hidden'}}>
-                      <div style={{height:'100%',width:`${pct}%`,background:'linear-gradient(90deg,var(--accent),var(--teal))',borderRadius:100,transition:'width 0.6s ease'}}/>
-                    </div>
-                    {r.next && <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--text3)',marginTop:5}}>{r.max + 1 - pts} pts jusqu'au rang <b style={{color:'var(--accent2)'}}>{r.next}</b></div>}
-                  </div>
-                )
-              })()}
+                {earnedPoints !== null && (() => {
+                  const pts = earnedPoints
+                  const r = RANKS.find(r => pts >= r.min && pts <= r.max) || RANKS[0]
+                  const pct = r.max === Infinity ? 100 : Math.round(((pts - r.min) / (r.max - r.min + 1)) * 100)
+                  return (
+                    <Card className="up-rank-card">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <span className="t-eyebrow qz-subtle">Ton niveau</span>
+                        <span className="t-mono" style={{ color: 'var(--brand-text)' }}>{pts} pts</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <span className="t-label">{r.label}</span>
+                        {r.next && <span className="t-caption qz-subtle">→ {r.next} à {r.max + 1} pts</span>}
+                      </div>
+                      <ProgressBar value={pct} />
+                      {r.next && <div className="t-caption qz-subtle" style={{ marginTop: 6 }}>{r.max + 1 - pts} pts jusqu'au rang {r.next}</div>}
+                    </Card>
+                  )
+                })()}
 
-              <div className="success-actions">
-                <button className="btn-primary" onClick={() => navigate(`/module/${uploadedModuleId}`)}>
-                  Voir le module
-                </button>
-                <button className="btn-back" onClick={resetForm}>
-                  Uploader un autre
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="page-tag">// uploader un document</div>
-            <h1 className="page-title">Partage tes annales</h1>
-            <p className="page-desc">Aide ta promo en uploadant tes examens, CCs, TDs ou TPs. Chaque document te rapporte +50 points.</p>
-
-            {/* STEPPER */}
-            <div className="stepper">
-              {STEPS.map((s, i) => (
-                <div key={s.n} className="stepper-item">
-                  <div className={`s-num ${step > i+1 ? 'done' : step === i+1 ? 'active' : 'pending'}`}>
-                    {step > i+1 ? '✓' : s.n}
-                  </div>
-                  <div className="s-info">
-                    <span className="s-label">{s.label}</span>
-                    <span className="s-sub">{s.sub}</span>
-                  </div>
-                  {i < STEPS.length-1 && <div className={`s-line ${step > i+1 ? 'done' : ''}`} />}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <Button variant="primary" onClick={() => navigate(`/module/${uploadedModuleId}`)}>Voir le module</Button>
+                  <Button variant="secondary" onClick={resetForm}>Partager un autre</Button>
                 </div>
-              ))}
-            </div>
+              </div>
+            </Card>
+          ) : (
+            <>
+              <span className="t-eyebrow qz-subtle">Partager</span>
+              <h1 className="t-h1" style={{ margin: '4px 0 8px' }}>Partage un document</h1>
+              <p className="t-body qz-muted" style={{ marginBottom: 'var(--space-8)' }}>Il sera visible immédiatement par toute ta filière. Merci pour ta promo.</p>
 
-            {error && <div className="alert err">{error}</div>}
+              <div className="up-stepper">
+                {STEPS.map((s, i) => (
+                  <div key={s.n} className="up-stepper__item">
+                    <span className={`up-stepper__num${step > i + 1 ? ' up-stepper__num--done' : step === i + 1 ? ' up-stepper__num--active' : ''}`}>
+                      {step > i + 1 ? <Icon name="check" size={13} /> : s.n}
+                    </span>
+                    <span className="up-stepper__info">
+                      <span className="t-label">{s.label}</span>
+                      <span className="t-caption qz-subtle">{s.sub}</span>
+                    </span>
+                    {i < STEPS.length - 1 && <span className={`up-stepper__line${step > i + 1 ? ' up-stepper__line--done' : ''}`} />}
+                  </div>
+                ))}
+              </div>
 
-            {/* STEP 1 */}
-            {step === 1 && (
-              <div className="card">
-                <div className="card-title">// étape 01 — localisation du document</div>
-                <div className="field-grid" style={selUni && facsFetched && facs.length === 0 ? {gridTemplateColumns:'1fr'} : {}}>
-                  <div>
-                    <label className="label">Université / École</label>
-                    <div className="module-search-wrap">
-                      <input
-                        className="input"
-                        placeholder="Cherche une université…"
-                        value={selUni ? (unis.find(u => String(u.id) === selUni)?.name ?? uniSearch) : uniSearch}
-                        onChange={e => { setUniSearch(e.target.value); setSelUni(''); setShowUniDd(true); }}
-                        onFocus={() => setShowUniDd(true)}
-                        onBlur={() => setTimeout(() => setShowUniDd(false), 150)}
-                      />
-                      {showUniDd && (
-                        <div className="module-results">
-                          {unis
-                            .filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase()))
-                            .map(u => (
-                              <div key={u.id} className="module-result"
-                                onMouseDown={() => { setSelUni(String(u.id)); setUniSearch(u.name); setShowUniDd(false); }}>
-                                <span className="module-result-name">{u.name}</span>
+              {error && <div className="qz-banner qz-banner--danger" style={{ marginBottom: 'var(--space-4)' }}><Icon name="alert" /><span>{error}</span></div>}
+
+              {step === 1 && (
+                <Card>
+                  <span className="t-eyebrow qz-subtle">Étape 1 — Localisation du document</span>
+                  <div style={{ marginTop: 'var(--space-4)' }}>
+                    <div className="up-field-grid" style={selUni && facsFetched && facs.length === 0 ? { gridTemplateColumns: '1fr' } : undefined}>
+                      <div className="up-uni-wrap">
+                        <Input
+                          label="Université / École"
+                          placeholder="Cherche une université…"
+                          value={selUni ? (unis.find(u => String(u.id) === selUni)?.name ?? uniSearch) : uniSearch}
+                          onChange={e => { setUniSearch(e.target.value); setSelUni(''); setShowUniDd(true) }}
+                          onFocus={() => setShowUniDd(true)}
+                          onBlur={() => setTimeout(() => setShowUniDd(false), 150)}
+                        />
+                        {showUniDd && (
+                          <div className="qz-dropdown" style={{ position: 'absolute', left: 0, right: 0, width: 'auto' }}>
+                            {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).map(u => (
+                              <button type="button" key={u.id} className="qz-dropdown__item" onMouseDown={() => { setSelUni(String(u.id)); setUniSearch(u.name); setShowUniDd(false) }}>{u.name}</button>
+                            ))}
+                            {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).length === 0 && (
+                              <div style={{ padding: '8px 12px' }}><span className="t-body-sm qz-subtle">Aucun résultat</span></div>
+                            )}
+                          </div>
+                        )}
+                        {!selUni && <p className="t-caption qz-subtle" style={{ marginTop: 6 }}>Cherche ton école directement (ex : ENSA, ENCG, SUPMTI) ou sélectionne l'université parente si ton école en fait partie.</p>}
+                      </div>
+                      {(!selUni || !facsFetched || facs.length > 0) && (
+                        <Select label="Faculté / École" value={selFac} onChange={e => setSelFac(e.target.value)} disabled={!selUni || !facsFetched}
+                          options={[{ value: '', label: !facsFetched ? 'Chargement…' : 'Sélectionner…' }, ...facs.map(f => ({ value: f.id, label: f.name }))]} />
+                      )}
+                    </div>
+
+                    {selUni && facsFetched && facs.length === 0 && (
+                      <div className="up-field">
+                        <span className="t-eyebrow qz-subtle">Comment est organisé ton établissement ?</span>
+                        <div className="up-mode-grid" style={{ marginTop: 8 }}>
+                          <button type="button" className={`up-mode-card${uniMode === 'independent' ? ' up-mode-card--on' : ''}`} onClick={handleSelectIndependent}>
+                            <span className="t-label">École / Institut indépendant</span>
+                            <span className="t-body-sm qz-muted">Ton école n'a pas de facultés — les filières sont directes.</span>
+                            <span className="t-caption qz-subtle">EMSI · ISPITS · IAV · ISGA · HEM · SUPMTI · ESITH · ENCG · ENSA</span>
+                          </button>
+                          <button type="button" className={`up-mode-card${uniMode === 'multi_faculty' ? ' up-mode-card--on' : ''}`}
+                            onClick={() => { setUniMode('multi_faculty'); setSelFac(''); setFils([]); setSelFil(''); setShowAddFacForm(false) }}>
+                            <span className="t-label">Université avec facultés / composantes</span>
+                            <span className="t-body-sm qz-muted">Ton université contient plusieurs facultés — choisis la tienne.</span>
+                            <span className="t-caption qz-subtle">UM5 → FSR · FEG · FSJES — UIR → ESIN · ESG — UH2C → FST · FLSH</span>
+                          </button>
+                        </div>
+                        <p className="t-caption qz-subtle" style={{ textAlign: 'center' }}>Pas sûr ? Choisis l'option qui ressemble le plus à ton établissement.</p>
+                      </div>
+                    )}
+
+                    {selUni && facsFetched && facs.length === 0 && uniMode === 'multi_faculty' && (
+                      <div className="up-field">
+                        <Select label="Faculté / École" value={selFac} onChange={e => setSelFac(e.target.value)}
+                          options={[{ value: '', label: 'Aucune composante enregistrée — en ajouter une ci-dessous' }]} />
+                        {!showAddFacForm ? (
+                          <Button variant="link" size="sm" onClick={() => setShowAddFacForm(true)}>Faculté introuvable ? Ajouter</Button>
+                        ) : (
+                          <div className="qz-card" style={{ marginTop: 8, background: 'var(--brand-soft)' }}>
+                            <span className="t-eyebrow qz-subtle">Ajouter une composante</span>
+                            <div className="up-field-grid" style={{ marginTop: 8 }}>
+                              <Input label="Nom" placeholder="Ex : FST, FEG, École d'ingénieurs…" value={addFacName} onChange={e => setAddFacName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAddFacultyInline()} />
+                              <Select label="Type" value={addFacType} onChange={e => setAddFacType(e.target.value)} options={['Faculté', 'École', 'Institut', 'Centre', 'Département']} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <Button variant="primary" size="sm" loading={addFacBusy} disabled={!addFacName.trim()} onClick={handleAddFacultyInline}>Ajouter</Button>
+                              <Button variant="ghost" size="sm" onClick={() => setShowAddFacForm(false)}>Annuler</Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="up-field-grid">
+                      <Select label="Filière" value={selFil} onChange={e => setSelFil(e.target.value)} disabled={!selFac}
+                        options={[{ value: '', label: 'Sélectionner…' }, ...fils.map(f => ({ value: f.id, label: f.name }))]} />
+                      <Select label="Semestre" value={selSem} onChange={e => { setSelSem(e.target.value); setSelMod(null); setModSearch('') }} disabled={!selFil}
+                        options={[{ value: '', label: 'Sélectionner…' }, ...SEMESTERS.map(s => ({ value: s, label: s }))]} />
+                    </div>
+
+                    {selFac && (
+                      <div className="up-field">
+                        {!showFiliereForm ? (
+                          <Button variant="link" size="sm" onClick={() => setShowFiliereForm(true)}>Filière introuvable ? Ajouter</Button>
+                        ) : filiereSent ? (
+                          <Badge tone="success" icon="check">Filière ajoutée</Badge>
+                        ) : (
+                          <div className="qz-card" style={{ background: 'var(--brand-soft)' }}>
+                            <span className="t-eyebrow qz-subtle">Signaler une filière manquante</span>
+                            <div className="up-field-grid" style={{ marginTop: 8 }}>
+                              <Input label="Nom de la filière" placeholder="Ex : Génie Informatique, MIAGE…" value={filiereName} onChange={e => setFiliereName(e.target.value)} />
+                              <Input label="Nombre de semestres" type="number" min="1" max="10" placeholder="Ex : 6, 8, 10…" value={filiereNbSem} onChange={e => setFiliereNbSem(e.target.value)} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <Button variant="primary" size="sm" onClick={handleFiliereRequest}>Signaler la filière</Button>
+                              <Button variant="ghost" size="sm" onClick={() => setShowFiliereForm(false)}>Annuler</Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="up-field">
+                      <label className="qz-label">Module</label>
+                      {selMod ? (
+                        <div className="qz-dropdown__item up-module-result" style={{ position: 'static', background: 'var(--brand-soft)' }}>
+                          <span className="t-label">{selMod.name}</span>
+                          <Button variant="link" size="sm" onClick={() => { setSelMod(null); setModSearch('') }}>Changer</Button>
+                        </div>
+                      ) : (
+                        <div className="up-uni-wrap">
+                          <Input
+                            placeholder={selFil && selSem ? 'Tape le nom du module…' : "Sélectionne filière et semestre d'abord"}
+                            value={modSearch}
+                            onChange={e => setModSearch(e.target.value)}
+                            disabled={!selFil || !selSem}
+                          />
+                          {modResults.length > 0 && (
+                            <div className="qz-dropdown" style={{ position: 'absolute', left: 0, right: 0, width: 'auto' }}>
+                              {modResults.map(m => (
+                                <button type="button" key={m.id} className="qz-dropdown__item up-module-result" onClick={() => { setSelMod(m); setModSearch(m.name); setModResults([]) }}>
+                                  <span>{m.name}</span><span className="t-mono qz-subtle">{m.semester}</span>
+                                </button>
+                              ))}
+                              <div className="qz-dropdown__sep" />
+                              <button type="button" className="qz-dropdown__item" onClick={() => { setSelMod({ id: null, name: modSearch.trim(), custom: true }); setModResults([]) }}>
+                                <Icon name="plus" /> Créer "{modSearch.trim()}" comme nouveau module
+                              </button>
+                            </div>
+                          )}
+                          {modResults.length === 0 && modSearch.trim().length >= 2 && selFil && selSem && (
+                            <div style={{ marginTop: 6 }}>
+                              <Button variant="secondary" block onClick={() => { setSelMod({ id: null, name: modSearch.trim(), custom: true }); setModResults([]) }}>
+                                Créer le module "{modSearch.trim()}" et continuer
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <span className="qz-hint">Tape au moins 2 lettres pour rechercher</span>
+                    </div>
+
+                    <div style={{ marginTop: 'var(--space-5)', borderTop: '1px solid var(--border)', paddingTop: 'var(--space-4)' }}>
+                      {!showSchoolForm ? (
+                        <Button variant="link" size="sm" onClick={() => setShowSchoolForm(true)}>Mon établissement n'est pas dans la liste</Button>
+                      ) : schoolSent ? (
+                        <Badge tone="success" icon="check">Établissement ajouté</Badge>
+                      ) : (
+                        <div className="qz-card" style={{ background: 'var(--brand-soft)' }}>
+                          <span className="t-eyebrow qz-subtle">Demande d'ajout d'établissement</span>
+                          <p className="t-label" style={{ margin: 'var(--space-3) 0 var(--space-2)' }}>Quel type d'établissement veux-tu ajouter ?</p>
+                          {[
+                            { v: 'independent', l: 'Une école / université indépendante', s: 'ENSA, ENCG, IAV, FST…' },
+                            { v: 'faculty', l: "Une faculté d'une université déjà listée", s: 'Ex : Faculté des Sciences → Univ. Mohammed V' },
+                            { v: 'university_with_faculties', l: 'Une nouvelle université + ses facultés', s: "Ajouter l'université et ses composantes en même temps" },
+                          ].map(opt => (
+                            <button type="button" key={opt.v} className={`up-radio-row${schoolCase === opt.v ? ' up-radio-row--on' : ''}`} onClick={() => setSchoolCase(opt.v)}>
+                              <span className={`up-radio-dot${schoolCase === opt.v ? ' up-radio-dot--on' : ''}`} />
+                              <span>
+                                <span className="t-body-sm" style={{ display: 'block' }}>{opt.l}</span>
+                                <span className="t-caption qz-subtle">{opt.s}</span>
+                              </span>
+                            </button>
+                          ))}
+
+                          {schoolCase === 'independent' && (
+                            <>
+                              <div className="up-field-grid">
+                                <Input label="Nom de l'école" placeholder="Ex : ENSA Kénitra, ENCG Casablanca…" value={schAName} onChange={e => setSchAName(e.target.value)} />
+                                <Input label="Ville" placeholder="Ex : Rabat, Casablanca…" value={schACity} onChange={e => setSchACity(e.target.value)} />
                               </div>
-                            ))
-                          }
-                          {unis.filter(u => u.name.toLowerCase().includes(uniSearch.toLowerCase())).length === 0 && (
-                            <div style={{padding:'10px 12px',fontSize:'0.8rem',color:'var(--text3)'}}>Aucun résultat</div>
+                              <Select label="Type" value={schAType} onChange={e => setSchAType(e.target.value)} options={[{ value: 'public', label: 'Public' }, { value: 'private', label: 'Privé' }]} />
+                            </>
+                          )}
+
+                          {schoolCase === 'faculty' && (
+                            <>
+                              <Select label="Université parente" value={schBParentUni} onChange={e => setSchBParentUni(e.target.value)}
+                                options={[{ value: '', label: 'Sélectionner une université…' }, ...unis.map(u => ({ value: u.id, label: u.name }))]} />
+                              <label className="qz-label" style={{ marginTop: 'var(--space-3)', display: 'block' }}>Composantes à ajouter</label>
+                              {schBFaculties.map((f, i) => (
+                                <div key={i} className="up-fac-row">
+                                  <span style={{ flex: 1 }}><Input placeholder="Nom de la faculté…" value={f.name} onChange={e => { const a = [...schBFaculties]; a[i] = { ...a[i], name: e.target.value }; setSchBFaculties(a) }} /></span>
+                                  <Select value={f.type} onChange={e => { const a = [...schBFaculties]; a[i] = { ...a[i], type: e.target.value }; setSchBFaculties(a) }} options={['Faculté', 'École', 'Institut', 'Centre', 'Département', 'Autre']} />
+                                  {schBFaculties.length > 1 && <Button variant="ghost" size="sm" iconOnly icon="x" aria-label="Retirer" onClick={() => setSchBFaculties(a => a.filter((_, j) => j !== i))} />}
+                                </div>
+                              ))}
+                              <Button variant="ghost" size="sm" icon="plus" onClick={() => setSchBFaculties(a => [...a, { name: '', type: 'Faculté' }])}>Ajouter une composante</Button>
+                            </>
+                          )}
+
+                          {schoolCase === 'university_with_faculties' && (
+                            <>
+                              <div className="up-field-grid">
+                                <Input label="Nom de l'université" placeholder="Ex : Université Ibn Tofail…" value={schCUniName} onChange={e => setSchCUniName(e.target.value)} />
+                                <Input label="Ville" placeholder="Ex : Kénitra, Marrakech…" value={schCCity} onChange={e => setSchCCity(e.target.value)} />
+                              </div>
+                              <Select label="Type" value={schCType} onChange={e => setSchCType(e.target.value)} options={[{ value: 'public', label: 'Publique' }, { value: 'private', label: 'Privée' }]} />
+                              <label className="qz-label" style={{ marginTop: 'var(--space-3)', display: 'block' }}>Facultés / Composantes</label>
+                              {schCFaculties.map((f, i) => (
+                                <div key={i} className="up-fac-row">
+                                  <span style={{ flex: 1 }}><Input placeholder="Nom de la faculté…" value={f.name} onChange={e => { const a = [...schCFaculties]; a[i] = { ...a[i], name: e.target.value }; setSchCFaculties(a) }} /></span>
+                                  <Select value={f.type} onChange={e => { const a = [...schCFaculties]; a[i] = { ...a[i], type: e.target.value }; setSchCFaculties(a) }} options={['Faculté', 'École', 'Institut', 'Centre', 'Département', 'Autre']} />
+                                  {schCFaculties.length > 1 && <Button variant="ghost" size="sm" iconOnly icon="x" aria-label="Retirer" onClick={() => setSchCFaculties(a => a.filter((_, j) => j !== i))} />}
+                                </div>
+                              ))}
+                              <Button variant="ghost" size="sm" icon="plus" onClick={() => setSchCFaculties(a => [...a, { name: '', type: 'Faculté' }])}>Ajouter une faculté</Button>
+                            </>
+                          )}
+
+                          {schoolCase && (
+                            <div style={{ display: 'flex', gap: 8, marginTop: 'var(--space-3)' }}>
+                              <Button variant="primary" size="sm" loading={schoolSubmitting} onClick={handleSchoolRequest}>Envoyer la demande</Button>
+                              <Button variant="ghost" size="sm" onClick={() => setShowSchoolForm(false)}>Annuler</Button>
+                            </div>
                           )}
                         </div>
                       )}
                     </div>
-                    {!selUni && (
-                      <p style={{color:'var(--text3)',fontSize:'11px',marginTop:'4px',fontFamily:'DM Mono, monospace'}}>
-                        // Cherche ton école directement (ex: ENSA, ENCG, SUPMTI) ou sélectionne l'université parente si ton école en fait partie
-                      </p>
-                    )}
                   </div>
-                  {(!selUni || !facsFetched || facs.length > 0) && (
+
+                  <div className="up-submit-row">
+                    <Button variant="ghost" onClick={() => { setShowSchoolForm(false); setShowFiliereForm(false) }}>Annuler</Button>
+                    <Button variant="primary" onClick={validateStep1} disabled={!selUni || !selFac || !selFil || !selSem || !selMod}>Continuer</Button>
+                  </div>
+                </Card>
+              )}
+
+              {step === 2 && (
+                <Card>
+                  <span className="t-eyebrow qz-subtle">Étape 2 — Informations du document</span>
+                  <div className="up-field" style={{ marginTop: 'var(--space-4)' }}>
+                    <label className="qz-label">Type de document</label>
+                    <div className="up-type-grid">
+                      {DOC_TYPES.map(t => <Chip key={t.k} selected={docType === t.k} onClick={() => setDocType(t.k)}>{t.l}</Chip>)}
+                    </div>
+                  </div>
+                  <div className="up-field-grid">
                     <div>
-                      <label className="label">Faculté / École</label>
-                      <select className="select" value={selFac} onChange={e => setSelFac(e.target.value)} disabled={!selUni || !facsFetched}>
-                        <option value="">{!facsFetched ? 'Chargement...' : 'Sélectionner...'}</option>
-                        {facs.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                      </select>
+                      <Select label="Année académique" value={year} onChange={e => setYear(e.target.value)} options={[{ value: '', label: 'Sélectionner…' }, ...YEARS.map(y => ({ value: y, label: y }))]} />
+                      <span className="qz-hint" style={{ color: 'var(--danger)' }}>Obligatoire pour examens, CCs et corrigés</span>
                     </div>
-                  )}
-                </div>
-
-                {/* Option A / B — always visible when selected uni has no faculties */}
-                {selUni && facsFetched && facs.length === 0 && (
-                  <div style={{marginBottom:'1.25rem'}}>
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.6rem',color:'var(--text3)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:10}}>// Comment est organisé ton établissement ?</div>
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-                      <button
-                        style={{
-                          display:'flex',flexDirection:'column',gap:5,textAlign:'left',
-                          background: uniMode === 'independent' ? 'rgba(79,142,247,0.1)' : 'rgba(79,142,247,0.03)',
-                          border: uniMode === 'independent' ? '2px solid rgba(79,142,247,0.55)' : '1px solid rgba(79,142,247,0.18)',
-                          borderRadius:12,padding:'14px 15px',cursor:'pointer',width:'100%',transition:'all 0.2s',
-                        }}
-                        onClick={handleSelectIndependent}>
-                        <div style={{fontSize:'1.1rem',lineHeight:1}}>🏫</div>
-                        <div style={{fontSize:'0.875rem',fontWeight:700,color:'var(--white)',lineHeight:1.3,marginTop:2}}>École / Institut indépendant</div>
-                        <div style={{fontSize:'0.72rem',color:'var(--text2)',lineHeight:1.5,marginTop:2}}>Ton école n'a pas de facultés — les filières sont directes</div>
-                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',color:'var(--text3)',marginTop:4,lineHeight:1.8}}>EMSI · ISPITS · IAV · ISGA · HEM · EIDIA · SUPMTI · ESITH · IHEC · ENCG · ENSA · ENSAM</div>
-                      </button>
-                      <button
-                        style={{
-                          display:'flex',flexDirection:'column',gap:5,textAlign:'left',
-                          background: uniMode === 'multi_faculty' ? 'rgba(79,142,247,0.1)' : 'rgba(79,142,247,0.03)',
-                          border: uniMode === 'multi_faculty' ? '2px solid rgba(79,142,247,0.55)' : '1px solid rgba(79,142,247,0.18)',
-                          borderRadius:12,padding:'14px 15px',cursor:'pointer',width:'100%',transition:'all 0.2s',
-                        }}
-                        onClick={() => { setUniMode('multi_faculty'); setSelFac(''); setFils([]); setSelFil(''); setShowAddFacForm(false) }}>
-                        <div style={{fontSize:'1.1rem',lineHeight:1}}>🎓</div>
-                        <div style={{fontSize:'0.875rem',fontWeight:700,color:'var(--white)',lineHeight:1.3,marginTop:2}}>Université avec facultés / composantes</div>
-                        <div style={{fontSize:'0.72rem',color:'var(--text2)',lineHeight:1.5,marginTop:2}}>Ton université contient plusieurs facultés — choisis la tienne d'abord</div>
-                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.58rem',color:'var(--text3)',marginTop:4,lineHeight:1.8}}>UM5 → FSR · FEG · FSJES · ENCG Rabat<br/>UIR → ESIN · ESG · ESGT<br/>UH2C → FST · FPN · FLSH<br/>UMP Fès → FST · FES · FSJES</div>
-                      </button>
-                    </div>
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--text3)',textAlign:'center'}}>Pas sûr ? Choisis l'option qui ressemble le plus à ton établissement.</div>
-                  </div>
-                )}
-
-                {/* Option B: inline faculty add */}
-                {selUni && facsFetched && facs.length === 0 && uniMode === 'multi_faculty' && (
-                  <div style={{marginBottom:'1.25rem'}}>
-                    <label className="label">Faculté / École</label>
-                    <select className="select" value={selFac} onChange={e => setSelFac(e.target.value)}>
-                      <option value="">Aucune composante enregistrée — en ajouter une ci-dessous</option>
-                    </select>
-                    <div style={{marginTop:8}}>
-                      {!showAddFacForm ? (
-                        <button style={{background:'none',border:'none',color:'var(--accent2)',fontSize:'0.78rem',fontFamily:'DM Mono,monospace',cursor:'pointer',textDecoration:'underline',padding:0,opacity:0.8}} onClick={() => setShowAddFacForm(true)}>
-                          Faculté introuvable ? → L'ajouter
-                        </button>
-                      ) : (
-                        <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:10,padding:'1rem 1.25rem',marginTop:4}}>
-                          <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'0.875rem'}}>// ajouter une composante</div>
-                          <div className="field-grid">
-                            <div>
-                              <label className="label">Nom *</label>
-                              <input className="input" placeholder="Ex: FST, FEG, École d'ingénieurs..."
-                                value={addFacName} onChange={e => setAddFacName(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && handleAddFacultyInline()} />
-                            </div>
-                            <div>
-                              <label className="label">Type</label>
-                              <select className="select" value={addFacType} onChange={e => setAddFacType(e.target.value)}>
-                                <option value="Faculté">Faculté</option>
-                                <option value="École">École</option>
-                                <option value="Institut">Institut</option>
-                                <option value="Centre">Centre</option>
-                                <option value="Département">Département</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div style={{display:'flex',gap:8,alignItems:'center',marginTop:4}}>
-                            <button
-                              disabled={addFacBusy || !addFacName.trim()}
-                              style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:addFacBusy?'not-allowed':'pointer',fontFamily:'Outfit,sans-serif',opacity:addFacBusy||!addFacName.trim()?0.6:1}}
-                              onClick={handleAddFacultyInline}>
-                              {addFacBusy ? 'Ajout...' : 'Ajouter'}
-                            </button>
-                            <button style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.75rem',cursor:'pointer',fontFamily:'DM Mono,monospace'}} onClick={() => setShowAddFacForm(false)}>
-                              Annuler
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="field-grid">
-                  <div>
-                    <label className="label">Filière</label>
-                    <select className="select" value={selFil} onChange={e => setSelFil(e.target.value)} disabled={!selFac}>
-                      <option value="">Sélectionner...</option>
-                      {fils.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">Semestre</label>
-                    <select className="select" value={selSem} onChange={e => { setSelSem(e.target.value); setSelMod(null); setModSearch(''); }} disabled={!selFil}>
-                      <option value="">Sélectionner...</option>
-                      {SEMESTERS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                {/* FILIÈRE NOT FOUND */}
-                {selFac && (
-                  <div style={{marginBottom:'1rem'}}>
-                    {!showFiliereForm ? (
-                      <button
-                        style={{background:'none',border:'none',color:'var(--accent2)',fontSize:'0.78rem',fontFamily:'DM Mono,monospace',cursor:'pointer',textDecoration:'underline',padding:0,transition:'color 0.15s',opacity:0.7}}
-                        onClick={() => setShowFiliereForm(true)}>
-                        Filière introuvable ? → L'ajouter
-                      </button>
-                    ) : filiereSent ? (
-                      <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.75rem',color:'var(--teal2)'}}>
-                        ✓ Filière ajoutée et disponible immédiatement !
-                      </div>
-                    ) : (
-                      <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:10,padding:'1rem 1.25rem'}}>
-                        <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'0.875rem'}}>// signaler une filière manquante</div>
-                        <div className="field-grid">
-                          <div>
-                            <label className="label">Nom de la filière *</label>
-                            <input className="input" placeholder="Ex: Génie Informatique, MIAGE..."
-                              value={filiereName} onChange={e => setFiliereName(e.target.value)} />
-                          </div>
-                          <div>
-                            <label className="label">Nombre de semestres</label>
-                            <input className="input" type="number" min="1" max="10" placeholder="Ex: 6, 8, 10..."
-                              value={filiereNbSem} onChange={e => setFiliereNbSem(e.target.value)} />
-                          </div>
-                        </div>
-                        <div style={{display:'flex',gap:8,alignItems:'center',marginTop:4}}>
-                          <button
-                            style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif'}}
-                            onClick={handleFiliereRequest}>
-                            Signaler la filière
-                          </button>
-                          <button
-                            style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.75rem',cursor:'pointer',fontFamily:'DM Mono,monospace'}}
-                            onClick={() => setShowFiliereForm(false)}>
-                            Annuler
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="field">
-                  <label className="label">Module</label>
-                  {selMod ? (
-                    <div className="module-selected">
-                      <span className="module-selected-name">{selMod.name}</span>
-                      <button className="module-selected-clear" onClick={() => { setSelMod(null); setModSearch(''); }}>Changer</button>
-                    </div>
-                  ) : (
-                    <div className="module-search-wrap">
-                      <input className="input"
-                        placeholder={selFil && selSem ? 'Tape le nom du module...' : 'Sélectionne filière et semestre d\'abord'}
-                        value={modSearch}
-                        onChange={e => setModSearch(e.target.value)}
-                        disabled={!selFil || !selSem}
-                      />
-                      {modResults.length > 0 && (
-                        <div className="module-results">
-                          {modResults.map(m => (
-                            <div key={m.id} className="module-result"
-                              onClick={() => { setSelMod(m); setModSearch(m.name); setModResults([]); }}>
-                              <span className="module-result-name">{m.name}</span>
-                              <span className="module-result-sem">{m.semester}</span>
-                            </div>
-                          ))}
-                          <div className="module-result"
-                            style={{borderTop:'1px dashed rgba(79,142,247,0.2)',color:'var(--accent2)'}}
-                            onClick={() => { setSelMod({ id: null, name: modSearch.trim(), custom: true }); setModResults([]); }}>
-                            <span style={{fontSize:'0.82rem'}}>+ Créer &quot;{modSearch.trim()}&quot; comme nouveau module</span>
-                          </div>
-                        </div>
-                      )}
-                      {modResults.length === 0 && modSearch.trim().length >= 2 && selFil && selSem && (
-                        <div style={{marginTop:6}}>
-                          <button
-                            style={{width:'100%',background:'rgba(79,142,247,0.06)',border:'1px dashed rgba(79,142,247,0.3)',borderRadius:8,padding:'9px 12px',color:'var(--accent2)',fontSize:'0.82rem',fontFamily:'Outfit,sans-serif',cursor:'pointer',textAlign:'left',transition:'background 0.15s'}}
-                            onClick={() => { setSelMod({ id: null, name: modSearch.trim(), custom: true }); setModResults([]); }}>
-                            + Créer le module &quot;{modSearch.trim()}&quot; et continuer
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <div className="hint">Tape au moins 2 lettres pour rechercher</div>
-                </div>
-
-                {/* SCHOOL NOT FOUND */}
-                <div style={{marginTop:'1.25rem',borderTop:'1px solid var(--border)',paddingTop:'1.1rem'}}>
-                  {!showSchoolForm ? (
-                    <button
-                      style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.78rem',fontFamily:'DM Mono,monospace',cursor:'pointer',textDecoration:'underline',padding:0,transition:'color 0.15s'}}
-                      onClick={() => setShowSchoolForm(true)}>
-                      Mon établissement n'est pas dans la liste →
-                    </button>
-                  ) : schoolSent ? (
-                    <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.75rem',color:'var(--teal2)'}}>
-                      ✓ Établissement ajouté et disponible immédiatement !
-                    </div>
-                  ) : (
-                    <div style={{background:'rgba(79,142,247,0.04)',border:'1px solid rgba(79,142,247,0.15)',borderRadius:10,padding:'1rem 1.25rem'}}>
-                      <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--accent2)',letterSpacing:'1px',textTransform:'uppercase',marginBottom:'0.875rem'}}>// demande d'ajout d'établissement</div>
-
-                      {/* Step 1 — choose type */}
-                      <div style={{fontSize:'0.82rem',fontWeight:600,color:'var(--text)',marginBottom:'0.625rem'}}>Quel type d'établissement veux-tu ajouter ?</div>
-                      <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:'1rem'}}>
-                        {[
-                          { v:'independent',               l:"Une école / université indépendante",                s:'ENSA, ENCG, IAV, FST...' },
-                          { v:'faculty',                   l:"Une faculté d'une université déjà listée",           s:'Ex: Faculté des Sciences → Univ. Mohammed V' },
-                          { v:'university_with_faculties', l:"Une nouvelle université + ses facultés",             s:'Ajouter l\'université et ses composantes en même temps' },
-                        ].map(opt => (
-                          <label key={opt.v} style={{display:'flex',alignItems:'flex-start',gap:10,background:schoolCase===opt.v?'rgba(79,142,247,0.08)':'transparent',border:`1px solid ${schoolCase===opt.v?'rgba(79,142,247,0.3)':'var(--border)'}`,borderRadius:8,padding:'10px 12px',cursor:'pointer',transition:'all 0.15s'}}>
-                            <input type="radio" name="schoolCase" value={opt.v} checked={schoolCase===opt.v} onChange={() => setSchoolCase(opt.v)} style={{marginTop:3,accentColor:'var(--accent)',flexShrink:0}} />
-                            <div>
-                              <div style={{fontSize:'0.82rem',fontWeight:500,color:'var(--text)'}}>{opt.l}</div>
-                              <div style={{fontFamily:'DM Mono,monospace',fontSize:'0.62rem',color:'var(--text3)',marginTop:2}}>{opt.s}</div>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-
-                      {/* Case A — independent school */}
-                      {schoolCase === 'independent' && (
-                        <>
-                          <div className="field-grid">
-                            <div>
-                              <label className="label">Nom de l'école *</label>
-                              <input className="input" placeholder="Ex: ENSA Kénitra, ENCG Casablanca..."
-                                value={schAName} onChange={e => setSchAName(e.target.value)} />
-                            </div>
-                            <div>
-                              <label className="label">Ville</label>
-                              <input className="input" placeholder="Ex: Rabat, Casablanca..."
-                                value={schACity} onChange={e => setSchACity(e.target.value)} />
-                            </div>
-                          </div>
-                          <div className="field" style={{marginBottom:'0.875rem'}}>
-                            <label className="label">Type</label>
-                            <select className="select" value={schAType} onChange={e => setSchAType(e.target.value)}>
-                              <option value="public">Public</option>
-                              <option value="private">Privé</option>
-                            </select>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Case B — faculty of existing university */}
-                      {schoolCase === 'faculty' && (
-                        <>
-                          <div className="field" style={{marginBottom:'0.875rem'}}>
-                            <label className="label">Université parente *</label>
-                            <select className="select" value={schBParentUni} onChange={e => setSchBParentUni(e.target.value)}>
-                              <option value="">Sélectionner une université...</option>
-                              {unis.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                            </select>
-                          </div>
-                          <div style={{marginBottom:'0.875rem'}}>
-                            <label className="label" style={{marginBottom:'0.5rem'}}>Composantes à ajouter *</label>
-                            {schBFaculties.map((f, i) => (
-                              <div key={i} style={{display:'flex',gap:6,marginBottom:6,alignItems:'center'}}>
-                                <input className="input" placeholder="Nom de la faculté..."
-                                  value={f.name}
-                                  onChange={e => { const a=[...schBFaculties]; a[i]={...a[i],name:e.target.value}; setSchBFaculties(a) }}
-                                  style={{flex:1}} />
-                                <select className="select" value={f.type}
-                                  onChange={e => { const a=[...schBFaculties]; a[i]={...a[i],type:e.target.value}; setSchBFaculties(a) }}
-                                  style={{width:110,flexShrink:0}}>
-                                  <option value="Faculté">Faculté</option>
-                                  <option value="École">École</option>
-                                  <option value="Institut">Institut</option>
-                                  <option value="Centre">Centre</option>
-                                  <option value="Département">Département</option>
-                                  <option value="Autre">Autre</option>
-                                </select>
-                                {schBFaculties.length > 1 && (
-                                  <button
-                                    style={{background:'none',border:'1px solid rgba(248,113,113,0.2)',color:'var(--red)',borderRadius:6,width:32,height:36,cursor:'pointer',flexShrink:0,fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}
-                                    onClick={() => setSchBFaculties(a => a.filter((_,j) => j!==i))}>
-                                    ×
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            <button
-                              style={{background:'none',border:'1px dashed rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:7,padding:'6px 14px',fontSize:'0.78rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:2,width:'100%',transition:'background 0.15s'}}
-                              onClick={() => setSchBFaculties(a => [...a, { name: '', type: 'Faculté' }])}>
-                              + Ajouter une composante
-                            </button>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Case C — new university with faculties */}
-                      {schoolCase === 'university_with_faculties' && (
-                        <>
-                          <div className="field-grid" style={{marginBottom:'0.875rem'}}>
-                            <div>
-                              <label className="label">Nom de l'université *</label>
-                              <input className="input" placeholder="Ex: Université Ibn Tofail..."
-                                value={schCUniName} onChange={e => setSchCUniName(e.target.value)} />
-                            </div>
-                            <div>
-                              <label className="label">Ville</label>
-                              <input className="input" placeholder="Ex: Kénitra, Marrakech..."
-                                value={schCCity} onChange={e => setSchCCity(e.target.value)} />
-                            </div>
-                          </div>
-                          <div className="field" style={{marginBottom:'0.875rem'}}>
-                            <label className="label">Type</label>
-                            <select className="select" value={schCType} onChange={e => setSchCType(e.target.value)}>
-                              <option value="public">Publique</option>
-                              <option value="private">Privée</option>
-                            </select>
-                          </div>
-                          <div style={{marginBottom:'0.875rem'}}>
-                            <label className="label" style={{marginBottom:'0.5rem'}}>Facultés / Composantes</label>
-                            {schCFaculties.map((f, i) => (
-                              <div key={i} style={{display:'flex',gap:6,marginBottom:6,alignItems:'center'}}>
-                                <input className="input" placeholder="Nom de la faculté..."
-                                  value={f.name}
-                                  onChange={e => { const a=[...schCFaculties]; a[i]={...a[i],name:e.target.value}; setSchCFaculties(a) }}
-                                  style={{flex:1}} />
-                                <select className="select" value={f.type}
-                                  onChange={e => { const a=[...schCFaculties]; a[i]={...a[i],type:e.target.value}; setSchCFaculties(a) }}
-                                  style={{width:110,flexShrink:0}}>
-                                  <option value="Faculté">Faculté</option>
-                                  <option value="École">École</option>
-                                  <option value="Institut">Institut</option>
-                                  <option value="Centre">Centre</option>
-                                  <option value="Département">Département</option>
-                                  <option value="Autre">Autre</option>
-                                </select>
-                                {schCFaculties.length > 1 && (
-                                  <button
-                                    style={{background:'none',border:'1px solid rgba(248,113,113,0.2)',color:'var(--red)',borderRadius:6,width:32,height:36,cursor:'pointer',flexShrink:0,fontSize:'1.1rem',display:'flex',alignItems:'center',justifyContent:'center',lineHeight:1}}
-                                    onClick={() => setSchCFaculties(a => a.filter((_,j) => j!==i))}>
-                                    ×
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                            <button
-                              style={{background:'none',border:'1px dashed rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:7,padding:'6px 14px',fontSize:'0.78rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:2,width:'100%',transition:'background 0.15s'}}
-                              onClick={() => setSchCFaculties(a => [...a, { name:'', type:'Faculté' }])}>
-                              + Ajouter une faculté
-                            </button>
-                          </div>
-                        </>
-                      )}
-
-                      {schoolCase && (
-                        <div style={{display:'flex',gap:8,alignItems:'center',marginTop:8}}>
-                          <button
-                            type="button"
-                            style={{background:'rgba(79,142,247,0.1)',border:'1px solid rgba(79,142,247,0.3)',color:'var(--accent2)',borderRadius:8,padding:'8px 20px',fontSize:'0.82rem',fontWeight:600,cursor:schoolSubmitting?'not-allowed':'pointer',fontFamily:'Outfit,sans-serif',opacity:schoolSubmitting?0.5:1}}
-                            onClick={handleSchoolRequest}
-                            disabled={schoolSubmitting}>
-                            {schoolSubmitting ? 'Envoi en cours...' : 'Envoyer la demande'}
-                          </button>
-                          <button
-                            style={{background:'none',border:'none',color:'var(--text3)',fontSize:'0.75rem',cursor:'pointer',fontFamily:'DM Mono,monospace'}}
-                            onClick={() => setShowSchoolForm(false)}>
-                            Annuler
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="submit-section">
-                  <button className="btn-back" onClick={() => { setShowSchoolForm(false); setShowFiliereForm(false); }}>Annuler</button>
-                  <button className="btn-submit" onClick={validateStep1}
-                    disabled={!selUni || !selFac || !selFil || !selSem || !selMod}>
-                    Continuer
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 2 */}
-            {step === 2 && (
-              <div className="card">
-                <div className="card-title">// étape 02 — informations du document</div>
-                <div className="field">
-                  <label className="label">Type de document</label>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4}}>
-                    {DOC_TYPES.map(t => (
-                      <div key={t.k}
-                        onClick={() => setDocType(t.k)}
-                        style={{
-                          display:'flex',alignItems:'center',justifyContent:'space-between',gap:4,
-                          padding:'7px 10px',borderRadius:8,cursor:'pointer',transition:'all 0.12s',
-                          background: docType===t.k ? 'rgba(79,142,247,0.1)' : 'var(--s3)',
-                          border: `1px solid ${docType===t.k ? 'rgba(79,142,247,0.35)' : 'var(--border)'}`,
-                        }}>
-                        <span style={{fontSize:'0.8rem',color:docType===t.k?'var(--accent2)':'var(--text2)',fontFamily:'Outfit,sans-serif',userSelect:'none',lineHeight:1.3}}>
-                          {t.l}
-                        </span>
-                        {DOC_TYPE_TIPS[t.k] && (
-                          <span style={{position:'relative',flexShrink:0}}
-                            onClick={e => e.stopPropagation()}
-                            onMouseEnter={() => setTypeTooltip(t.k)}
-                            onMouseLeave={() => setTypeTooltip(null)}>
-                            <span style={{fontSize:'0.68rem',color:'var(--text3)',display:'block',lineHeight:1,cursor:'help'}}>ⓘ</span>
-                            {typeTooltip === t.k && (
-                              <div style={{
-                                position:'absolute',right:0,bottom:'calc(100% + 5px)',zIndex:200,
-                                background:'#1C2A45',border:'1px solid #2D4A7A',
-                                borderRadius:7,padding:'6px 10px',fontSize:'0.72rem',color:'#94A3B8',
-                                whiteSpace:'nowrap',boxShadow:'0 4px 16px rgba(0,0,0,0.5)',
-                                fontFamily:'Outfit,sans-serif',lineHeight:1.4,pointerEvents:'none',
-                              }}>
-                                {DOC_TYPE_TIPS[t.k]}
-                              </div>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="field-grid">
-                  <div>
-                    <label className="label">Année académique</label>
-                    <select className="select" value={year} onChange={e => setYear(e.target.value)}>
-                      <option value="">Sélectionner...</option>
-                      {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                    <div style={{fontSize:'0.7rem',color:'#F87171',marginTop:4}}>
-                      * Obligatoire pour examens, CCs et corrigés
-                    </div>
-                  </div>
-                  <div>
-                    <label className="label">Professeur (optionnel)</label>
-                    <div className="prof-wrap">
-                      <input className="input" placeholder="Ex: Dr. Alaoui, Pr. Benali..."
-                        value={professor}
-                        onChange={e => setProfessor(e.target.value)}
-                        onFocus={() => setShowProfDD(true)}
-                        onBlur={() => setTimeout(() => setShowProfDD(false), 150)}
-                      />
+                    <div className="up-uni-wrap">
+                      <Input label="Professeur (optionnel)" placeholder="Ex : Dr. Alaoui, Pr. Benali…" value={professor}
+                        onChange={e => setProfessor(e.target.value)} onFocus={() => setShowProfDD(true)} onBlur={() => setTimeout(() => setShowProfDD(false), 150)} />
                       {showProfDD && profSuggestions.length > 0 && (() => {
                         const q = professor.trim().toLowerCase()
-                        const filtered = q
-                          ? profSuggestions.filter(n => n.toLowerCase().includes(q))
-                          : profSuggestions
+                        const filtered = q ? profSuggestions.filter(n => n.toLowerCase().includes(q)) : profSuggestions
                         return filtered.length > 0 ? (
-                          <div className="prof-dd">
-                            <div className="prof-chips">
-                              {filtered.map(name => (
-                                <button key={name} type="button" className="prof-chip"
-                                  onMouseDown={e => { e.preventDefault(); setProfessor(name); setShowProfDD(false) }}>
-                                  {name}
-                                </button>
-                              ))}
-                            </div>
+                          <div className="qz-dropdown" style={{ position: 'absolute', left: 0, right: 0, width: 'auto', padding: 8, flexDirection: 'row', flexWrap: 'wrap', display: 'flex', gap: 6 }}>
+                            {filtered.map(name => <Chip key={name} onMouseDown={e => { e.preventDefault(); setProfessor(name); setShowProfDD(false) }}>{name}</Chip>)}
                           </div>
                         ) : null
                       })()}
                     </div>
                   </div>
-                </div>
 
-                {['td','tp','cours','corrige_td','corrige_tp'].includes(docType) && (
-                  <div className="field">
-                    <label className="label">
-                      {docType === 'cours' ? 'Chapitre(s)' : 'Numéro'}
-                    </label>
-                    <input className="input"
-                      placeholder={
-                        docType === 'cours' ? 'Ex: Chapitre 1, Ch. 1-3, Ch. 6 - Spark' :
-                        docType === 'td'    ? 'Ex: TD1, TD2, TD3...' :
-                        docType === 'tp'    ? 'Ex: TP1, TP2...' :
-                        'Ex: TD1, TP2...'
-                      }
-                      value={docNumber}
-                      onChange={e => setDocNumber(e.target.value)}
-                    />
-                    <div className="hint">
-                      {docType === 'cours'
-                        ? 'Précise les chapitres couverts dans ce fichier'
-                        : 'Aide les étudiants à identifier le bon fichier'}
+                  {['td', 'tp', 'cours', 'corrige_td', 'corrige_tp'].includes(docType) && (
+                    <div className="up-field">
+                      <Input
+                        label={docType === 'cours' ? 'Chapitre(s)' : 'Numéro'}
+                        placeholder={docType === 'cours' ? 'Ex : Chapitre 1, Ch. 1-3' : docType === 'td' ? 'Ex : TD1, TD2, TD3…' : docType === 'tp' ? 'Ex : TP1, TP2…' : 'Ex : TD1, TP2…'}
+                        value={docNumber} onChange={e => setDocNumber(e.target.value)}
+                        hint={docType === 'cours' ? 'Précise les chapitres couverts dans ce fichier' : 'Aide les étudiants à identifier le bon fichier'}
+                      />
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="field">
-                  <label className="label">Fichier(s)</label>
-                  <div
-                    className={`upload-zone ${drag ? 'drag' : ''}`}
-                    onClick={() => fileRef.current?.click()}
-                    onDragOver={e => { e.preventDefault(); setDrag(true); }}
-                    onDragLeave={() => setDrag(false)}
-                    onDrop={handleDrop}
-                  >
-                    <input ref={fileRef} type="file" multiple
+                  <div className="up-field">
+                    <label className="qz-label">Fichier(s)</label>
+                    <Dropzone
+                      hint="PDF, images, PPT, Word, Excel, Notebook · jusqu'à 20 fichiers · 50 Mo max"
                       accept="image/*,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.ipynb"
-                      style={{ display:'none' }} onChange={e => handleFiles(e.target.files)} />
-                    <div className="upload-zone-icon">// DRAG & DROP</div>
-                    <div className="upload-zone-title">Glisse tes fichiers ici</div>
-                    <div className="upload-zone-sub">
-                      <b>PDF · Images · PPT · Word · Excel · Notebook</b> · Jusqu'à 20 fichiers · Max 50MB
-                    </div>
-                  </div>
-
-                  {detected.length > 0 && (
-                    <div className="detected-row">
-                      <span className="detected-label">// détecté depuis le nom du fichier</span>
-                      {detected.map((d, i) => <span key={i} className="detected-chip">{d.label} ✓</span>)}
-                    </div>
-                  )}
-
-                  {files.length > 0 && (
-                    <>
-                      <div className="file-list">
-                        {files.map((f, i) => (
-                          <div key={i} className="file-item">
-                            {previews[i]
-                              ? <img src={previews[i]} alt="" className="file-preview" />
-                              : (() => { const ic = FILE_ICON(f); return ic ? <div className={`file-icon ${ic.cls}`}>{ic.label}</div> : <div className="file-icon file-icon-doc">IMG</div> })()
-                            }
-                            <div className="file-info">
-                              <div className="file-name">{f.name}</div>
-                              <div className="file-size">{fmt(f.size)}</div>
-                              <div style={{fontSize:'0.62rem', fontFamily:'DM Mono,monospace', marginTop:2, color: f.type.startsWith('image/') ? 'var(--teal2)' : 'var(--text3)'}}>
-                                {f.type.startsWith('image/')
-                                  ? (f.size > 5*1024*1024 ? '// compression agressive activée' : '// compression auto')
-                                  : (f.size > 20*1024*1024 ? '// fichier volumineux — upload direct' : '// upload direct')}
-                              </div>
-                            </div>
-                            <button className="file-remove" onClick={() => removeFile(i)}>✕</button>
-                          </div>
-                        ))}
+                      onFiles={handleFiles}
+                      onRemove={removeFile}
+                      files={files.map((f, i) => ({
+                        ext: getExt(f).toUpperCase().slice(0, 4),
+                        name: f.name,
+                        size: fmt(f.size),
+                        preview: previews[i],
+                        note: f.type.startsWith('image/')
+                          ? (f.size > 5 * 1024 * 1024 ? ' · compression agressive' : ' · compression auto')
+                          : (f.size > 20 * 1024 * 1024 ? ' · fichier volumineux, upload direct' : ' · upload direct'),
+                      }))}
+                    />
+                    {detected.length > 0 && (
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                        {detected.map((d, i) => <Badge key={i} tone="brand" icon="check">Détecté et appliqué : {d.label}</Badge>)}
                       </div>
-                      <div className="file-limit">{files.length} fichier{files.length > 1 ? 's' : ''} sélectionné{files.length > 1 ? 's' : ''}</div>
-                    </>
+                    )}
+                    {files.length > 0 && <div className="t-caption qz-subtle" style={{ marginTop: 6, textAlign: 'center' }}>{files.length} fichier{files.length > 1 ? 's' : ''} sélectionné{files.length > 1 ? 's' : ''}</div>}
+                  </div>
+
+                  <div className="up-submit-row">
+                    <Button variant="ghost" onClick={() => setStep(1)}>Retour</Button>
+                    <Button variant="primary" onClick={validateStep2} disabled={!docType || files.length === 0 || (['examen', 'cc', 'corrige_examen'].includes(docType) && !year)}>Continuer</Button>
+                  </div>
+                </Card>
+              )}
+
+              {step === 3 && (
+                <Card>
+                  <span className="t-eyebrow qz-subtle">Étape 3 — Confirmation</span>
+                  <div className="qz-banner qz-banner--warning" style={{ margin: 'var(--space-4) 0' }}><Icon name="alert" /><span>Vérifie que tout est correct avant d'envoyer.</span></div>
+
+                  {[
+                    ['Module', selMod?.name],
+                    ['Semestre', selSem],
+                    ['Type', DOC_TYPES.find(t => t.k === docType)?.l],
+                    ['Année', year || '—'],
+                    ['Professeur', professor || '—'],
+                    ...(docNumber ? [['Numéro / Chapitre', docNumber]] : []),
+                    ['Fichiers', `${files.length} fichier${files.length > 1 ? 's' : ''} (${files.map(f => fmt(f.size)).join(', ')})`],
+                  ].map(([k, v]) => (
+                    <div key={k} className="up-summary-row">
+                      <span className="t-eyebrow qz-subtle">{k}</span>
+                      <span className="t-body-sm">{v}</span>
+                    </div>
+                  ))}
+
+                  {loading && progress > 0 && progress < 100 && (
+                    <div style={{ marginTop: 'var(--space-5)' }}>
+                      <div className="t-caption qz-subtle" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <span>Envoi en cours…</span><span>{progress}%</span>
+                      </div>
+                      <ProgressBar value={progress} />
+                    </div>
                   )}
-                </div>
 
-                <div className="submit-section">
-                  <button className="btn-back" onClick={() => setStep(1)}>Retour</button>
-                  <button className="btn-submit" onClick={validateStep2}
-                    disabled={!docType || files.length === 0 || (['examen','cc','corrige_examen'].includes(docType) && !year)}>
-                    Continuer
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 3 */}
-            {step === 3 && (
-              <div className="card">
-                <div className="card-title">// étape 03 — confirmation</div>
-                <div className="alert warn">Vérifie que tout est correct avant d'envoyer.</div>
-
-                {[
-                  ['Module', selMod?.name],
-                  ['Semestre', selSem],
-                  ['Type', DOC_TYPES.find(t => t.k === docType)?.l],
-                  ['Année', year || '—'],
-                  ['Professeur', professor || '—'],
-                  ...(docNumber ? [['Numéro / Chapitre', docNumber]] : []),
-                  ['Fichiers', `${files.length} fichier${files.length > 1 ? 's' : ''} (${files.map(f => fmt(f.size)).join(', ')})`],
-                ].map(([k, v]) => (
-                  <div key={k} className="summary-row">
-                    <span className="summary-key">{k}</span>
-                    <span className="summary-val">{v}</span>
+                  <div className="up-submit-row">
+                    <Button variant="ghost" onClick={() => setStep(2)} disabled={loading}>Retour</Button>
+                    <Button variant="primary" loading={loading} onClick={() => handleSubmit()}>{loading ? `Publication… ${progress}%` : 'Publier'}</Button>
                   </div>
-                ))}
-
-                {loading && progress > 0 && progress < 100 && (
-                  <div style={{ marginTop:'1.5rem' }}>
-                    <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.72rem', color:'var(--text2)', marginBottom:6, display:'flex', justifyContent:'space-between' }}>
-                      <span>Envoi en cours...</span>
-                      <span>{progress}%</span>
-                    </div>
-                    <div className="progress-wrap">
-                      <div className="progress-bar" style={{ width:`${progress}%` }} />
-                    </div>
-                  </div>
-                )}
-
-                <div className="submit-section">
-                  <button className="btn-back" onClick={() => setStep(2)} disabled={loading}>Retour</button>
-                  <button className="btn-submit" onClick={handleSubmit} disabled={loading}>
-                    {loading ? `Upload... ${progress}%` : 'Confirmer et envoyer'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+                </Card>
+              )}
+            </>
+          )}
         </div>
 
         {!success && (
-          <aside className="layout-side">
+          <aside className="up-side">
             {(() => {
               const pts = profile?.points || 0
-              const RANKS = [
-                { min:0,   max:99,  label:'Étudiant',     next:'Contributeur' },
-                { min:100, max:299, label:'Contributeur', next:'Senpai' },
-                { min:300, max:599, label:'Senpai',       next:'Légende' },
-                { min:600, max:Infinity, label:'Légende', next:null },
-              ]
               const r = RANKS.find(r => pts >= r.min && pts <= r.max) || RANKS[0]
               const pct = r.max === Infinity ? 100 : Math.round(((pts - r.min) / (r.max - r.min + 1)) * 100)
               return (
-                <div className="side-card reward-card">
-                  <div className="side-card-label">// récompense</div>
-                  <div className="reward-pts">+50 points</div>
+                <Card>
+                  <span className="t-eyebrow qz-subtle">Tes points</span>
+                  <div className="t-stat" style={{ margin: '6px 0' }}>+50 points</div>
                   {r.next ? (
-                    <div className="reward-sub">{r.max + 1 - pts} points de plus et tu débloques le rang <b>{r.next}</b>.</div>
+                    <p className="t-body-sm qz-muted">{r.max + 1 - pts} points de plus pour débloquer le rang <b>{r.next}</b>.</p>
                   ) : (
-                    <div className="reward-sub">Tu es au rang maximum — <b>Légende</b>.</div>
+                    <p className="t-body-sm qz-muted">Tu es au rang maximum — <b>Légende</b>.</p>
                   )}
-                  <div className="reward-bar-wrap"><div className="reward-bar" style={{ width:`${pct}%` }} /></div>
-                  <div className="reward-bar-label">{pts} / {r.max === Infinity ? pts : r.max + 1} pts</div>
-                </div>
+                  <div style={{ marginTop: 8 }}><ProgressBar value={pct} /></div>
+                  <div className="t-caption qz-subtle" style={{ marginTop: 4 }}>{pts} / {r.max === Infinity ? pts : r.max + 1} pts</div>
+                </Card>
               )
             })()}
 
-            <div className="side-card">
-              <div className="side-card-label">// checklist qualité</div>
-              {['Pages lisibles, pas floues', 'PDF, JPG ou PNG · max 50 Mo', 'Aucun nom d\'étudiant visible', 'Année universitaire indiquée'].map(c => (
-                <div key={c} className="checklist-row"><FiCheck size={13} /> {c}</div>
-              ))}
-            </div>
-
-            {recentUploads.length > 0 && (
-              <div className="side-card">
-                <div className="side-card-label">// tes derniers uploads</div>
-                {recentUploads.map(d => (
-                  <div key={d.id} className="recent-upload-row">
-                    <span className="recent-upload-name">{d.modules?.name || 'Module'}</span>
-                    <span className={`recent-upload-status ${d.is_verified ? 'ok' : 'pending'}`}>{d.is_verified ? 'publié' : 'en revue'}</span>
-                  </div>
+            <Card>
+              <span className="t-eyebrow qz-subtle">Checklist qualité</span>
+              <div style={{ marginTop: 8 }}>
+                {['Pages lisibles, pas floues', 'PDF, JPG ou PNG · max 50 Mo', "Aucun nom d'étudiant visible", 'Année universitaire indiquée'].map(c => (
+                  <div key={c} className="up-checklist-row"><Icon name="check" size={14} /><span className="t-body-sm qz-muted">{c}</span></div>
                 ))}
               </div>
+            </Card>
+
+            {recentUploads.length > 0 && (
+              <Card>
+                <span className="t-eyebrow qz-subtle">Tes derniers partages</span>
+                <div style={{ marginTop: 8 }}>
+                  {recentUploads.map(d => (
+                    <div key={d.id} className="up-recent-row">
+                      <span className="t-body-sm qz-muted" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.modules?.name || 'Module'}</span>
+                      <Badge tone={d.is_verified ? 'success' : 'warning'}>{d.is_verified ? 'publié' : 'en revue'}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </Card>
             )}
           </aside>
         )}
       </div>
-      {toast && <div className="toast">{toast}</div>}
       {modal && <ConfirmModal {...modal} onCancel={modal.onCancel} />}
     </div>
   )
