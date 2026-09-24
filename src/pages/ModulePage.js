@@ -1,538 +1,179 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import toast from 'react-hot-toast'
-import { FiEye, FiDownload, FiThumbsUp, FiCheck, FiX, FiTrendingUp, FiInbox } from 'react-icons/fi'
+import { useNavigate, useParams, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
+import {
+  Breadcrumb, Button, Badge, DocType, Tabs, EmptyState, Card, Icon, Avatar,
+  ProgressBar, Sheet, Skeleton, Select,
+} from '../design-system/ui'
+import { notify } from '../design-system/toast'
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
-  *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
-
-  :root {
-    --bg:       #02040A;
-    --surface:  #070C18;
-    --s2:       #0C1222;
-    --s3:       #111827;
-    --border:   #1C2A45;
-    --borderhi: #2D4A7A;
-    --accent:   #4F8EF7;
-    --accent2:  #7BB3FF;
-    --teal:     #2DD4BF;
-    --teal2:    #5EEAD4;
-    --red:      #F87171;
-    --yellow:   #FBD34D;
-    --text:     #E2E8F0;
-    --text2:    #94A3B8;
-    --text3:    #4A5568;
-    --white:    #FFFFFF;
-  }
-
-
-  html, body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; }
-  .page { min-height: 100vh; display: flex; flex-direction: column; }
-
-  /* ─── BREADCRUMB STRIP ─── */
-  .breadcrumb-strip {
-    display: flex; align-items: center; gap: 6px;
-    padding: 0.6rem 2.5rem;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    flex-wrap: wrap;
-  }
-  .bc { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--text3); cursor: pointer; transition: color 0.15s; }
-  .bc:hover { color: var(--accent2); }
-  .bc-sep { font-size: 0.68rem; color: var(--text3); }
-  .bc-active { color: var(--text2); cursor: default; }
-  .bc-active:hover { color: var(--text2); }
-
-  /* ─── HERO STRIP ─── */
-  .mod-hero {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 2rem 2.5rem;
-    position: relative; overflow: hidden;
-  }
-  .mod-hero::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--teal) 70%, transparent);
-  }
-  .mod-hero::after {
-    content: '';
-    position: absolute; inset: 0;
-    background: radial-gradient(ellipse 50% 100% at 100% 50%, rgba(79,142,247,0.05) 0%, transparent 60%);
-    pointer-events: none;
-  }
-  .mod-hero-inner { max-width: 1000px; position: relative; z-index: 1; }
-  .mod-tags { display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; }
-  .mod-tag {
-    font-family: 'DM Mono', monospace; font-size: 0.62rem;
-    padding: 3px 10px; border-radius: 4px; letter-spacing: 0.5px;
-  }
-  .tag-sem  { background: rgba(79,142,247,0.1); color: var(--accent2); border: 1px solid rgba(79,142,247,0.2); }
-  .tag-fil  { background: rgba(79,142,247,0.08); color: var(--teal2); border: 1px solid rgba(79,142,247,0.15); }
-  .tag-uni  { background: rgba(255,255,255,0.04); color: var(--text3); border: 1px solid var(--border); }
-  .mod-name {
-    font-size: 2rem; font-weight: 700; color: var(--white);
-    letter-spacing: -0.75px; line-height: 1.2; margin-bottom: 1.25rem;
-  }
-  .mod-meta { display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
-  .mod-meta-item { display: flex; align-items: center; gap: 6px; }
-  .mod-meta-label { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--text3); }
-  .mod-meta-val { font-size: 0.82rem; color: var(--text2); font-weight: 500; }
-
-  /* ─── LAYOUT ─── */
-  .layout {
-    display: grid;
-    grid-template-columns: 1fr 320px;
-    gap: 0;
-    max-width: 1300px;
-    margin: 0 auto;
-    padding: 2rem 2.5rem;
-    gap: 2rem;
-    flex: 1;
-    width: 100%;
-  }
-
-  /* ─── MAIN CONTENT ─── */
-  .main { min-width: 0; }
-
-  /* Filter tabs */
-  .filter-tabs {
-    display: flex; align-items: center; gap: 4px; flex-wrap: nowrap;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 10px; padding: 4px;
-    margin-bottom: 1.5rem; width: 100%;
-    overflow-x: auto; overflow-y: hidden; white-space: nowrap;
-    scrollbar-width: none; -ms-overflow-style: none;
-  }
-  .filter-tabs::-webkit-scrollbar { display: none; }
-
-  /* Tab scroll hints */
-  .tabs-wrap { position:relative; margin-bottom:1.5rem; }
-  .tabs-fade {
-    position:absolute; right:0; top:0; bottom:0; width:88px;
-    background:linear-gradient(to right, transparent, var(--bg) 80%);
-    pointer-events:none; border-radius:0 10px 10px 0;
-    transition:opacity 0.3s;
-  }
-  .tabs-chevron {
-    position:absolute; right:10px; top:50%; transform:translateY(-50%);
-    width:26px; height:26px; border-radius:50%;
-    background:var(--s3); border:1px solid var(--border);
-    display:flex; align-items:center; justify-content:center;
-    color:var(--text2); font-size:1rem; pointer-events:none;
-    transition:opacity 0.3s; line-height:1;
-  }
-  .tabs-hint {
-    display:none;
-    font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text3);
-    text-align:right; padding:4px 2px 0;
-    animation:hint-fade 0.4s ease both;
-  }
-  @keyframes hint-fade { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
-  @media(max-width:768px) { .tabs-hint { display:block; } }
-  .filter-tab {
-    padding: 6px 16px; border-radius: 7px; font-size: 0.8rem; font-weight: 500;
-    color: var(--text2); cursor: pointer; transition: all 0.15s;
-    background: none; border: none; font-family: 'Outfit', sans-serif;
-    white-space: nowrap; flex-shrink: 0;
-  }
-  .filter-tab:hover { color: var(--text); background: var(--s2); }
-  .filter-tab.on { background: var(--s3); color: var(--white); }
-
-  /* Doc list */
-  .doc-list { display: flex; flex-direction: column; gap: 8px; }
-
-  .doc-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 1.1rem 1.25rem;
-    display: flex; align-items: center; gap: 1rem;
-    transition: all 0.15s; cursor: pointer; position: relative; overflow: hidden;
-  }
-  .doc-card::before {
-    content: '';
-    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-    background: linear-gradient(180deg, var(--accent), var(--teal));
-    transform: scaleY(0); transform-origin: top;
-    transition: transform 0.2s cubic-bezier(0.4,0,0.2,1);
-  }
-  .doc-card:hover { border-color: var(--borderhi); background: var(--s2); }
-  .doc-card:hover::before { transform: scaleY(1); }
-
-  .doc-icon {
-    width: 44px; height: 44px; border-radius: 10px; flex-shrink: 0;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'DM Mono', monospace; font-size: 0.6rem; font-weight: 500;
-    letter-spacing: 0.5px;
-  }
-  .icon-examen { background: rgba(248,113,113,0.08); color: var(--red); border: 1px solid rgba(248,113,113,0.15); }
-  .icon-cc     { background: rgba(251,211,77,0.08); color: var(--yellow); border: 1px solid rgba(251,211,77,0.15); }
-  .icon-td     { background: rgba(79,142,247,0.08); color: var(--accent2); border: 1px solid rgba(79,142,247,0.15); }
-  .icon-tp     { background: rgba(79,142,247,0.08); color: var(--teal2); border: 1px solid rgba(79,142,247,0.15); }
-  .icon-quiz   { background: rgba(167,139,250,0.08); color: #C4B5FD; border: 1px solid rgba(167,139,250,0.15); }
-  .icon-cours  { background: rgba(94,234,212,0.08); color: var(--teal2); border: 1px solid rgba(94,234,212,0.15); }
-
-  .doc-info { flex: 1; min-width: 0; }
-  .doc-title {
-    font-size: 0.9rem; font-weight: 600; color: var(--white);
-    margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .doc-sub {
-    display: flex; align-items: center; gap: 10px;
-    font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--text3);
-  }
-  .doc-sub-sep { color: var(--border); }
-
-  .doc-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-  .doc-pages { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--text3); }
-  .doc-dl-btn {
-    background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.2);
-    color: var(--accent2); border-radius: 7px; padding: 6px 14px;
-    font-size: 0.75rem; font-weight: 600; cursor: pointer;
-    font-family: 'Outfit', sans-serif; transition: all 0.15s; white-space: nowrap;
-  }
-  .doc-dl-btn:hover { background: rgba(79,142,247,0.15); border-color: var(--accent); }
-
-  /* Empty state */
-  .empty {
-    text-align: center; padding: 4rem 2rem;
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 14px; border-style: dashed;
-  }
-  .empty-code { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--text3); margin-bottom: 1rem; }
-  .empty-title { font-size: 1rem; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
-  .empty-sub { font-size: 0.82rem; color: var(--text3); margin-bottom: 1.5rem; }
-  .empty-upload-btn {
-    background: var(--accent); color: var(--white); border: none;
-    border-radius: 8px; padding: 10px 24px; font-size: 0.85rem; font-weight: 600;
-    cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.2s;
-  }
-  .empty-upload-btn:hover { background: #3A6ED4; transform: translateY(-1px); }
-
-  /* Skeleton */
-  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-  .skel {
-    background: linear-gradient(90deg,#070C18,#0C1222,#070C18);
-    background-size: 200% 100%; animation: shimmer 1.5s infinite;
-    border-radius: 10px;
-  }
-
-  /* ─── SIDEBAR ─── */
-  .aside { display: flex; flex-direction: column; gap: 1rem; }
-
-  .aside-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; overflow: hidden;
-  }
-  .aside-card-header {
-    padding: 0.875rem 1.1rem;
-    border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .aside-card-title {
-    font-family: 'DM Mono', monospace; font-size: 0.65rem;
-    color: var(--text3); letter-spacing: 1.5px; text-transform: uppercase;
-  }
-  .aside-card-body { padding: 1.1rem; }
-
-  /* Upload card */
-  .upload-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: 12px; padding: 1.25rem;
-    position: relative; overflow: hidden;
-  }
-  .upload-card::before {
-    content: '';
-    position: absolute; top: 0; left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, var(--accent), var(--teal));
-  }
-  .upload-card-title {
-    font-size: 0.9rem; font-weight: 600; color: var(--white); margin-bottom: 6px;
-  }
-  .upload-card-desc {
-    font-size: 0.78rem; color: var(--text2); line-height: 1.6; margin-bottom: 1rem;
-  }
-  .upload-card-btn {
-    width: 100%; background: linear-gradient(135deg, var(--accent), #3A6ED4);
-    color: var(--white); border: none; border-radius: 8px;
-    padding: 10px; font-size: 0.85rem; font-weight: 600;
-    cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.2s;
-    position: relative; overflow: hidden;
-  }
-  .upload-card-btn::before {
-    content: ''; position: absolute; inset: 0;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.1), transparent);
-  }
-  .upload-card-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(79,142,247,0.4); }
-
-  /* Info rows */
-  .info-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 8px 0; border-bottom: 1px solid var(--border);
-  }
-  .info-row:last-child { border-bottom: none; padding-bottom: 0; }
-  .info-row:first-child { padding-top: 0; }
-  .info-key { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--text3); }
-  .info-val { font-size: 0.8rem; color: var(--text2); font-weight: 500; text-align: right; max-width: 60%; }
-
-  /* Type breakdown */
-  .type-rows { display: flex; flex-direction: column; gap: 6px; }
-  .type-stat { display: flex; align-items: center; gap: 8px; }
-  .type-stat-label { font-size: 0.75rem; color: var(--text2); flex: 1; }
-  .type-stat-count {
-    font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--text3);
-    min-width: 24px; text-align: right;
-  }
-  .type-stat-bar-wrap { width: 60px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
-  .type-stat-bar {
-    height: 100%; border-radius: 2px;
-    background: linear-gradient(90deg, var(--accent), var(--teal));
-    transition: width 0.4s ease;
-  }
-
-  /* Related modules */
-  .related-list { display: flex; flex-direction: column; gap: 4px; }
-  .related-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 10px; border-radius: 8px; cursor: pointer;
-    transition: background 0.15s; border: 1px solid transparent;
-  }
-  .related-item:hover { background: var(--s2); border-color: var(--border); }
-  .related-sem {
-    font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--accent);
-    background: rgba(79,142,247,0.08); padding: 2px 6px; border-radius: 3px;
-    flex-shrink: 0;
-  }
-  .related-name { font-size: 0.8rem; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-  @media(max-width:900px) {
-    .layout { grid-template-columns:1fr; padding:1.25rem; gap:1.25rem; }
-    .aside { display:none; }
-  }
-  @media(max-width:768px) {
-    .breadcrumb-strip { padding:0.5rem 1rem; }
-    .mod-hero { padding:1.5rem 1rem; }
-    .mod-name { font-size:1.5rem; }
-    .mod-meta { gap:1rem; }
-    .layout { padding:1rem; }
-    .filter-tabs { padding:3px; }
-  }
-  @media(max-width:480px) {
-    .mod-name { font-size:1.25rem; }
-    .mod-tags { flex-wrap:wrap; }
-    .mod-meta { flex-direction:column; gap:0.5rem; align-items:flex-start; }
-  }
-
-  /* ─── PDF PREVIEW MODAL ─── */
-  .pdf-overlay {
-    position:fixed; inset:0; z-index:900;
-    display:flex; flex-direction:column; background:#02040A;
-  }
-  .pdf-modal-head {
-    display:flex; align-items:center; justify-content:space-between;
-    padding:10px 16px; background:var(--surface); border-bottom:1px solid var(--border);
-    flex-shrink:0; gap:12px;
-  }
-  .pdf-modal-title {
-    font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text2);
-    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1;
-  }
-  .pdf-modal-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
-  .pdf-dl-btn {
-    background:rgba(79,142,247,0.1); border:1px solid rgba(79,142,247,0.3);
-    color:var(--accent2); border-radius:7px; padding:6px 14px;
-    font-size:0.75rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s;
-  }
-  .pdf-dl-btn:hover { background:rgba(79,142,247,0.2); }
-  .pdf-close-btn {
-    background:rgba(248,113,113,0.08); border:1px solid rgba(248,113,113,0.25);
-    color:var(--red); border-radius:7px; padding:6px 12px;
-    font-size:0.75rem; font-weight:600; cursor:pointer; font-family:'Outfit',sans-serif; transition:all 0.15s;
-  }
-  .pdf-close-btn:hover { background:rgba(248,113,113,0.15); }
-  .pdf-iframe { width:100%; height:100%; border:none; display:block; flex:1; }
-
-  /* ─── AUTH GATE MODAL ─── */
-  .auth-gate-ov {
-    position:fixed; inset:0; z-index:800;
-    background:rgba(2,4,10,0.88); backdrop-filter:blur(10px);
-    display:flex; align-items:center; justify-content:center; padding:1.5rem;
-  }
-  .auth-gate-box {
-    background:#0C1222; border:1px solid #2D4A7A;
-    border-radius:16px; padding:2rem 1.75rem; max-width:340px; width:100%;
-    text-align:center; box-shadow:0 24px 64px rgba(0,0,0,0.7);
-  }
+  .mp-hero { padding: var(--space-8) var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface); }
+  .mp-hero__inner { max-width: 1000px; margin: 0 auto; }
+  .mp-hero__top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+  .mp-hero__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-4); }
+  .mp-layout { max-width: 1300px; margin: 0 auto; padding: var(--space-6); display: grid; grid-template-columns: 1fr 320px; gap: var(--space-8); align-items: start; }
+  @media (max-width: 1023px) { .mp-layout { grid-template-columns: 1fr; } }
+  .mp-tabs-wrap { position: sticky; top: 56px; z-index: 10; background: var(--bg); padding: var(--space-3) 0; margin-bottom: var(--space-4); position: relative; }
+  .mp-tabs-scroll { overflow-x: auto; scrollbar-width: none; }
+  .mp-tabs-scroll::-webkit-scrollbar { display: none; }
+  .mp-tabs-fade { position: absolute; right: 0; top: var(--space-3); bottom: var(--space-3); width: 48px; background: linear-gradient(to right, transparent, var(--bg) 80%); pointer-events: none; }
+  .mp-group { margin-bottom: var(--space-6); }
+  .mp-group__head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
+  .mp-doc-card { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: var(--space-2); background: var(--surface); }
+  .mp-doc-card__footer { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .mp-stars { display: flex; align-items: center; gap: 2px; }
+  .mp-star { background: none; border: 0; cursor: pointer; padding: 2px; display: flex; }
+  .mp-multi-files { display: flex; flex-direction: column; gap: 6px; }
+  .mp-aside { display: flex; flex-direction: column; gap: var(--space-4); position: sticky; top: 72px; }
+  @media (max-width: 1023px) { .mp-aside { position: static; } }
+  .mp-info-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .mp-info-row:last-child { border-bottom: 0; }
+  .mp-type-row { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
+  .mp-type-row:last-child { margin-bottom: 0; }
+  .mp-type-row__bar { flex: 1; }
+  .mp-type-row__label { width: 110px; flex-shrink: 0; }
+  .mp-related-row { display: block; padding: 8px var(--space-2); border-radius: var(--radius-sm); text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--space-2); }
+  .mp-related-row:hover { background: var(--surface-2); }
+  .mp-senpai-list { display: flex; flex-direction: column; gap: var(--space-2); }
+  .mp-senpai-card { display: block; padding: var(--space-3); text-decoration: none; color: inherit; cursor: pointer; }
+  .mp-senpai-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
+  .mp-req-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+  .mp-req-row:last-child { border-bottom: 0; }
+  .mp-req-form { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); }
 `
 
-const TYPE_CONFIG = {
-  examen:         { label:'EXAM',  cls:'icon-examen', full:'Examen Final'    },
-  cc:             { label:'CC',    cls:'icon-cc',     full:'Contrôle Continu'},
-  td:             { label:'TD',    cls:'icon-td',     full:'Travail Dirigé'  },
-  tp:             { label:'TP',    cls:'icon-tp',     full:'Travail Pratique'},
-  cours:          { label:'COURS', cls:'icon-cours',  full:'Cours'           },
-  corrige_examen: { label:'COR.E', cls:'icon-cc',     full:'Corrigé Examen'  },
-  corrige_td:     { label:'C.TD',  cls:'icon-td',     full:'Corrigé TD'      },
-  corrige_tp:     { label:'C.TP',  cls:'icon-tp',     full:'Corrigé TP'      },
-  quiz:           { label:'QUIZ',  cls:'icon-quiz',   full:'Quiz / Interro'  },
-  projet_final:   { label:'PROJ',  cls:'icon-examen', full:'Projet Final'    },
+const TYPE_LABELS = {
+  examen: 'Examen final', cc: 'Contrôle continu', td: 'TD', tp: 'TP', cours: 'Cours',
+  corrige_examen: 'Corrigé examen', corrige_td: 'Corrigé TD', corrige_tp: 'Corrigé TP',
+  quiz: 'Quiz', projet_final: 'Projet final',
 }
-
+const GROUP_ORDER = ['examen', 'cc', 'td', 'tp', 'cours', 'corrige_examen', 'corrige_td', 'corrige_tp', 'quiz', 'projet_final']
 const TABS = [
-  { k:'all',            l:'Tous'          },
-  { k:'examen',         l:'Examens'       },
-  { k:'corrige_examen', l:'Corrigés exam' },
-  { k:'cc',             l:'CC'            },
-  { k:'td',             l:'TD'            },
-  { k:'corrige_td',     l:'Corrigés TD'   },
-  { k:'tp',             l:'TP'            },
-  { k:'corrige_tp',     l:'Corrigés TP'   },
-  { k:'cours',          l:'Cours'         },
-  { k:'quiz',           l:'Quiz'          },
-  { k:'projet_final',   l:'Projet Final'  },
+  { k: 'all', l: 'Tous' }, { k: 'examen', l: 'Examens' }, { k: 'cc', l: 'CC' }, { k: 'td', l: 'TD' },
+  { k: 'tp', l: 'TP' }, { k: 'cours', l: 'Cours' }, { k: 'corrige', l: 'Corrigés' },
+  { k: 'quiz', l: 'Quiz' }, { k: 'projet_final', l: 'Projet final' },
 ]
+const matchesTab = (doc, tabKey) => tabKey === 'all' ? true : tabKey === 'corrige' ? doc.doc_type.startsWith('corrige') : doc.doc_type === tabKey
+
+const fmtAgo = d => {
+  const s = Math.floor((Date.now() - new Date(d)) / 1000)
+  if (s < 60) return 'à l\'instant'
+  if (s < 3600) return `il y a ${Math.floor(s / 60)} min`
+  if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`
+  return `il y a ${Math.floor(s / 86400)} j`
+}
 
 export default function ModulePage() {
   const navigate = useNavigate()
   const { slug } = useParams()
   const id = slug.split('-').pop()
 
-  const [mod,          setMod]          = useState(null)
-  const [docs,         setDocs]         = useState([])
-  const [related,      setRelated]      = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [activeTab,    setActiveTab]    = useState('all')
-  const [senpaiPosts,  setSenpaiPosts]  = useState([])
+  const [mod, setMod] = useState(null)
+  const [docs, setDocs] = useState([])
+  const [related, setRelated] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('all')
+  const [senpaiPosts, setSenpaiPosts] = useState([])
   const { user } = useAuth()
-  const [userReactions,setUserReactions]= useState({})
+  const [userReactions, setUserReactions] = useState({})
   const [isBookmarked, setIsBookmarked] = useState(false)
-  const docsRef    = useRef([])
-  const tabsBarRef = useRef(null)
-  const [requests,      setRequests]      = useState({})
+  const docsRef = useRef([])
+  const [requests, setRequests] = useState({})
   const [userRequested, setUserRequested] = useState({})
-  const [previewDoc,    setPreviewDoc]    = useState(null)
-  const [showAuthGate,  setShowAuthGate]  = useState(false)
-  const [copyToast,     setCopyToast]     = useState(false)
-  const [tabsAtEnd,     setTabsAtEnd]     = useState(false)
-  const [slideHintDone, setSlideHintDone] = useState(
-    () => localStorage.getItem('9rz_tab_hint') === '1'
-  )
-
-  useEffect(() => {
-    const el = tabsBarRef.current
-    if (!el) return
-    const check = () => {
-      setTabsAtEnd(el.scrollLeft + el.clientWidth >= el.scrollWidth - 4)
-      if (!slideHintDone && el.scrollLeft > 10) {
-        setSlideHintDone(true)
-        localStorage.setItem('9rz_tab_hint', '1')
-      }
-    }
-    check()
-    el.addEventListener('scroll', check, { passive: true })
-    return () => el.removeEventListener('scroll', check)
-  }, [slideHintDone])
+  const [previewDoc, setPreviewDoc] = useState(null)
+  const [showAuthGate, setShowAuthGate] = useState(false)
+  const [reportTarget, setReportTarget] = useState(null)
+  const [showReqModal, setShowReqModal] = useState(false)
+  const [reqModalType, setReqModalType] = useState('')
 
   useEffect(() => {
     async function load() {
       setLoading(true)
       try {
-      // Load module with full path
-      const { data: m } = await supabase
-        .from('modules')
-        .select(`*, filieres(name, total_semesters, faculty_id, faculties(name, universities(name)))`)
-        .eq('id', parseInt(id))
-        .single()
-
-      setMod(m)
-      if (m) {
-        const uniName = m.filieres?.faculties?.universities?.name
-        const filName = m.filieres?.name
-        document.title = uniName
-          ? `${m.name} — ${uniName} — 9rawZid9ra`
-          : `${m.name} — 9rawZid9ra`
-        const metaDesc = document.querySelector('meta[name="description"]')
-        if (metaDesc) {
-          const parts = [m.name, 'Examens, TD, TP et cours', filName, uniName].filter(Boolean)
-          metaDesc.setAttribute('content', parts.join(' — ') + ' — 9rawZid9ra')
-        }
-      }
-
-      // Load documents — skip user_profiles join for anon (RLS blocks it)
-      const docSelect = user
-        ? '*, user_profiles!uploader_id(name, is_fondateur)'
-        : '*'
-      const { data: d } = await supabase
-        .from('documents')
-        .select(docSelect)
-        .eq('module_id', parseInt(id))
-        .eq('is_flagged', false)
-        .order('created_at', { ascending: false })
-      setDocs(d || [])
-      docsRef.current = d || []
-
-      // Bookmark status
-      if (user && m) {
-        const { data: bm } = await supabase.from('module_bookmarks')
-          .select('id').eq('user_id', user.id).eq('module_id', parseInt(id)).maybeSingle()
-        setIsBookmarked(!!bm)
-      }
-
-      // User reactions for documents
-      if (user && (d || []).length > 0) {
-        const { data: rxns } = await supabase.from('document_reactions')
-          .select('*').eq('user_id', user.id).in('document_id', d.map(doc => doc.id))
-        const rxnMap = {}
-        rxns?.forEach(r => {
-          if (!rxnMap[r.document_id]) rxnMap[r.document_id] = {}
-          if (r.reaction_type === 'helpful') rxnMap[r.document_id].helpful = true
-          if (r.reaction_type === 'rating')  rxnMap[r.document_id].rating  = r.rating
-          if (r.reaction_type === 'report')  rxnMap[r.document_id].reported = true
-        })
-        try {
-          JSON.parse(localStorage.getItem('signaled_docs') || '[]').forEach(id => {
-            if (!rxnMap[id]) rxnMap[id] = {}
-            rxnMap[id].reported = true
-          })
-        } catch {}
-        setUserReactions(rxnMap)
-      }
-
-      // Document requests for this module
-      const { data: reqs } = await supabase.from('document_requests')
-        .select('*, document_request_votes(user_id)')
-        .eq('module_id', parseInt(id)).eq('status', 'open')
-      const reqMap = {}; const userReqMap = {}
-      reqs?.forEach(r => {
-        reqMap[r.doc_type] = r
-        userReqMap[r.doc_type] = r.document_request_votes?.some(v => v.user_id === user?.id) || false
-      })
-      setRequests(reqMap)
-      setUserRequested(userReqMap)
-
-      // Related modules (same filière)
-      if (m) {
-        const { data: rel } = await supabase
+        const { data: m } = await supabase
           .from('modules')
-          .select('id, name, semester')
-          .eq('filiere_id', m.filiere_id)
-          .neq('id', parseInt(id))
-          .limit(6)
-        setRelated(rel || [])
-      }
+          .select(`*, filieres(name, total_semesters, faculty_id, faculties(name, universities(name, id)))`)
+          .eq('id', parseInt(id))
+          .single()
 
-      // Non-blocking: senpai posts
-      supabase.from('senpai_posts')
-        .select('*, user_profiles(name, universities(name)), senpai_votes(user_id)')
-        .eq('module_id', parseInt(id))
-        .eq('is_approved', true)
-        .order('helpful_count', { ascending: false })
-        .limit(3)
-        .then(({ data }) => setSenpaiPosts(data || []))
+        setMod(m)
+        if (m) {
+          const uniName = m.filieres?.faculties?.universities?.name
+          const filName = m.filieres?.name
+          document.title = uniName ? `${m.name} — ${uniName} — 9rawZid9ra` : `${m.name} — 9rawZid9ra`
+          const metaDesc = document.querySelector('meta[name="description"]')
+          if (metaDesc) {
+            const parts = [m.name, 'Examens, TD, TP et cours', filName, uniName].filter(Boolean)
+            metaDesc.setAttribute('content', parts.join(' — ') + ' — 9rawZid9ra')
+          }
+        }
 
+        const docSelect = user ? '*, user_profiles!uploader_id(name, is_fondateur)' : '*'
+        const { data: d } = await supabase
+          .from('documents')
+          .select(docSelect)
+          .eq('module_id', parseInt(id))
+          .eq('is_flagged', false)
+          .order('created_at', { ascending: false })
+        setDocs(d || [])
+        docsRef.current = d || []
+
+        if (user && m) {
+          const { data: bm } = await supabase.from('module_bookmarks')
+            .select('id').eq('user_id', user.id).eq('module_id', parseInt(id)).maybeSingle()
+          setIsBookmarked(!!bm)
+        }
+
+        if (user && (d || []).length > 0) {
+          const { data: rxns } = await supabase.from('document_reactions')
+            .select('*').eq('user_id', user.id).in('document_id', d.map(doc => doc.id))
+          const rxnMap = {}
+          rxns?.forEach(r => {
+            if (!rxnMap[r.document_id]) rxnMap[r.document_id] = {}
+            if (r.reaction_type === 'helpful') rxnMap[r.document_id].helpful = true
+            if (r.reaction_type === 'rating') rxnMap[r.document_id].rating = r.rating
+            if (r.reaction_type === 'report') rxnMap[r.document_id].reported = true
+          })
+          try {
+            JSON.parse(localStorage.getItem('signaled_docs') || '[]').forEach(id => {
+              if (!rxnMap[id]) rxnMap[id] = {}
+              rxnMap[id].reported = true
+            })
+          } catch {}
+          setUserReactions(rxnMap)
+        }
+
+        const { data: reqs } = await supabase.from('document_requests')
+          .select('*, document_request_votes(user_id)')
+          .eq('module_id', parseInt(id)).eq('status', 'open')
+        const reqMap = {}; const userReqMap = {}
+        reqs?.forEach(r => {
+          reqMap[r.doc_type] = r
+          userReqMap[r.doc_type] = r.document_request_votes?.some(v => v.user_id === user?.id) || false
+        })
+        setRequests(reqMap)
+        setUserRequested(userReqMap)
+
+        if (m) {
+          const { data: rel } = await supabase
+            .from('modules')
+            .select('id, name, semester')
+            .eq('filiere_id', m.filiere_id)
+            .neq('id', parseInt(id))
+            .limit(6)
+          setRelated(rel || [])
+        }
+
+        supabase.from('senpai_posts')
+          .select('*, user_profiles(name, universities(name)), senpai_votes(user_id)')
+          .eq('module_id', parseInt(id))
+          .eq('is_approved', true)
+          .order('helpful_count', { ascending: false })
+          .limit(3)
+          .then(({ data }) => setSenpaiPosts(data || []))
       } catch (err) {
         console.error('ModulePage load error:', err)
       } finally {
@@ -557,7 +198,7 @@ export default function ModulePage() {
         if (payload.new.is_flagged) { setDocs(prev => prev.filter(d => d.id !== payload.new.id)); return }
         setDocs(prev => {
           if (prev.some(d => d.id === payload.new.id)) return prev.map(d => d.id === payload.new.id ? { ...d, ...payload.new } : d)
-          return prev // newly-unflagged doc not yet in list — fetched below
+          return prev
         })
         const alreadyPresent = docsRef.current.some(d => d.id === payload.new.id)
         if (!alreadyPresent && !payload.new.is_flagged) {
@@ -570,86 +211,59 @@ export default function ModulePage() {
     return () => supabase.removeChannel(channel)
   }, [id])
 
-  const GROUP_ORDER = ['examen','cc','td','tp','cours','corrige_examen','corrige_td','corrige_tp','quiz','projet_final']
-
-  const tabDocs = activeTab === 'all' ? docs : docs.filter(d => d.doc_type === activeTab)
-
+  const tabDocs = docs.filter(d => matchesTab(d, activeTab))
   const grouped = GROUP_ORDER.reduce((acc, type) => {
     const group = tabDocs.filter(d => d.doc_type === type)
     if (group.length > 0) {
       acc[type] = [...group].sort((a, b) => {
-        if (['examen','cc','corrige_examen'].includes(type)) {
-          return (b.academic_year || '').localeCompare(a.academic_year || '')
-        }
+        if (['examen', 'cc', 'corrige_examen'].includes(type)) return (b.academic_year || '').localeCompare(a.academic_year || '')
         return (a.doc_number || '').localeCompare(b.doc_number || '', undefined, { numeric: true })
       })
     }
     return acc
   }, {})
 
-  const displayed = tabDocs
-
-  const typeCounts = Object.keys(TYPE_CONFIG).reduce((acc, k) => {
-    acc[k] = docs.filter(d => d.doc_type === k).length
-    return acc
-  }, {})
-
+  const typeCounts = GROUP_ORDER.reduce((acc, k) => { acc[k] = docs.filter(d => d.doc_type === k).length; return acc }, {})
   const maxCount = Math.max(...Object.values(typeCounts), 1)
+  const tabCount = (k) => docs.filter(d => matchesTab(d, k)).length
 
   const handleDownload = (doc) => {
     if (!user) { setShowAuthGate(true); return }
-    // Open immediately (must be synchronous — async breaks browser popup policy)
     if (doc.files && doc.files.length > 0) window.open(doc.files[0], '_blank')
-    // Log in background (fire-and-forget)
     supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id }).then()
     supabase.from('documents').update({ downloads: (doc.downloads || 0) + 1 }).eq('id', doc.id).then()
   }
 
-  // ── HELPFUL ──────────────────────────────────────────────────────────────
   const handleHelpful = async (doc) => {
     if (!user) { setShowAuthGate(true); return }
     const isH = userReactions[doc.id]?.helpful
-    console.log('[handleHelpful] START — doc.id:', doc.id, '| isH (removing?):', isH, '| user.id:', user.id)
-
-    // optimistic UI
     setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], helpful: !isH } }))
     setDocs(p => p.map(d => d.id === doc.id ? { ...d, helpful_count: Math.max(0, (d.helpful_count || 0) + (isH ? -1 : 1)) } : d))
-
-    // DB write — trigger trg_doc_helpful_count (SECURITY DEFINER) auto-updates documents.helpful_count
     if (isH) {
-      const { error: delErr } = await supabase.from('document_reactions').delete().eq('user_id', user.id).eq('document_id', doc.id).eq('reaction_type', 'helpful')
-      console.log('[handleHelpful] DELETE reaction — error:', delErr)
+      await supabase.from('document_reactions').delete().eq('user_id', user.id).eq('document_id', doc.id).eq('reaction_type', 'helpful')
     } else {
-      const { data: insData, error: insErr } = await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'helpful' }).select()
-      console.log('[handleHelpful] INSERT reaction — data:', insData, '| error:', insErr)
+      await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'helpful' })
     }
-
-    // fetch true count from documents (trigger already updated it) to correct optimistic UI
-    const { data: freshDoc, error: selErr } = await supabase.from('documents').select('helpful_count').eq('id', doc.id).single()
-    console.log('[handleHelpful] SELECT documents.helpful_count — freshDoc:', freshDoc, '| error:', selErr)
+    const { data: freshDoc } = await supabase.from('documents').select('helpful_count').eq('id', doc.id).single()
     if (freshDoc) setDocs(p => p.map(d => d.id === doc.id ? { ...d, helpful_count: freshDoc.helpful_count } : d))
-    console.log('[handleHelpful] DONE — final helpful_count set to:', freshDoc?.helpful_count)
   }
 
-  // ── RATING ────────────────────────────────────────────────────────────────
   const handleRating = async (doc, star) => {
     if (!user) { setShowAuthGate(true); return }
     const prev = userReactions[doc.id]?.rating || 0
     await supabase.from('document_reactions')
       .upsert({ user_id: user.id, document_id: doc.id, reaction_type: 'rating', rating: star },
         { onConflict: 'user_id,document_id,reaction_type' })
-    const newSum   = (doc.rating_sum || 0) - prev + star
+    const newSum = (doc.rating_sum || 0) - prev + star
     const newCount = prev === 0 ? (doc.rating_count || 0) + 1 : (doc.rating_count || 0)
     await supabase.from('documents').update({ rating_sum: newSum, rating_count: newCount }).eq('id', doc.id)
     setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], rating: star } }))
     setDocs(p => p.map(d => d.id === doc.id ? { ...d, rating_sum: newSum, rating_count: newCount } : d))
   }
 
-  // ── REPORT ────────────────────────────────────────────────────────────────
   const handleReport = async (doc) => {
     if (!user) { setShowAuthGate(true); return }
     if (userReactions[doc.id]?.reported) return
-    // Optimistic update + localStorage persistence (prevents spam, survives refresh)
     setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], reported: true } }))
     try {
       const stored = JSON.parse(localStorage.getItem('signaled_docs') || '[]')
@@ -657,9 +271,9 @@ export default function ModulePage() {
     } catch {}
     await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'report' })
     await supabase.from('documents').update({ report_count: (doc.report_count || 0) + 1 }).eq('id', doc.id)
+    notify.success('Document signalé', 'Notre équipe va vérifier.')
   }
 
-  // ── BOOKMARK ──────────────────────────────────────────────────────────────
   const handleBookmark = async () => {
     if (!user) { setShowAuthGate(true); return }
     if (isBookmarked) {
@@ -671,7 +285,6 @@ export default function ModulePage() {
     }
   }
 
-  // ── DOCUMENT REQUEST ──────────────────────────────────────────────────────
   const handleRequest = async (docType) => {
     if (!user) { setShowAuthGate(true); return }
     const existing = requests[docType]
@@ -687,7 +300,7 @@ export default function ModulePage() {
         for (const uid of uids) {
           await supabase.from('notifications').insert({
             user_id: uid, type: 'doc_request', actor_id: user.id,
-            post_title: `${newVotes} étudiants demandent un(e) ${TYPE_CONFIG[docType]?.full || docType} pour ${mod?.name}`,
+            post_title: `${newVotes} étudiants demandent un(e) ${TYPE_LABELS[docType] || docType} pour ${mod?.name}`,
           })
         }
       }
@@ -703,697 +316,368 @@ export default function ModulePage() {
         setUserRequested(p => ({ ...p, [docType]: true }))
       }
     }
+    notify.success('Demande envoyée')
+    setShowReqModal(false)
+  }
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(`https://9rawzid9ra.space/module/${slug}`)
+    notify.info('Lien copié')
   }
 
   if (loading) return (
-    <div className="page">
+    <div>
       <style>{css}</style>
       <Navbar />
-      {/* Breadcrumb skeleton */}
-      <div style={{ padding:'0.6rem 2.5rem', background:'#070C18', borderBottom:'1px solid #1C2A45', display:'flex', gap:8 }}>
-        {[60,80,90,110].map((w,i) => <div key={i} className="skel" style={{ height:12, width:w, borderRadius:4 }} />)}
-      </div>
-      {/* Hero skeleton */}
-      <div style={{ background:'#070C18', borderBottom:'1px solid #1C2A45', padding:'2rem 2.5rem' }}>
-        <div style={{ maxWidth:1000, display:'flex', flexDirection:'column', gap:14 }}>
-          <div style={{ display:'flex', gap:8 }}>
-            {[48,72,80].map((w,i) => <div key={i} className="skel" style={{ height:22, width:w, borderRadius:4 }} />)}
-          </div>
-          <div className="skel" style={{ height:36, width:'55%', borderRadius:8 }} />
-          <div style={{ display:'flex', gap:32 }}>
-            {[3].fill(0).map((_,i) => (
-              <div key={i} style={{ display:'flex', flexDirection:'column', gap:5 }}>
-                <div className="skel" style={{ height:10, width:68, borderRadius:3 }} />
-                <div className="skel" style={{ height:15, width:48, borderRadius:4 }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      {/* Doc list skeleton */}
-      <div style={{ maxWidth:1300, margin:'0 auto', padding:'2rem 2.5rem', display:'grid', gridTemplateColumns:'1fr 320px', gap:'2rem' }}>
-        <div>
-          {/* Tabs skeleton */}
-          <div style={{ display:'flex', gap:4, marginBottom:'1.5rem', background:'#070C18', border:'1px solid #1C2A45', borderRadius:10, padding:4 }}>
-            {[48,68,32,32,56,32,32,52].map((w,i) => <div key={i} className="skel" style={{ height:32, width:w+16, borderRadius:7 }} />)}
-          </div>
-          {/* Doc card skeletons */}
-          {[...Array(4)].map((_, i) => (
-            <div key={i} style={{ marginBottom:8, border:'1px solid #1C2A45', borderRadius:10, overflow:'hidden' }}>
-              <div style={{ padding:'14px 16px', display:'flex', alignItems:'center', gap:14 }}>
-                <div className="skel" style={{ width:42, height:42, borderRadius:9, flexShrink:0 }} />
-                <div style={{ flex:1, display:'flex', flexDirection:'column', gap:7 }}>
-                  <div className="skel" style={{ height:14, width:'45%', borderRadius:4 }} />
-                  <div className="skel" style={{ height:11, width:'65%', borderRadius:4 }} />
-                </div>
-                <div style={{ display:'flex', gap:6 }}>
-                  <div className="skel" style={{ height:32, width:72, borderRadius:7 }} />
-                  <div className="skel" style={{ height:32, width:88, borderRadius:7 }} />
-                </div>
-              </div>
-              <div style={{ height:36, borderTop:'1px solid #1C2A45', padding:'0 16px', display:'flex', alignItems:'center', gap:12 }}>
-                <div className="skel" style={{ height:12, width:64, borderRadius:4 }} />
-                <div className="skel" style={{ height:12, width:80, borderRadius:4 }} />
-              </div>
-            </div>
-          ))}
-        </div>
-        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-          <div className="skel" style={{ height:180, borderRadius:12 }} />
-          <div className="skel" style={{ height:120, borderRadius:12 }} />
-        </div>
+      <div className="mp-hero"><div className="mp-hero__inner"><Skeleton height={20} width={200} /><Skeleton height={38} width="55%" style={{ marginTop: 12 }} /><Skeleton height={16} width={320} style={{ marginTop: 12 }} /></div></div>
+      <div className="mp-layout">
+        <div>{[...Array(4)].map((_, i) => <Card key={i} style={{ marginBottom: 8 }}><Skeleton height={56} /></Card>)}</div>
+        <div className="mp-aside"><Card><Skeleton height={140} /></Card><Card><Skeleton height={100} /></Card></div>
       </div>
     </div>
   )
 
   if (!mod) return (
-    <div className="page">
+    <div>
       <style>{css}</style>
       <Navbar />
-      <div style={{ padding: '4rem 2.5rem', textAlign: 'center' }}>
-        <div style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.75rem', color: 'var(--text3)', marginBottom: '1rem' }}>
-          // 404 — module not found
-        </div>
-        <button
-          style={{ background:'var(--accent)', color:'#fff', border:'none', borderRadius:'8px', padding:'9px 22px', fontSize:'0.85rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif' }}
-          onClick={() => navigate('/browse')}
-        >
-          Retour à l'explorateur
-        </button>
+      <div style={{ padding: 'var(--space-16) var(--space-6)' }}>
+        <EmptyState icon="alert" title="Module introuvable">
+          Ce module n'existe pas ou a été déplacé.
+          <div style={{ marginTop: 'var(--space-4)' }}><Button variant="primary" as={Link} to="/browse">Retour à l'explorateur</Button></div>
+        </EmptyState>
       </div>
     </div>
   )
 
   const uniName = mod.filieres?.faculties?.universities?.name
+  const uniId = mod.filieres?.faculties?.universities?.id
   const facName = mod.filieres?.faculties?.name
   const filName = mod.filieres?.name
+  const totalDownloads = docs.reduce((s, d) => s + (d.downloads || 0), 0)
+  const totalTypes = GROUP_ORDER.length
+  const distinctTypes = new Set(docs.map(d => d.doc_type)).size
+  const coverageTone = distinctTypes >= 7 ? 'success' : distinctTypes >= 4 ? 'warning' : 'danger'
+  const openRequests = Object.values(requests)
+
+  const breadcrumbItems = [
+    { label: 'Explorer', href: '/browse' },
+    uniName && { label: uniName, href: `/browse?uni=${uniId}` },
+    facName && { label: facName },
+    filName && { label: filName },
+    { label: mod.name },
+  ].filter(Boolean)
 
   return (
-    <div className="page">
+    <div>
       <style>{css}</style>
-
       <Navbar />
 
-      {/* BREADCRUMB */}
-      <div className="breadcrumb-strip">
-        <span className="bc" onClick={() => navigate('/browse')}>modules</span>
-        {uniName && <><span className="bc-sep">/</span><span className="bc" onClick={() => navigate(`/browse?uni=${mod.filieres?.faculties?.university_id}`)}>{uniName}</span></>}
-        {facName && <><span className="bc-sep">/</span><span className="bc">{facName}</span></>}
-        {filName && <><span className="bc-sep">/</span><span className="bc">{filName}</span></>}
-        <span className="bc-sep">/</span>
-        <span className="bc bc-active">{mod.name}</span>
-      </div>
-
-      {/* MODULE HERO */}
-      <div className="mod-hero">
-        <div className="mod-hero-inner">
-          <div className="mod-tags">
-            <span className="mod-tag tag-sem">{mod.semester}</span>
-            {filName && <span className="mod-tag tag-fil">{filName}</span>}
-            {uniName && <span className="mod-tag tag-uni">{uniName}</span>}
+      <div className="mp-hero">
+        <div className="mp-hero__inner">
+          <Breadcrumb items={breadcrumbItems} linkAs={Link} />
+          <div className="mp-hero__top" style={{ marginTop: 'var(--space-3)' }}>
+            <div>
+              <span className="t-eyebrow qz-subtle">S{mod.semester}{filName ? ` · ${filName}` : ''}{facName ? ` · ${facName}` : ''}</span>
+              <h1 className="t-h1" style={{ marginTop: 4 }}>{mod.name}</h1>
+            </div>
           </div>
-          <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:'1.25rem' }}>
-            <h1 className="mod-name" style={{ marginBottom:0, flex:1 }}>{mod.name}</h1>
-            <button
-              onClick={handleBookmark}
-              title={isBookmarked ? 'Retirer des favoris' : 'Sauvegarder ce module'}
-              style={{ marginTop:8, flexShrink:0, background: isBookmarked ? 'rgba(79,142,247,0.12)' : 'rgba(79,142,247,0.08)', border:`1px solid ${isBookmarked ? '#4F8EF7' : 'rgba(79,142,247,0.35)'}`, color: isBookmarked ? '#4F8EF7' : '#7BB3FF', borderRadius:8, padding:'7px 14px', cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', gap:6, fontSize:'0.8rem', fontWeight:600, fontFamily:'Outfit,sans-serif' }}
-            >
-              <svg width={14} height={14} viewBox="0 0 24 24" fill={isBookmarked ? '#4F8EF7' : 'none'} stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/>
-              </svg>
-              {isBookmarked ? 'Sauvegardé' : 'Sauvegarder'}
-            </button>
+          {docs.length > 0 && (
+            <div style={{ marginTop: 'var(--space-3)' }}><Badge tone={coverageTone}>{distinctTypes}/{totalTypes} types de documents disponibles</Badge></div>
+          )}
+          <div className="qz-meta" style={{ marginTop: 'var(--space-3)' }}>
+            <span><b>{docs.length}</b> document{docs.length !== 1 ? 's' : ''}</span>
+            <span><b>{totalDownloads}</b> téléchargement{totalDownloads !== 1 ? 's' : ''}</span>
+            {docs[0] && <span>mis à jour {fmtAgo(docs[0].created_at)}</span>}
           </div>
-          {docs.length > 0 && (() => {
-            const totalTypes   = Object.keys(TYPE_CONFIG).length
-            const distinctTypes = new Set(docs.map(d => d.doc_type)).size
-            const color  = distinctTypes >= 7 ? '#4ADE80' : distinctTypes >= 4 ? '#FBD34D' : '#F87171'
-            const bg     = distinctTypes >= 7 ? 'rgba(74,222,128,0.08)' : distinctTypes >= 4 ? 'rgba(251,211,77,0.08)' : 'rgba(248,113,113,0.08)'
-            const border = distinctTypes >= 7 ? 'rgba(74,222,128,0.2)'  : distinctTypes >= 4 ? 'rgba(251,211,77,0.2)'  : 'rgba(248,113,113,0.2)'
-            return (
-              <div style={{ display:'inline-flex', alignItems:'center', gap:7, background:bg, border:`1px solid ${border}`, borderRadius:7, padding:'4px 12px', marginBottom:'1rem', fontSize:'0.72rem', fontFamily:'DM Mono,monospace', color }}>
-                📊 {distinctTypes}/{totalTypes} types de documents disponibles
-              </div>
-            )
-          })()}
-          <div className="mod-meta">
-            <div className="mod-meta-item">
-              <span className="mod-meta-label">DOCUMENTS</span>
-              <span className="mod-meta-val">{docs.length}</span>
-            </div>
-            <div className="mod-meta-item">
-              <span className="mod-meta-label">SEMESTRE</span>
-              <span className="mod-meta-val">{mod.semester}</span>
-            </div>
-            <div className="mod-meta-item">
-              <span className="mod-meta-label">FACULTÉ</span>
-              <span className="mod-meta-val">{facName || '—'}</span>
-            </div>
-            <div className="mod-meta-item">
-              <span className="mod-meta-label">STATUT</span>
-              <span className="mod-meta-val" style={{ color: 'var(--teal2)' }}>Gratuit</span>
-            </div>
+          <div className="mp-hero__actions">
+            <Button variant="primary" icon="upload" as={Link} to="/upload">Partager un document</Button>
+            <Button variant="secondary" icon="bookmark" aria-pressed={isBookmarked} onClick={handleBookmark}>{isBookmarked ? 'Suivi' : 'Suivre'}</Button>
+            <Button variant="ghost" iconOnly icon="send" aria-label="Partager le lien" onClick={copyLink} />
           </div>
         </div>
       </div>
 
-      {/* LAYOUT */}
-      <div className="layout">
-        {/* MAIN */}
-        <div className="main">
-          {/* Tabs */}
-          <div className="tabs-wrap">
-            <div className="filter-tabs" ref={tabsBarRef} style={{ marginBottom:0 }}>
-              {TABS.map(t => (
-                <button key={t.k} className={`filter-tab ${activeTab===t.k?'on':''}`}
-                  onClick={() => setActiveTab(t.k)}>
-                  {t.l}
-                  {t.k !== 'all' && typeCounts[t.k] > 0 && (
-                    <span style={{ marginLeft: 6, fontSize: '0.65rem', opacity: 0.6 }}>
-                      {typeCounts[t.k]}
-                    </span>
-                  )}
-                </button>
-              ))}
+      <div className="mp-layout">
+        <div>
+          <div className="mp-tabs-wrap">
+            <div className="mp-tabs-scroll">
+              <Tabs label="Types de documents" value={activeTab} onChange={setActiveTab}
+                items={TABS.map(t => ({ id: t.k, label: t.l, count: t.k === 'all' ? undefined : (tabCount(t.k) || undefined) }))} />
             </div>
-            <div className="tabs-fade" style={{ opacity: tabsAtEnd ? 0 : 1 }} />
-            <div className="tabs-chevron" style={{ opacity: tabsAtEnd ? 0 : 1 }}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <path d="M4.5 2.5L8 6L4.5 9.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            {!slideHintDone && (
-              <div className="tabs-hint">Glisse pour voir plus →</div>
-            )}
+            <div className="mp-tabs-fade" />
           </div>
 
-          {/* Document list */}
-          <div className="doc-list">
-            {displayed.length === 0 ? (
-              activeTab !== 'all' ? (
-                <div style={{ border:'1px dashed #1C2A45', borderRadius:12, padding:'24px 20px', textAlign:'center', background:'rgba(79,142,247,0.03)' }}>
-                  <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.6rem', color:'#4A5568', letterSpacing:'2px', marginBottom:8 }}>
-                    // aucun {TYPE_CONFIG[activeTab]?.full || activeTab} disponible
-                  </div>
-                  <div style={{ fontSize:'0.95rem', fontWeight:600, color:'#E2E8F0', marginBottom:6 }}>
-                    Ce document n'existe pas encore
-                  </div>
-                  <div style={{ fontSize:'0.8rem', color:'#4A5568', marginBottom:16 }}>
-                    {requests[activeTab]
-                      ? `${requests[activeTab].votes} étudiant${requests[activeTab].votes > 1 ? 's' : ''} ont déjà demandé ce document`
-                      : 'Sois le premier à demander ce document à la communauté !'}
-                  </div>
-                  <div style={{ display:'flex', gap:10, justifyContent:'center', flexWrap:'wrap' }}>
-                    <button
-                      onClick={() => handleRequest(activeTab)}
-                      disabled={userRequested[activeTab]}
-                      style={{ background: userRequested[activeTab] ? 'rgba(79,142,247,0.1)' : 'rgba(79,142,247,0.12)', border:`1px solid ${userRequested[activeTab] ? 'rgba(79,142,247,0.3)' : 'rgba(79,142,247,0.3)'}`, color: userRequested[activeTab] ? '#4F8EF7' : '#7BB3FF', borderRadius:8, padding:'8px 18px', fontSize:'0.8rem', fontWeight:600, cursor: userRequested[activeTab] ? 'default' : 'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
-                    >
-                      {userRequested[activeTab] ? '✓ Demande envoyée' : '📩 Demander ce document'}
-                    </button>
-                    <button onClick={() => navigate('/upload')}
-                      style={{ background:'none', border:'1px solid #1C2A45', color:'#94A3B8', borderRadius:8, padding:'8px 18px', fontSize:'0.8rem', fontWeight:500, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}>
-                      Uploader moi-même
-                    </button>
-                  </div>
+          {tabDocs.length === 0 ? (
+            activeTab !== 'all' ? (
+              <EmptyState icon="inbox" title={`Pas encore de ${TABS.find(t => t.k === activeTab)?.l.toLowerCase()}`}>
+                {requests[activeTab === 'corrige' ? 'corrige_examen' : activeTab]
+                  ? `${requests[activeTab]?.votes || 0} étudiant(s) ont déjà demandé ce document.`
+                  : 'Sois le premier à demander ce document à la communauté.'}
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <Button variant="secondary" disabled={userRequested[activeTab]} onClick={() => handleRequest(activeTab === 'corrige' ? 'corrige_examen' : activeTab)}>
+                    {userRequested[activeTab] ? 'Demande envoyée' : 'Demander ce document'}
+                  </Button>
+                  <Button variant="ghost" as={Link} to="/upload">Partager moi-même</Button>
                 </div>
-              ) : (
-              <div className="empty">
-                <div className="empty-code">// no documents found for this filter</div>
-                <div className="empty-title">Aucun document disponible</div>
-                <div className="empty-sub">
-                  Sois le premier à uploader un document pour ce module !
-                </div>
-                <button className="empty-upload-btn" onClick={() => navigate('/upload')}>
-                  Uploader le premier document
-                </button>
-              </div>
-              )
+              </EmptyState>
             ) : (
-              GROUP_ORDER.filter(type => grouped[type]).map(type => {
-                const groupDocs = grouped[type]
-                const cfg = TYPE_CONFIG[type]
-                const count = groupDocs.length
-                const iconColor = {
-                  examen:'#F87171', cc:'#FBD34D', td:'#7BB3FF', tp:'#4F8EF7',
-                  cours:'#5EEAD4', corrige_examen:'#FBD34D', corrige_td:'#7BB3FF',
-                  corrige_tp:'#4F8EF7', quiz:'#C4B5FD', projet_final:'#F87171',
-                }[type] || '#94A3B8'
-                const iconBg = {
-                  examen:'rgba(248,113,113,0.08)', cc:'rgba(251,211,77,0.08)',
-                  td:'rgba(79,142,247,0.08)', tp:'rgba(79,142,247,0.08)',
-                  cours:'rgba(94,234,212,0.08)', corrige_examen:'rgba(251,211,77,0.08)',
-                  corrige_td:'rgba(79,142,247,0.08)', corrige_tp:'rgba(79,142,247,0.08)',
-                  quiz:'rgba(167,139,250,0.08)', projet_final:'rgba(248,113,113,0.08)',
-                }[type] || 'rgba(148,163,184,0.08)'
-                const iconBorder = {
-                  examen:'rgba(248,113,113,0.2)', cc:'rgba(251,211,77,0.2)',
-                  td:'rgba(79,142,247,0.2)', tp:'rgba(79,142,247,0.2)',
-                  cours:'rgba(94,234,212,0.2)', corrige_examen:'rgba(251,211,77,0.2)',
-                  corrige_td:'rgba(79,142,247,0.2)', corrige_tp:'rgba(79,142,247,0.2)',
-                  quiz:'rgba(167,139,250,0.2)', projet_final:'rgba(248,113,113,0.2)',
-                }[type] || 'rgba(148,163,184,0.2)'
-
-                return (
-                  <div key={type} style={{ marginBottom:'2rem' }}>
-                    {/* Group header — only when showing all tabs */}
-                    {activeTab === 'all' && (
-                      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12, paddingBottom:8, borderBottom:'1px solid #1C2A45' }}>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4A5568', letterSpacing:'2px', textTransform:'uppercase' }}>
-                          {cfg?.full || type}
-                        </span>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4F8EF7', background:'rgba(79,142,247,0.08)', padding:'2px 8px', borderRadius:4 }}>
-                          {count} fichier{count > 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Docs in group */}
-                    {groupDocs.map(doc => (
-                      <div key={doc.id} id={`doc-${doc.id}`} style={{ marginBottom:6, border:'1px solid #1C2A45', borderRadius:10, overflow:'hidden', transition:'border-color 0.15s' }}
-                        onMouseEnter={e => e.currentTarget.style.borderColor='#2D4A7A'}
-                        onMouseLeave={e => e.currentTarget.style.borderColor='#1C2A45'}
-                      >
-                      <div
-                        style={{ background:'#070C18', padding:'14px 16px', display:'flex', alignItems:'center', gap:14, cursor: doc.files?.length === 1 ? 'pointer' : 'default' }}
-                        onClick={() => { if (doc.files?.length === 1) handleDownload(doc) }}
-                      >
-                        {/* Type icon */}
-                        <div style={{ width:42, height:42, borderRadius:9, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.58rem', fontWeight:600, background:iconBg, color:iconColor, border:`1px solid ${iconBorder}` }}>
-                          {cfg?.label || 'DOC'}
-                        </div>
-
-                        {/* Info */}
-                        <div style={{ flex:1, minWidth:0 }}>
-                          <div style={{ fontSize:'0.9rem', fontWeight:600, color:'#FFFFFF', marginBottom:3, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
-                            {doc.doc_number ? doc.doc_number : (cfg?.full || doc.doc_type)}
-                          </div>
-                          <div style={{ display:'flex', gap:8, alignItems:'center', fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4A5568', flexWrap:'wrap' }}>
-                            {doc.academic_year && <span style={{ color:'#94A3B8' }}>{doc.academic_year}</span>}
-                            {doc.academic_year && doc.professor && <span>·</span>}
+              <EmptyState icon="file" title="Aucun document disponible">
+                Sois le premier à partager un document pour ce module. Les 100 premiers contributeurs gagnent le badge Fondateur.
+                <div style={{ marginTop: 'var(--space-2)' }}><Button variant="primary" as={Link} to="/upload">Partager le premier document</Button></div>
+              </EmptyState>
+            )
+          ) : (
+            GROUP_ORDER.filter(type => grouped[type]).map(type => {
+              const groupDocs = grouped[type]
+              return (
+                <div key={type} className="mp-group">
+                  {activeTab === 'all' && (
+                    <div className="mp-group__head">
+                      <span className="t-eyebrow qz-subtle">{TYPE_LABELS[type]}</span>
+                      <Badge tone="brand">{groupDocs.length}</Badge>
+                    </div>
+                  )}
+                  {groupDocs.map(doc => (
+                    <div key={doc.id} id={`doc-${doc.id}`} className="mp-doc-card">
+                      <div className="qz-row" style={{ cursor: doc.files?.length === 1 ? 'pointer' : 'default' }}
+                        onClick={() => { if (doc.files?.length === 1) handleDownload(doc) }}>
+                        <DocType type={doc.doc_type} size="lg" />
+                        <div className="qz-row__main">
+                          <p className="qz-row__title">{doc.doc_number || TYPE_LABELS[doc.doc_type] || doc.doc_type}</p>
+                          <div className="qz-meta">
+                            {doc.academic_year && <span>{doc.academic_year}</span>}
                             {doc.professor && <span>Prof. {doc.professor}</span>}
-                            <span>·</span>
-                            <span>{doc.files?.length > 1 ? `${doc.files.length} fichiers` : `${doc.pages_count || 1} page${(doc.pages_count || 1) > 1 ? 's' : ''}`}</span>
-                            <span>·</span>
-                            <span>{doc.downloads || 0} DL</span>
-                            <span style={{ color:'#2D4A7A' }}>·</span>
-                            <span
-                              style={{ color:'#5EEAD4', cursor:'pointer', fontFamily:'Outfit,sans-serif', fontWeight:500 }}
-                              onClick={e => { e.stopPropagation(); navigate(`/user/${doc.uploader_id}`) }}
-                              title={`Voir le profil de ${doc.user_profiles?.name || 'Anonyme'}`}
-                            >
-                              ↑ {doc.user_profiles?.name || 'Anonyme'}
-                            </span>
-                            {doc.user_profiles?.is_fondateur && (
-                              <span style={{ background:'#FBD34D', color:'#02040A', borderRadius:4, padding:'1px 6px', fontSize:'0.58rem', fontWeight:700, fontFamily:'DM Mono,monospace', flexShrink:0 }}>🏆</span>
-                            )}
-                            <span style={{ marginLeft:4, background: doc.is_verified ? 'rgba(79,142,247,0.1)' : 'rgba(251,211,77,0.1)', color: doc.is_verified ? '#4F8EF7' : '#FBD34D', border:`1px solid ${doc.is_verified ? 'rgba(79,142,247,0.2)' : 'rgba(251,211,77,0.2)'}`, borderRadius:4, padding:'1px 7px', fontSize:'0.6rem' }}>
-                              {doc.is_verified ? 'Vérifié' : 'En attente'}
-                            </span>
+                            <span>{doc.files?.length > 1 ? `${doc.files.length} fichiers` : `${doc.pages_count || 1} p.`}</span>
+                            <span>{doc.downloads || 0} ↓</span>
+                            <button type="button" className="qz-btn qz-btn--link" style={{ fontSize: 13 }} onClick={e => { e.stopPropagation(); navigate(`/user/${doc.uploader_id}`) }}>
+                              {doc.user_profiles?.name || 'Anonyme'}
+                            </button>
+                            {doc.user_profiles?.is_fondateur && <Badge tone="founder" icon="star">Fondateur</Badge>}
+                            <Badge tone={doc.is_verified ? 'success' : 'warning'} icon={doc.is_verified ? 'check' : undefined}>{doc.is_verified ? 'Vérifié' : 'En attente'}</Badge>
                           </div>
                         </div>
-
-                        {/* Download: multi-file, single-file, or legacy (no files field) */}
                         {doc.files?.length > 1 ? (
-                          <div style={{ display:'flex', flexDirection:'column', gap:6, flexShrink:0 }}>
+                          <div className="mp-multi-files" onClick={e => e.stopPropagation()}>
                             {doc.files.map((fileUrl, i) => (
-                              <button key={i}
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  if (!user) { setShowAuthGate(true); return }
-                                  window.open(fileUrl, '_blank')
-                                  if (i === 0) {
-                                    supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id }).then()
-                                    supabase.from('documents').update({ downloads: (doc.downloads || 0) + 1 }).eq('id', doc.id).then()
-                                  }
-                                }}
-                                style={{ background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.2)', color:'#7BB3FF', borderRadius:6, padding:'5px 12px', fontSize:'0.72rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', whiteSpace:'nowrap' }}
-                                onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.15)'; e.currentTarget.style.borderColor='#4F8EF7' }}
-                                onMouseLeave={e => { e.currentTarget.style.background='rgba(79,142,247,0.08)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.2)' }}
-                              >
-                                {doc.file_names?.[i]
-                                  ? doc.file_names[i].replace(/\.[^/.]+$/, '').replace(/_/g, ' ')
-                                  : `Fichier ${i + 1}`}
-                              </button>
+                              <Button key={i} variant="secondary" size="sm" onClick={() => {
+                                if (!user) { setShowAuthGate(true); return }
+                                window.open(fileUrl, '_blank')
+                                if (i === 0) {
+                                  supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id }).then()
+                                  supabase.from('documents').update({ downloads: (doc.downloads || 0) + 1 }).eq('id', doc.id).then()
+                                }
+                              }}>
+                                {doc.file_names?.[i] ? doc.file_names[i].replace(/\.[^/.]+$/, '').replace(/_/g, ' ') : `Fichier ${i + 1}`}
+                              </Button>
                             ))}
                           </div>
                         ) : doc.files?.length === 1 ? (
-                          <div style={{ display:'flex', gap:6, flexShrink:0 }}>
-                            <button
-                              onClick={e => { e.stopPropagation(); if (!user) { setShowAuthGate(true); return } if (window.innerWidth <= 768) { window.open(doc.files[0], '_blank') } else { setPreviewDoc(doc) } }}
-                              style={{ background:'rgba(79,142,247,0.07)', border:'1px solid rgba(79,142,247,0.2)', color:'#4F8EF7', borderRadius:7, padding:'7px 12px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
-                              onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.15)'; e.currentTarget.style.borderColor='#4F8EF7' }}
-                              onMouseLeave={e => { e.currentTarget.style.background='rgba(79,142,247,0.07)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.2)' }}
-                            >
-                              <FiEye size={13} style={{marginRight:5, verticalAlign:'-2px'}}/> Aperçu
-                            </button>
-                            <button
-                              onClick={e => { e.stopPropagation(); handleDownload(doc) }}
-                              style={{ background:'rgba(79,142,247,0.08)', border:'1px solid rgba(79,142,247,0.2)', color:'#7BB3FF', borderRadius:7, padding:'7px 16px', fontSize:'0.75rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', whiteSpace:'nowrap' }}
-                              onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.15)'; e.currentTarget.style.borderColor='#4F8EF7' }}
-                              onMouseLeave={e => { e.currentTarget.style.background='rgba(79,142,247,0.08)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.2)' }}
-                            >
-                              <FiDownload size={13} style={{marginRight:5, verticalAlign:'-2px'}}/> Télécharger
-                            </button>
+                          <div className="qz-row__actions" onClick={e => e.stopPropagation()}>
+                            <Button variant="ghost" size="sm" iconOnly icon="eye" aria-label="Aperçu" onClick={() => {
+                              if (!user) { setShowAuthGate(true); return }
+                              if (window.innerWidth <= 768) window.open(doc.files[0], '_blank')
+                              else setPreviewDoc(doc)
+                            }} />
+                            <Button variant="secondary" size="sm" icon="download" onClick={() => handleDownload(doc)}>Télécharger</Button>
                           </div>
                         ) : null}
                       </div>
-                      {/* Reactions row */}
-                      <div style={{ display:'flex', alignItems:'center', gap:16, padding:'8px 16px', borderTop:'1px solid #1C2A45', background:'rgba(0,0,0,0.2)' }}>
-                        <button onClick={e => { e.stopPropagation(); handleHelpful(doc) }}
-                          style={{ display:'flex', alignItems:'center', gap:6,
-                            background: userReactions[doc.id]?.helpful ? 'rgba(79,142,247,0.15)' : 'none',
-                            border: userReactions[doc.id]?.helpful ? '1px solid rgba(79,142,247,0.3)' : '1px solid transparent',
-                            color: userReactions[doc.id]?.helpful ? '#7BB3FF' : '#4A5568',
-                            borderRadius:6, padding:'4px 10px', fontSize:'0.75rem', cursor:'pointer',
-                            fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}>
-                          <FiThumbsUp size={12} style={{marginRight:2}}/> Utile{doc.helpful_count > 0 ? ` · ${doc.helpful_count}` : ''}
-                        </button>
-                        <div style={{ display:'flex', alignItems:'center', gap:3 }}>
-                          {[1,2,3,4,5].map(star => (
-                            <span key={star} onClick={e => { e.stopPropagation(); handleRating(doc, star) }}
-                              style={{ cursor:'pointer', fontSize:'0.9rem',
-                                color: (userReactions[doc.id]?.rating || 0) >= star ? '#FBD34D' : '#1C2A45',
-                                transition:'color 0.1s' }}>★</span>
-                          ))}
-                          {doc.rating_count > 0 && (
-                            <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.65rem', color:'#4A5568', marginLeft:4 }}>
-                              {(doc.rating_sum / doc.rating_count).toFixed(1)} ({doc.rating_count})
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={e => {
-                            e.stopPropagation()
-                            navigator.clipboard.writeText(`https://9rawzid9ra.space/module/${slug}#doc-${doc.id}`)
-                            setCopyToast(true)
-                            setTimeout(() => setCopyToast(false), 2000)
-                          }}
-                          style={{ background:'none', border:'none', color:'#4A5568', fontSize:'0.72rem', fontFamily:'DM Mono,monospace', cursor:'pointer', transition:'color 0.15s', padding:'4px 6px' }}
-                          onMouseEnter={e => e.currentTarget.style.color='#94A3B8'}
-                          onMouseLeave={e => e.currentTarget.style.color='#4A5568'}
-                        >
-                          🔗 Partager
-                        </button>
-                        <div style={{marginLeft:'auto',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:2}}>
-                          {userReactions[doc.id]?.reported ? (
-                            <span style={{fontFamily:'DM Mono,monospace',fontSize:'0.7rem',color:'#F87171'}}>
-                              🚩 Signalé — notre équipe va vérifier
-                            </span>
-                          ) : (
-                            <button onClick={e => { e.stopPropagation(); handleReport(doc) }}
-                              style={{ background:'none', border:'none', color:'#4A5568',
-                                fontSize:'0.72rem', fontFamily:'DM Mono,monospace',
-                                transition:'color 0.15s', cursor:'pointer' }}
-                              onMouseEnter={e => e.currentTarget.style.color='#94A3B8'}
-                              onMouseLeave={e => e.currentTarget.style.color='#4A5568'}>
-                              🚩 Signaler
+                      <div className="mp-doc-card__footer">
+                        <Button variant="ghost" size="sm" icon="up" onClick={() => handleHelpful(doc)} style={userReactions[doc.id]?.helpful ? { color: 'var(--brand-text)' } : undefined}>
+                          Utile{doc.helpful_count > 0 ? ` · ${doc.helpful_count}` : ''}
+                        </Button>
+                        <div className="mp-stars">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button key={star} type="button" className="mp-star" aria-label={`Noter ${star} étoiles`} onClick={() => handleRating(doc, star)}>
+                              <span style={{ display: 'inline-flex', color: (userReactions[doc.id]?.rating || 0) >= star ? 'var(--warning)' : 'var(--border-strong)' }}><Icon name="star" size={14} /></span>
                             </button>
-                          )}
+                          ))}
+                          {doc.rating_count > 0 && <span className="t-mono qz-subtle" style={{ fontSize: 11, marginLeft: 4 }}>{(doc.rating_sum / doc.rating_count).toFixed(1)} ({doc.rating_count})</span>}
                         </div>
+                        <span style={{ flex: 1 }} />
+                        {userReactions[doc.id]?.reported ? (
+                          <Badge tone="danger" icon="flag">Signalé</Badge>
+                        ) : (
+                          <Button variant="ghost" size="sm" icon="flag" iconOnly aria-label="Signaler" onClick={() => setReportTarget(doc)} />
+                        )}
                       </div>
                     </div>
-                    ))}
-                  </div>
-                )
-              })
-            )}
-          </div>
-
-          {/* SENPAI ZONE SECTION */}
-          <div style={{ marginTop:'2.5rem', paddingTop:'2rem', borderTop:'1px solid #1C2A45' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'1rem' }}>
-              <div>
-                <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568', letterSpacing:'2px', textTransform:'uppercase', marginBottom:4 }}>
-                  // senpai zone — tips étudiants
+                  ))}
                 </div>
-                <div style={{ fontSize:'1rem', fontWeight:700, color:'#fff' }}>Expériences sur ce module</div>
+              )
+            })
+          )}
+
+          {openRequests.length > 0 && (
+            <Card style={{ marginTop: 'var(--space-6)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+                <h3 className="t-h3">Demandes de la promo</h3>
+                <Button variant="link" size="sm" onClick={() => { setReqModalType(''); setShowReqModal(true) }}>Demander un document</Button>
               </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <button
-                  onClick={() => navigate(`/senpai?compose=1&module=${id}`)}
-                  style={{ background:'rgba(79,142,247,0.12)', border:'1px solid rgba(79,142,247,0.3)', color:'#7BB3FF', borderRadius:8, padding:'6px 14px', fontSize:'0.78rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background='rgba(79,142,247,0.2)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.5)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background='rgba(79,142,247,0.12)'; e.currentTarget.style.borderColor='rgba(79,142,247,0.3)' }}
-                >
-                  + Partager
-                </button>
-                <button
-                  onClick={() => navigate(`/senpai?module=${id}`)}
-                  style={{ background:'none', border:'1px solid #1C2A45', color:'#94A3B8', borderRadius:8, padding:'6px 14px', fontSize:'0.78rem', fontWeight:500, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor='#2D4A7A'; e.currentTarget.style.color='#E2E8F0' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor='#1C2A45'; e.currentTarget.style.color='#94A3B8' }}
-                >
-                  Voir tous →
-                </button>
+              {openRequests.map(r => (
+                <div key={r.doc_type} className="mp-req-row">
+                  <DocType type={r.doc_type} />
+                  <span className="t-body-sm qz-muted" style={{ flex: 1 }}>{TYPE_LABELS[r.doc_type] || r.doc_type}</span>
+                  <Button variant="ghost" size="sm" icon="up" aria-pressed={userRequested[r.doc_type]} disabled={userRequested[r.doc_type]} onClick={() => handleRequest(r.doc_type)}>{r.votes || 0}</Button>
+                </div>
+              ))}
+            </Card>
+          )}
+
+          <div style={{ marginTop: 'var(--space-8)', paddingTop: 'var(--space-6)', borderTop: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-4)', flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <span className="t-eyebrow qz-subtle">Discussion</span>
+                <h2 className="t-h2">Expériences sur ce module</h2>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button variant="secondary" size="sm" onClick={() => navigate(`/senpai?compose=1&module=${id}`)}>Partager</Button>
+                <Button variant="ghost" size="sm" onClick={() => navigate(`/senpai?module=${id}`)}>Voir sur Senpai Zone</Button>
               </div>
             </div>
 
             {senpaiPosts.length === 0 ? (
-              <div style={{ background:'#070C18', border:'1px dashed #1C2A45', borderRadius:12, padding:'2rem', textAlign:'center' }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#4A5568" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin:'0 auto 10px' }}>
-                  <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
-                </svg>
-                <div style={{ fontSize:'0.88rem', fontWeight:600, color:'#94A3B8', marginBottom:6 }}>Aucun tip senpai pour ce module</div>
-                <div style={{ fontSize:'0.78rem', color:'#4A5568', marginBottom:'1rem' }}>Sois le premier à partager ton expérience !</div>
-                <button
-                  onClick={() => navigate(`/senpai?compose=1&module=${id}`)}
-                  style={{ background:'rgba(196,181,253,0.1)', border:'1px solid rgba(196,181,253,0.25)', color:'#C4B5FD', borderRadius:8, padding:'8px 18px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background='rgba(196,181,253,0.18)' }}
-                  onMouseLeave={e => { e.currentTarget.style.background='rgba(196,181,253,0.1)' }}
-                >
-                  Partager ton expérience
-                </button>
-              </div>
+              <EmptyState icon="message" title="Aucun tip pour ce module">
+                Sois le premier à partager ton expérience.
+                <div style={{ marginTop: 'var(--space-2)' }}><Button variant="secondary" onClick={() => navigate(`/senpai?compose=1&module=${id}`)}>Partager ton expérience</Button></div>
+              </EmptyState>
             ) : (
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              <div className="mp-senpai-list">
                 {senpaiPosts.map(post => {
-                  const PT_COLORS = {
-                    survival_guide: { color:'#7BB3FF', bg:'rgba(79,142,247,0.15)', border:'rgba(79,142,247,0.3)', label:'Guide de survie' },
-                    cheat_code:     { color:'#FBD34D', bg:'rgba(251,211,77,0.15)', border:'rgba(251,211,77,0.3)', label:'Cheat Code' },
-                    timeline:       { color:'#4ADE80', bg:'rgba(74,222,128,0.15)', border:'rgba(74,222,128,0.3)', label:'Timeline' },
-                    red_flag:       { color:'#F87171', bg:'rgba(248,113,113,0.15)', border:'rgba(248,113,113,0.3)', label:'Red Flag' },
-                    path_review:    { color:'#C4B5FD', bg:'rgba(196,181,253,0.15)', border:'rgba(196,181,253,0.3)', label:'Bilan' },
-                  }
-                  const pt = PT_COLORS[post.post_type] || PT_COLORS.survival_guide
                   const authorName = post.user_profiles?.name || 'Anonyme'
                   return (
-                    <div key={post.id}
-                      style={{ background:'#070C18', border:'1px solid #1C2A45', borderRadius:10, padding:'12px 14px', cursor:'pointer', transition:'all 0.15s' }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor='#2D4A7A'; e.currentTarget.style.background='#0C1222' }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor='#1C2A45'; e.currentTarget.style.background='#070C18' }}
-                      onClick={() => navigate(`/senpai?post=${post.id}`)}
-                    >
-                      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', gap:10, marginBottom:8 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                          <div style={{ width:26, height:26, borderRadius:'50%', background:'linear-gradient(135deg,#C4B5FD,#4F8EF7)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'DM Mono,monospace', fontSize:'0.58rem', fontWeight:700, color:'#fff', flexShrink:0 }}>
-                            {authorName.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}
-                          </div>
-                          <span style={{ fontSize:'0.78rem', fontWeight:600, color:'#E2E8F0' }}>{authorName}</span>
+                    <Card key={post.id} className="mp-senpai-card" onClick={() => navigate(`/senpai?post=${post.id}`)}>
+                      <div className="mp-senpai-card__head">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Avatar name={authorName} size="sm" />
+                          <span className="t-label">{authorName}</span>
                         </div>
-                        <div style={{ padding:'2px 8px', borderRadius:20, background:pt.bg, color:pt.color, fontSize:'0.65rem', fontWeight:600, flexShrink:0, border:`1px solid ${pt.border}` }}>
-                          {pt.label}
-                        </div>
+                        <Badge tone="accent">{post.post_type === 'red_flag' ? 'Red Flag' : post.post_type === 'cheat_code' ? 'Cheat Code' : post.post_type === 'timeline' ? 'Timeline' : post.post_type === 'path_review' ? 'Bilan' : 'Guide de survie'}</Badge>
                       </div>
-                      <div style={{ fontSize:'0.85rem', fontWeight:600, color:'#fff', marginBottom:4 }}>{post.title}</div>
-                      <div style={{ fontSize:'0.78rem', color:'#94A3B8', lineHeight:1.5, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden' }}>
-                        {post.content}
+                      <p className="t-h3" style={{ marginBottom: 4 }}>{post.title}</p>
+                      <p className="t-body-sm qz-muted" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{post.content}</p>
+                      <div style={{ textAlign: 'right', marginTop: 8 }}>
+                        <span className="t-mono qz-subtle">{post.helpful_count || 0} utile{(post.helpful_count || 0) !== 1 ? 's' : ''}</span>
                       </div>
-                      <div style={{ display:'flex', alignItems:'center', justifyContent:'flex-end', marginTop:8 }}>
-                        <span style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568' }}>
-                          {post.helpful_count || 0} utile{(post.helpful_count || 0) !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    </div>
+                    </Card>
                   )
                 })}
-                <button
-                  onClick={() => navigate(`/senpai?module=${id}`)}
-                  style={{ background:'none', border:'1px dashed #1C2A45', borderRadius:10, padding:'10px', fontSize:'0.78rem', color:'#4A5568', cursor:'pointer', fontFamily:'Outfit,sans-serif', transition:'all 0.15s', textAlign:'center' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor='#2D4A7A'; e.currentTarget.style.color='#94A3B8' }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor='#1C2A45'; e.currentTarget.style.color='#4A5568' }}
-                >
-                  Voir tous les tips pour ce module →
-                </button>
+                <Button variant="ghost" block onClick={() => navigate(`/senpai?module=${id}`)}>Voir tous les tips pour ce module</Button>
               </div>
             )}
           </div>
         </div>
 
-        {/* ASIDE */}
-        <aside className="aside">
-          {/* Upload card */}
-          <div className="upload-card">
-            <div className="upload-card-title">Tu as un document ?</div>
-            <div className="upload-card-desc">
-              Aide ta promo en uploadant tes examens, CCs ou TDs pour ce module.
-              Gagne des points à chaque upload.
-            </div>
-            <button className="upload-card-btn" onClick={() => navigate('/upload')}>
-              Uploader un document
-            </button>
-          </div>
+        <aside className="mp-aside">
+          <Card>
+            <h3 className="t-h3">Tu as un document ?</h3>
+            <p className="t-body-sm qz-muted" style={{ margin: 'var(--space-2) 0 var(--space-3)' }}>+10 points par document validé.</p>
+            <Button variant="secondary" block as={Link} to="/upload">Partager</Button>
+          </Card>
 
-          {/* Module info */}
-          <div className="aside-card">
-            <div className="aside-card-header">
-              <span className="aside-card-title">// infos module</span>
-            </div>
-            <div className="aside-card-body">
-              <div className="info-row">
-                <span className="info-key">NOM</span>
-                <span className="info-val">{mod.name}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-key">SEMESTRE</span>
-                <span className="info-val">{mod.semester}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-key">FILIÈRE</span>
-                <span className="info-val">{filName || '—'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-key">FACULTÉ</span>
-                <span className="info-val">{facName || '—'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-key">UNIVERSITÉ</span>
-                <span className="info-val">{uniName || '—'}</span>
-              </div>
-              <div className="info-row">
-                <span className="info-key">TYPE</span>
-                <span className="info-val">{mod.type}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Document breakdown */}
           {docs.length > 0 && (
-            <div className="aside-card">
-              <div className="aside-card-header">
-                <span className="aside-card-title">// répartition</span>
-                <span style={{ fontFamily: 'DM Mono', fontSize: '0.65rem', color: 'var(--accent2)' }}>
-                  {docs.length} total
-                </span>
+            <Card>
+              <span className="t-eyebrow qz-subtle">Contenu du module</span>
+              <div style={{ marginTop: 'var(--space-3)' }}>
+                {GROUP_ORDER.filter(k => typeCounts[k] > 0).map(k => (
+                  <div key={k} className="mp-type-row">
+                    <span className="t-body-sm qz-muted mp-type-row__label">{TYPE_LABELS[k]}</span>
+                    <span className="mp-type-row__bar"><ProgressBar value={(typeCounts[k] / maxCount) * 100} /></span>
+                    <span className="t-mono qz-subtle">{typeCounts[k]}</span>
+                  </div>
+                ))}
               </div>
-              <div className="aside-card-body">
-                <div className="type-rows">
-                  {Object.entries(TYPE_CONFIG).map(([k, v]) => (
-                    typeCounts[k] > 0 && (
-                      <div key={k} className="type-stat">
-                        <span className="type-stat-label">{v.full}</span>
-                        <div className="type-stat-bar-wrap">
-                          <div className="type-stat-bar" style={{ width: `${(typeCounts[k]/maxCount)*100}%` }} />
-                        </div>
-                        <span className="type-stat-count">{typeCounts[k]}</span>
-                      </div>
-                    )
-                  ))}
-                </div>
-              </div>
-            </div>
+            </Card>
           )}
 
-          {/* Related modules */}
+          <Card>
+            <span className="t-eyebrow qz-subtle">Infos</span>
+            <div style={{ marginTop: 'var(--space-3)' }}>
+              <div className="mp-info-row"><span className="t-body-sm qz-muted">Établissement</span><span className="t-body-sm">{uniName || '—'}</span></div>
+              <div className="mp-info-row"><span className="t-body-sm qz-muted">Filière</span><span className="t-body-sm">{filName || '—'}</span></div>
+              <div className="mp-info-row"><span className="t-body-sm qz-muted">Semestre</span><span className="t-body-sm">S{mod.semester}</span></div>
+              {docs[0] && <div className="mp-info-row"><span className="t-body-sm qz-muted">Dernier ajout</span><span className="t-body-sm">{fmtAgo(docs[0].created_at)}</span></div>}
+            </div>
+          </Card>
+
           {related.length > 0 && (
-            <div className="aside-card">
-              <div className="aside-card-header">
-                <span className="aside-card-title">// même filière</span>
+            <Card>
+              <span className="t-eyebrow qz-subtle">Modules liés</span>
+              <div style={{ marginTop: 'var(--space-2)' }}>
+                {related.map(r => (
+                  <Link key={r.id} className="mp-related-row" to={`/module/${r.id}`}>
+                    <span className="t-mono qz-subtle" style={{ flexShrink: 0 }}>S{r.semester}</span>
+                    <span className="t-body-sm" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                  </Link>
+                ))}
               </div>
-              <div className="aside-card-body">
-                <div className="related-list">
-                  {related.map(r => (
-                    <div key={r.id} className="related-item" onClick={() => navigate(`/module/${r.id}`)}>
-                      <span className="related-sem">{r.semester}</span>
-                      <span className="related-name">{r.name}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            </Card>
           )}
-          <div className="aside-card" style={{ background:'rgba(251,211,77,0.03)', borderColor:'rgba(251,211,77,0.12)' }}>
-            <div className="aside-card-header" style={{ borderColor:'rgba(251,211,77,0.12)' }}>
-              <span className="aside-card-title" style={{ color:'#FBD34D' }}>// soutenir le projet</span>
-            </div>
-            <div className="aside-card-body" style={{ textAlign:'center' }}>
-              <div style={{ fontSize:'0.78rem', color:'#4A5568', lineHeight:1.6, marginBottom:'0.75rem' }}>
-                9rawZid9ra est 100% gratuit. Un pourboire nous aide à grandir.
-              </div>
-              <a
-                href="https://paypal.me/saadga2003"
-                target="_blank"
-                rel="noreferrer"
-                style={{ display:'inline-block', background:'rgba(251,211,77,0.1)', border:'1px solid rgba(251,211,77,0.3)', color:'#FBD34D', borderRadius:8, padding:'7px 16px', fontSize:'0.8rem', fontWeight:600, cursor:'pointer', fontFamily:"'Outfit',sans-serif", textDecoration:'none', transition:'all 0.15s' }}
-              >
-                ☕ Envoyer un pourboire
-              </a>
-            </div>
-          </div>
+
+          <Card>
+            <span className="t-eyebrow qz-subtle">Soutenir le projet</span>
+            <p className="t-body-sm qz-muted" style={{ margin: 'var(--space-2) 0 var(--space-3)' }}>9rawZid9ra est 100% gratuit. Un pourboire nous aide à grandir.</p>
+            <Button variant="secondary" block as="a" href="https://paypal.me/saadga2003" target="_blank" rel="noreferrer">Envoyer un pourboire</Button>
+          </Card>
         </aside>
       </div>
 
       {showAuthGate && (
-        <div className="auth-gate-ov" onClick={() => setShowAuthGate(false)}>
-          <div className="auth-gate-box" onClick={e => e.stopPropagation()}>
-            <div style={{fontSize:'2rem',marginBottom:'0.75rem'}}>🔒</div>
-            <div style={{fontSize:'1.05rem',fontWeight:700,color:'#fff',marginBottom:'0.5rem',lineHeight:1.35}}>
-              Connecte-toi pour accéder aux documents
+        <div className="qz-scrim" onClick={() => setShowAuthGate(false)}>
+          <div className="qz-modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ textAlign: 'center' }}>
+            <h2 className="qz-modal__title">Crée un compte gratuit pour télécharger</h2>
+            <p className="qz-modal__body">Accès illimité aux examens, CC et TD de ta filière. 30 secondes.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 'var(--space-5)' }}>
+              <Button variant="primary" block onClick={() => { sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search); navigate('/register', { state: { from: `/module/${slug}` } }) }}>Créer un compte</Button>
+              <Button variant="link" onClick={() => { sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search); navigate('/login', { state: { from: `/module/${slug}` } }) }}>J'ai déjà un compte</Button>
+              <Button variant="ghost" onClick={() => setShowAuthGate(false)}>Continuer sans compte</Button>
             </div>
-            <div style={{fontSize:'0.8rem',color:'#94A3B8',lineHeight:1.6,marginBottom:'1.5rem'}}>
-              Crée un compte gratuit pour télécharger et prévisualiser les examens, CCs et TDs.
+          </div>
+        </div>
+      )}
+
+      {reportTarget && (
+        <div className="qz-scrim" onClick={() => setReportTarget(null)}>
+          <div className="qz-modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+            <h2 className="qz-modal__title">Signaler ce document ?</h2>
+            <p className="qz-modal__body">Notre équipe de modération va vérifier ce document.</p>
+            <div className="qz-modal__actions">
+              <Button variant="secondary" onClick={() => setReportTarget(null)}>Annuler</Button>
+              <Button variant="danger" onClick={() => { handleReport(reportTarget); setReportTarget(null) }}>Signaler</Button>
             </div>
-            <div style={{display:'flex',gap:10,justifyContent:'center'}}>
-              <button
-                onClick={() => { sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search); navigate('/login', { state: { from: `/module/${slug}` } }) }}
-                style={{background:'#4F8EF7',color:'#fff',border:'none',borderRadius:9,padding:'10px 22px',fontSize:'0.875rem',fontWeight:600,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'background 0.15s'}}
-                onMouseEnter={e => e.currentTarget.style.background='#3A6ED4'}
-                onMouseLeave={e => e.currentTarget.style.background='#4F8EF7'}>
-                Se connecter
-              </button>
-              <button
-                onClick={() => { sessionStorage.setItem('redirectAfterLogin', window.location.pathname + window.location.search); navigate('/register', { state: { from: `/module/${slug}` } }) }}
-                style={{background:'none',border:'1px solid #1C2A45',color:'#94A3B8',borderRadius:9,padding:'10px 22px',fontSize:'0.875rem',fontWeight:500,cursor:'pointer',fontFamily:'Outfit,sans-serif',transition:'all 0.15s'}}
-                onMouseEnter={e => { e.currentTarget.style.borderColor='#2D4A7A'; e.currentTarget.style.color='#E2E8F0' }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor='#1C2A45'; e.currentTarget.style.color='#94A3B8' }}>
-                Créer un compte
-              </button>
+          </div>
+        </div>
+      )}
+
+      {showReqModal && (
+        <div className="qz-scrim" onClick={() => setShowReqModal(false)}>
+          <div className="qz-modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+            <h2 className="qz-modal__title">Demander un document</h2>
+            <div className="mp-req-form">
+              <Select label="Type de document" value={reqModalType} onChange={e => setReqModalType(e.target.value)} options={[{ value: '', label: 'Choisis un type' }, ...GROUP_ORDER.map(k => ({ value: k, label: TYPE_LABELS[k] }))]} />
             </div>
-            <button onClick={() => setShowAuthGate(false)}
-              style={{background:'none',border:'none',color:'#4A5568',fontSize:'0.72rem',cursor:'pointer',fontFamily:'DM Mono,monospace',marginTop:'1rem',display:'block',width:'100%'}}>
-              Continuer sans compte
-            </button>
+            <div className="qz-modal__actions">
+              <Button variant="secondary" onClick={() => setShowReqModal(false)}>Annuler</Button>
+              <Button variant="primary" disabled={!reqModalType} onClick={() => handleRequest(reqModalType)}>Envoyer</Button>
+            </div>
           </div>
         </div>
       )}
 
       {previewDoc && (
-        <div className="pdf-overlay">
-          <div className="pdf-modal-head">
-            <span className="pdf-modal-title">
-              {previewDoc.doc_number || TYPE_CONFIG[previewDoc.doc_type]?.full || previewDoc.doc_type}
-              {previewDoc.academic_year ? ` — ${previewDoc.academic_year}` : ''}
-              {previewDoc.professor ? ` · Prof. ${previewDoc.professor}` : ''}
-            </span>
-            <div className="pdf-modal-actions">
-              <button className="pdf-dl-btn" onClick={() => handleDownload(previewDoc)}>↓ Télécharger</button>
-              <button className="pdf-close-btn" onClick={() => setPreviewDoc(null)}>✕ Fermer</button>
-            </div>
-          </div>
+        <Sheet wide title={previewDoc.doc_number || TYPE_LABELS[previewDoc.doc_type] || previewDoc.doc_type} onClose={() => setPreviewDoc(null)}>
           <iframe
-            className="pdf-iframe"
+            style={{ flex: 1, width: '100%', border: 0, minHeight: '60vh' }}
             src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDoc?.files?.[0] || '')}&embedded=true`}
-            title="Aperçu PDF"
+            title="Aperçu du document"
             allow="fullscreen"
           />
-        </div>
-      )}
-
-      {copyToast && (
-        <div style={{ position:'fixed', bottom:28, left:'50%', transform:'translateX(-50%)', zIndex:9999, background:'#0C1222', border:'1px solid #2D4A7A', borderRadius:10, padding:'10px 22px', fontFamily:'DM Mono,monospace', fontSize:'0.75rem', color:'#5EEAD4', boxShadow:'0 8px 32px rgba(0,0,0,0.5)', whiteSpace:'nowrap', pointerEvents:'none' }}>
-          ✓ Lien copié !
-        </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 'var(--space-3)' }}>
+            <Button variant="secondary" as="a" href={previewDoc?.files?.[0]} target="_blank" rel="noreferrer">Ouvrir dans un onglet</Button>
+            <Button variant="primary" icon="download" onClick={() => handleDownload(previewDoc)}>Télécharger</Button>
+          </div>
+        </Sheet>
       )}
     </div>
   )

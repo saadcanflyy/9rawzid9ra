@@ -422,7 +422,7 @@ import React from 'react';
       return function () { window.removeEventListener('keydown', onKey); };
     }, []);
     return h('div', { className: 'qz-scrim', onClick: props.onClose },
-      h('div', { className: cx('qz-sheet', props.side === 'right' && 'qz-sheet--right'), role: 'dialog', 'aria-modal': 'true', 'aria-label': props.title, onClick: function (e) { e.stopPropagation(); } },
+      h('div', { className: cx('qz-sheet', props.side === 'right' && 'qz-sheet--right', props.wide && 'qz-sheet--wide'), role: 'dialog', 'aria-modal': 'true', 'aria-label': props.title, onClick: function (e) { e.stopPropagation(); } },
         props.title ? h('div', { className: 'qz-sheet__head' },
           h('h2', { className: 'qz-h3' }, props.title),
           h('button', { type: 'button', className: 'qz-iconbtn', 'aria-label': 'Fermer', onClick: props.onClose }, h(Icon, { name: 'x' }))) : null,
