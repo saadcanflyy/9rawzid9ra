@@ -4,13 +4,17 @@ import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
 import {
-  Breadcrumb, SearchBar, Select, Chip, Tabs, ModuleCard, DocumentRow, Card, Button,
+  Breadcrumb, SearchBar, Select, Chip, Tabs, ModuleCard, DocType, DocumentRow, Card, Button,
   Input, Sheet, Badge, EmptyState, Skeleton, ProgressBar, Icon, Banner, Switch, LoadMore,
+  QualityBadge, StatusBadge,
 } from '../design-system/ui'
+import ProfessorPicker from '../components/ProfessorPicker'
 import { notify } from '../design-system/toast'
 import { useSearch } from '../hooks/useSearch'
-import { removeFacet } from '../lib/searchParser'
-import { qualityLevel } from '../lib/quality'
+import { qualityLevel, displayStatus } from '../lib/quality'
+import { levelFor } from '../lib/reputation'
+
+const LEVEL_TONES = { 1: 'neutral', 2: 'accent', 3: 'brand', 4: 'warning', 5: 'founder' }
 
 const css = `
   .bw-banner { border-bottom: 1px solid var(--border); background: var(--brand-soft); padding: var(--space-3) var(--space-6); display: flex; align-items: center; justify-content: center; gap: var(--space-3); flex-wrap: wrap; }
@@ -79,6 +83,10 @@ export default function Browse() {
   const [selFil, setSelFil] = useState(sp.get('fil') || '')
   const [selSem, setSelSem] = useState(sp.get('sem') || '')
   const [selType, setSelType] = useState(sp.get('type') || '')
+  const [selDocTypes, setSelDocTypes] = useState(sp.get('types') ? sp.get('types').split(',') : [])
+  const [selModuleId, setSelModuleId] = useState(sp.get('mod') || '')
+  const [selProfessor, setSelProfessor] = useState(sp.get('prof') ? { id: parseInt(sp.get('prof'), 10), display_name: '' } : null)
+  const [moduleOptions, setModuleOptions] = useState([])
   const [selYear, setSelYear] = useState(sp.get('year') || '')
   const [verifiedOnly, setVerifiedOnly] = useState(sp.get('verified') === '1')
   const [sortMode, setSortMode] = useState('pertinence')
@@ -173,12 +181,15 @@ export default function Browse() {
     if (selFil) p.fil = selFil
     if (selSem) p.sem = selSem
     if (selType) p.type = selType
+    if (selDocTypes.length) p.types = selDocTypes.join(',')
+    if (selModuleId) p.mod = selModuleId
+    if (selProfessor?.id) p.prof = String(selProfessor.id)
     if (selYear) p.year = selYear
     if (verifiedOnly) p.verified = '1'
     setSearchParams(p, { replace: true })
     const qs = new URLSearchParams(p).toString()
     sessionStorage.setItem('lastBrowseUrl', '/browse' + (qs ? '?' + qs : ''))
-  }, [query, selUni, selFac, selFil, selSem, selType, selYear, verifiedOnly, setSearchParams])
+  }, [query, selUni, selFac, selFil, selSem, selType, selDocTypes, selModuleId, selProfessor, selYear, verifiedOnly, setSearchParams])
 
   // Load universities once
   useEffect(() => {
@@ -362,6 +373,7 @@ export default function Browse() {
   const reset = () => {
     setSearchParams({})
     setQuery(''); setDebouncedQuery(''); setSelUni(''); setSelFac(''); setSelFil(''); setSelSem(''); setSelType('')
+    setSelDocTypes([]); setSelModuleId(''); setSelProfessor(null)
     setSelYear(''); setVerifiedOnly(false)
     setUniSearch(''); setShowUniDd(false)
     setShowUniReq(false); setUniReqName(''); setUniReqCity(''); setUniReqSent(false)
@@ -412,9 +424,20 @@ export default function Browse() {
     filiereId: selFil ? parseInt(selFil) : null,
     semester: selSem || null,
     docType: selType || null,
+    docTypes: selDocTypes.length ? selDocTypes : null,
     year: selYear || null,
     verifiedOnly,
+    moduleId: selModuleId ? parseInt(selModuleId) : null,
+    professorId: selProfessor?.id || null,
   }, { enabled: searchMode })
+
+  // Module options for the search-mode "Module" filter, limited to the chosen filière/semester.
+  useEffect(() => {
+    if (!searchMode || !selFil) { setModuleOptions([]); return }
+    let q = supabase.from('modules').select('id, name, semester').eq('filiere_id', selFil)
+    if (selSem) q = q.eq('semester', selSem)
+    q.order('name').limit(100).then(({ data }) => setModuleOptions(data || []))
+  }, [searchMode, selFil, selSem])
 
   const requestForm = (form) => {
     // form: 'uni' | 'fac' | 'fil'
@@ -545,10 +568,28 @@ export default function Browse() {
         <label className="t-eyebrow qz-subtle">Type de document</label>
         <div className="bw-type-wrap">
           {DOC_TYPES.map(t => (
-            <Chip key={t.k} selected={selType === t.k} onClick={() => setSelType(selType === t.k ? '' : t.k)}>{t.l}</Chip>
+            <Chip key={t.k} selected={searchMode ? selDocTypes.includes(t.k) : selType === t.k}
+              onClick={() => {
+                if (searchMode) setSelDocTypes(prev => prev.includes(t.k) ? prev.filter(x => x !== t.k) : [...prev, t.k])
+                else setSelType(selType === t.k ? '' : t.k)
+              }}>{t.l}</Chip>
           ))}
         </div>
       </div>
+
+      {searchMode && selFil && (
+        <div className="bw-filter-group">
+          <Select label="Module" value={selModuleId} onChange={e => setSelModuleId(e.target.value)}
+            options={[{ value: '', label: 'Tous les modules' }, ...moduleOptions.map(m => ({ value: String(m.id), label: m.name + (m.semester ? ` (${m.semester})` : '') }))]} />
+        </div>
+      )}
+
+      {searchMode && (
+        <div className="bw-filter-group">
+          <ProfessorPicker label="Professeur" value={selProfessor} onChange={setSelProfessor}
+            universityId={selUni ? parseInt(selUni) : null} facultyId={selFac ? parseInt(selFac) : null} disableAdd />
+        </div>
+      )}
 
       <div className="bw-filter-group">
         <Select label="Année" value={selYear} onChange={e => setSelYear(e.target.value)}
@@ -612,13 +653,33 @@ export default function Browse() {
             </div>
           )}
 
-          {searchMode && search.parsed.chips.length > 0 && (
+          {searchMode && search.understoodChips.length > 0 && (
             <div className="bw-chips-row">
               <span className="t-caption qz-subtle">Compris :</span>
-              {search.parsed.chips.map(c => (
-                <Chip key={c.id} selected onClick={() => setQuery(removeFacet(query, c.id))}>{c.label} <Icon name="x" /></Chip>
+              {search.understoodChips.map(c => (
+                <Chip key={c.key} selected onClick={() => search.dropChip(c.key)}>{c.label} <Icon name="x" /></Chip>
               ))}
             </div>
+          )}
+
+          {searchMode && search.candidates.length > 0 && (
+            <div className="bw-chips-row">
+              <span className="t-caption qz-subtle">Tu cherches :</span>
+              {search.candidates.slice(0, 4).map(c => (
+                <Chip key={c.id} onClick={() => setSelModuleId(String(c.id))}>
+                  {c.name} — {[c.filiere, c.semester].filter(Boolean).join(' ')} · {c.university}
+                </Chip>
+              ))}
+            </div>
+          )}
+
+          {searchMode && search.context?.module && search.documents.length > 0 && search.documents.length <= 3 && (
+            <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+              <span className="t-body-sm qz-muted">Voir tous les documents de ce module</span>
+              <Button variant="primary" as={Link} to={`/module/${search.context.module.slug || search.context.module.id}`}>
+                Aller au module {search.context.module.name}
+              </Button>
+            </Card>
           )}
 
           {fetchErr && <div className="qz-card" style={{ borderColor: 'var(--danger)' }}><span className="t-body-sm" style={{ color: 'var(--danger)' }}>{fetchErr}</span></div>}
@@ -657,23 +718,40 @@ export default function Browse() {
                   <>
                     {search.documents.length > 0 && (
                       <div style={{ marginBottom: 'var(--space-8)' }}>
-                        <span className="t-eyebrow qz-subtle">Documents</span>
+                        <div className="bw-results-bar">
+                          <span className="t-eyebrow qz-subtle">Documents</span>
+                          <span className="t-caption qz-subtle" title="Les documents vérifiés ou approuvés par la communauté sont affichés en premier, puis les plus utiles, les plus récents, et ceux de contributeurs de confiance.">
+                            Classés par : validés, utiles, récents, contributeurs de confiance
+                          </span>
+                        </div>
                         <div className="qz-list" style={{ marginTop: 'var(--space-3)' }}>
-                          {search.documents.map(d => (
-                            <div key={d.id} onClick={() => search.logClick(`document:${d.id}`)}>
-                              <DocumentRow
-                                linkAs={Link}
-                                href={`/module/${d.module_slug || d.module_id}`}
-                                hideActions
-                                type={d.doc_type}
-                                title={d.title || `${DOC_TYPES.find(t => t.k === d.doc_type)?.l || d.doc_type} ${d.academic_year || ''}`}
-                                year={d.academic_year}
-                                professor={[d.module_name, d.semester, d.university_name].filter(Boolean).join(' · ')}
-                                verified={d.status === 'verified'}
-                              />
-                              <span className="t-caption qz-subtle" style={{ marginLeft: 'var(--space-4)' }}>{qualityLevel(d)?.label}</span>
-                            </div>
-                          ))}
+                          {search.documents.map(d => {
+                            const s = displayStatus(d)
+                            const level = qualityLevel(d)
+                            const upLevel = levelFor(d.uploader_points || 0)
+                            return (
+                              <Link key={d.id} to={`/module/${d.module_slug || d.module_id}`} className="qz-row"
+                                onClick={() => search.logClick(`document:${d.id}`)}>
+                                <DocType type={d.doc_type} size="lg" />
+                                <div className="qz-row__main">
+                                  <p className="qz-row__title">{d.title || `${DOC_TYPES.find(t => t.k === d.doc_type)?.l || d.doc_type} ${d.academic_year || ''}`}</p>
+                                  <div className="qz-meta">
+                                    {d.academic_year && <span>{d.academic_year}</span>}
+                                    <span>{d.module_name}</span>
+                                    {d.professor && (d.professor_id ? (
+                                      <Link to={`/professeur/${d.professor_id}`} onClick={e => e.stopPropagation()}>Prof. {d.professor}</Link>
+                                    ) : <span>Prof. {d.professor}</span>)}
+                                    <span>partagé par {d.uploader_name || 'Anonyme'}</span>
+                                    <Badge tone={LEVEL_TONES[upLevel.level]}>{upLevel.name}</Badge>
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                  <StatusBadge {...s} />
+                                  {level && <QualityBadge score={d.quality_score ?? 0} label={level.label} tone={level.tone} />}
+                                </div>
+                              </Link>
+                            )
+                          })}
                         </div>
                       </div>
                     )}

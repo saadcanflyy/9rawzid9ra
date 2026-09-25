@@ -2,21 +2,23 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { SearchBar, Sheet } from '../design-system/ui'
-import { parseQuery, getRecentSearches, addRecentSearch } from '../lib/searchParser'
+import { parseQuery, getRecentSearches, addRecentSearch, contextToFilters } from '../lib/searchParser'
 
 const POPULAR = ['Analyse 1', 'Algorithmique', 'Droit Civil', 'Comptabilité', 'POO Java', 'Marketing']
-const KIND_LABEL = { module: 'Modules', filiere: 'Filières', university: 'Écoles' }
+const KIND_LABEL = { module: 'Modules', filiere: 'Filières', faculty: 'Facultés', university: 'Écoles', professor: 'Professeurs' }
 
 export default function SearchAutocomplete({ inputRef: externalRef, placeholder, shortcut, variant, onSubmit: externalOnSubmit, embedded }) {
   const navigate = useNavigate()
   const [value, setValue] = useState('')
   const [open, setOpen] = useState(false)
   const [suggestions, setSuggestions] = useState([])
+  const [context, setContext] = useState(null)
   const [highlight, setHighlight] = useState(-1)
   const [isMobile, setIsMobile] = useState(false)
   const localRef = useRef(null)
   const inputRef = externalRef || localRef
   const wrapRef = useRef(null)
+  const contextReqRef = useRef(0)
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth < 640)
@@ -35,6 +37,21 @@ export default function SearchAutocomplete({ inputRef: externalRef, placeholder,
     }, 150)
     return () => clearTimeout(t)
   }, [trimmed])
+
+  // Live "Compris :" chips — understands école/faculté/filière/semestre/module/professeur/type/année.
+  useEffect(() => {
+    if (trimmed.length < 2) { setContext(null); return }
+    const reqId = ++contextReqRef.current
+    const t = setTimeout(() => {
+      supabase.rpc('resolve_academic_context', { p_text: trimmed }).then(({ data, error }) => {
+        if (reqId !== contextReqRef.current) return
+        setContext(error ? null : data)
+      })
+    }, 250)
+    return () => clearTimeout(t)
+  }, [trimmed])
+
+  const understoodChips = context ? contextToFilters(context).chips : []
 
   const showAsSheet = isMobile && !embedded
 
@@ -62,7 +79,9 @@ export default function SearchAutocomplete({ inputRef: externalRef, placeholder,
     addRecentSearch(value)
     if (item.kind === 'module') navigate(`/module/${item.slug || item.id}`)
     else if (item.kind === 'filiere') navigate(`/browse?fil=${item.id}`)
+    else if (item.kind === 'faculty') navigate(`/browse?fac=${item.id}`)
     else if (item.kind === 'university') navigate(`/browse?uni=${item.id}`)
+    else if (item.kind === 'professor') navigate(`/professeur/${item.id}`)
     setValue(''); setOpen(false)
   }
 
@@ -105,9 +124,9 @@ export default function SearchAutocomplete({ inputRef: externalRef, placeholder,
 
   const body = (
     <>
-      {parsed.chips.length > 0 && (
+      {(understoodChips.length > 0 || parsed.chips.length > 0) && (
         <div className="t-caption qz-subtle" style={{ padding: '8px 12px', borderBottom: '1px solid var(--border)' }}>
-          Compris : {parsed.chips.map((c) => c.label).join(' · ')}
+          Compris : {(understoodChips.length > 0 ? understoodChips : parsed.chips).map((c) => c.label).join(' · ')}
         </div>
       )}
       {trimmed === '' ? (
@@ -118,7 +137,7 @@ export default function SearchAutocomplete({ inputRef: externalRef, placeholder,
           {POPULAR.map((p, i) => renderRow({ kind: 'recent', label: p }, recent.length + i))}
         </>
       ) : suggestions.length > 0 ? (
-        ['module', 'filiere', 'university'].map((kind) => {
+        ['module', 'filiere', 'faculty', 'university', 'professor'].map((kind) => {
           const items = suggestions.filter((s) => s.kind === kind)
           if (items.length === 0) return null
           return (

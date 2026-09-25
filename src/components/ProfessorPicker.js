@@ -5,7 +5,7 @@ import { professorNameParts, isUsableProfessorName } from '../lib/professorName'
 
 // Combobox: search_professors() for existing profiles, propose_professor() to add a new
 // pending one. Value shape: { id, display_name } | null.
-export default function ProfessorPicker({ label = 'Professeur (optionnel)', value, onChange, universityId, facultyId }) {
+export default function ProfessorPicker({ label = 'Professeur (optionnel)', value, onChange, universityId, facultyId, disableAdd }) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const [options, setOptions] = useState([])
@@ -31,7 +31,7 @@ export default function ProfessorPicker({ label = 'Professeur (optionnel)', valu
     return () => document.removeEventListener('mousedown', onClick)
   }, [open])
 
-  const canAdd = isUsableProfessorName(trimmed) && !options.some(o => (o.display_name || '').toLowerCase() === trimmed.toLowerCase())
+  const canAdd = !disableAdd && isUsableProfessorName(trimmed) && !options.some(o => (o.display_name || '').toLowerCase() === trimmed.toLowerCase())
   const listLength = options.length + (canAdd ? 1 : 0)
 
   const selectExisting = (opt) => {
