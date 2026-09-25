@@ -230,6 +230,13 @@ Applied 2026-09-25, migrations `20260926000100`–`500` (the assistant *database
 - Upload.js now reads `?module=<id>&type=<doc_type>` (Prompt 28) and resolves the module's full université→faculté→filière→semestre chain to prefill the wizard and jump to step 2.
 - **Not deployed**: the `supabase/functions/assistant` edge function and its UI (Prompt 27) — `assistant_quota`/`assistant_consume` and the `assistant_conversations`/`assistant_messages` tables exist but nothing calls them yet, per explicit instruction to skip the assistant.
 
+### Staff & admin phase 3 (2026-09-26, Prompt 29)
+
+- **Skipped**: `get_assistant_stats(p_days)` / `get_assistant_bad_answers(p_limit)` and the Admin "Assistant" card / "Réponses mal notées" list — both are entirely about usage of the AI assistant (Prompt 27), which stays skipped per explicit instruction. `assistant_messages` has zero rows since nothing has ever called the assistant, so these would be dead UI regardless.
+- Professor-queue counter badge in the staff nav (`stats.pendingProfessors` on the `professors` tab item) — already shipped in Prompt 23, confirmed present in both `Admin.js` and `ModeratorPanel.js`, no change needed.
+- Institution aliases editor (new): a table + "Ajouter un alias" modal in the "Écoles" tab of both `Admin.js` and `ModeratorPanel.js` (`institution_aliases` joined to `universities`/`faculties`). Insert/delete go straight through Supabase RLS ("Staff manage institution aliases", `is_staff()` = admin or moderator — no new RPC needed). The alias text is normalized client-side via the existing `search_norm(p)` RPC (granted to `PUBLIC`) before insert, matching what `entity_aliases()`/`resolve_academic_context()` expect. Deleting/inserting a row already re-runs `search_doc` on the affected modules via the existing `trg_institution_aliases_refresh` trigger.
+- Search insights "Compris" column (Admin.js only, `get_search_insights` table on the Analytics tab): for the top 20 zero-result queries, `resolve_academic_context(query)` is resolved and rendered through `contextToFilters(ctx).chips` (`src/lib/searchParser.js`), so staff can see what the parser understood (or didn't) for queries that returned nothing.
+
 ## Known follow-ups
 
 - `pg_cron` is not enabled on this project — the monthly top-contributor award needs either enabling it (Dashboard → Database → Extensions) and re-running that `do $$ ... $$` block from migration 400, or calling `select award_top_university_contributors();` manually on the 1st of each month.

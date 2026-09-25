@@ -7,6 +7,7 @@ import { notify } from '../design-system/toast'
 import { STATUS, qualityLevel, qualityChecklist, displayStatus, REPORT_REASONS } from '../lib/quality'
 import { formatPoints } from '../lib/reputation'
 import { professorNameParts } from '../lib/professorName'
+import { contextToFilters } from '../lib/searchParser'
 
 const css = `
   .ad-announce { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6); }
@@ -78,6 +79,15 @@ export default function Admin() {
   const [uniList,      setUniList]      = useState([])
   const [facList,      setFacList]      = useState([])
   const [filiereList,  setFiliereList]  = useState([])
+
+  // Institution aliases (staff can insert/delete directly, RLS "Staff manage institution aliases")
+  const [aliasList, setAliasList] = useState([])
+  const [showAddAlias, setShowAddAlias] = useState(false)
+  const [newAliasText, setNewAliasText] = useState('')
+  const [newAliasUni, setNewAliasUni] = useState('')
+  const [newAliasFac, setNewAliasFac] = useState('')
+  const [aliasFacOptions, setAliasFacOptions] = useState([])
+  const [addAliasBusy, setAddAliasBusy] = useState(false)
 
   // Professors
   const [professors, setProfessors] = useState([])
@@ -291,13 +301,45 @@ export default function Admin() {
 
   const loadSchools = async () => {
     setLoading(true)
-    const [{ data: unis }, { data: facs }] = await Promise.all([
+    const [{ data: unis }, { data: facs }, { data: aliases }] = await Promise.all([
       supabase.from('universities').select('*').order('created_at', { ascending: false }),
       supabase.from('faculties').select('*, universities(name)').order('created_at', { ascending: false }),
+      supabase.from('institution_aliases').select('*, universities(name), faculties(name)').order('id', { ascending: false }),
     ])
     setUniList(unis || [])
     setFacList(facs || [])
+    setAliasList(aliases || [])
     setLoading(false)
+  }
+
+  useEffect(() => {
+    if (!newAliasUni) { setAliasFacOptions([]); return }
+    supabase.from('faculties').select('id, name').eq('university_id', newAliasUni).neq('name', '__root__').order('name')
+      .then(({ data }) => setAliasFacOptions(data || []))
+  }, [newAliasUni])
+
+  const addAlias = async () => {
+    const text = newAliasText.trim()
+    if (!text || !newAliasUni) { notify.error('Alias et université requis'); return }
+    setAddAliasBusy(true)
+    const { data: norm } = await supabase.rpc('search_norm', { p: text })
+    const { error } = await supabase.from('institution_aliases').insert({
+      alias_norm: norm || text.toLowerCase(),
+      university_id: parseInt(newAliasUni),
+      faculty_id: newAliasFac ? parseInt(newAliasFac) : null,
+    })
+    setAddAliasBusy(false)
+    if (error) { notify.error(error.message); return }
+    notify.success('Alias ajouté')
+    setShowAddAlias(false); setNewAliasText(''); setNewAliasUni(''); setNewAliasFac('')
+    loadSchools()
+  }
+
+  const deleteAlias = async (a) => {
+    const { error } = await supabase.from('institution_aliases').delete().eq('id', a.id)
+    if (error) { notify.error(error.message); return }
+    setAliasList(list => list.filter(x => x.id !== a.id))
+    notify.success('Alias supprimé')
   }
 
   const loadFilieres = async () => {
@@ -763,6 +805,18 @@ export default function Admin() {
       badgesAwardedWeek: badgesWeek.count || 0,
     }))
     setLoading(false)
+
+    // "Compris" column: what resolve_academic_context makes of the top zero-result queries,
+    // so staff can see what the search parser misses. Fetched separately, after the rest of
+    // the tab has rendered — one resolve_academic_context call per query is cheap but no
+    // need to block the page on up to 100 of them.
+    const zeroResult = (searchInsights.data || []).filter(r => r.zero_results > 0 && r.query).slice(0, 20)
+    if (zeroResult.length > 0) {
+      const resolved = await Promise.all(zeroResult.map(r => supabase.rpc('resolve_academic_context', { p_text: r.query })))
+      const understood = {}
+      zeroResult.forEach((r, i) => { understood[r.query] = resolved[i]?.data })
+      setAnalytics(a => ({ ...a, searchUnderstood: understood }))
+    }
   }
 
   const toggleContrib = async (userId) => {
@@ -1255,6 +1309,33 @@ export default function Admin() {
                 </table>
               </div>
             )}
+
+            <div className="ad-section-title" style={{ marginTop: 'var(--space-8)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className="t-eyebrow qz-subtle">Alias d'établissement</span>
+              <Button variant="secondary" size="sm" icon="plus" onClick={() => setShowAddAlias(true)}>Ajouter un alias</Button>
+            </div>
+            {loading ? <Skeleton height={120} /> :
+             aliasList.length === 0 ? <EmptyState icon="search" title="Aucun alias enregistré" /> : (
+              <div className="qz-table-wrap">
+                <table className="qz-table">
+                  <thead><tr><th>Alias</th><th>Université</th><th>Faculté</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {aliasList.map(a => (
+                      <tr key={a.id}>
+                        <td className="qz-table-mono">{a.alias_norm}</td>
+                        <td>{a.universities?.name || '—'}</td>
+                        <td>{a.faculties?.name || '—'}</td>
+                        <td>
+                          <div className="qz-table-actions">
+                            <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => deleteAlias(a)}>Supprimer</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </>
         )}
 
@@ -1628,16 +1709,25 @@ export default function Admin() {
               {(analytics.searchInsights || []).length === 0 ? <EmptyState icon="search" title="Pas encore de données de recherche" /> : (
                 <div className="qz-table-wrap">
                   <table className="qz-table">
-                    <thead><tr><th>Requête</th><th>Recherches</th><th>Sans résultat</th><th>Dernière fois</th></tr></thead>
+                    <thead><tr><th>Requête</th><th>Recherches</th><th>Sans résultat</th><th>Compris</th><th>Dernière fois</th></tr></thead>
                     <tbody>
-                      {analytics.searchInsights.slice(0, 30).map((r, i) => (
-                        <tr key={i}>
-                          <td className="qz-table-name">{r.query || '(vide)'}</td>
-                          <td className="qz-table-mono">{r.searches}</td>
-                          <td>{r.zero_results > 0 ? <Badge tone="danger">{r.zero_results}</Badge> : <span className="qz-table-mono">0</span>}</td>
-                          <td className="qz-table-mono">{fmt(r.last_searched)}</td>
-                        </tr>
-                      ))}
+                      {analytics.searchInsights.slice(0, 30).map((r, i) => {
+                        const ctx = analytics.searchUnderstood?.[r.query]
+                        const chips = ctx ? contextToFilters(ctx).chips : null
+                        return (
+                          <tr key={i}>
+                            <td className="qz-table-name">{r.query || '(vide)'}</td>
+                            <td className="qz-table-mono">{r.searches}</td>
+                            <td>{r.zero_results > 0 ? <Badge tone="danger">{r.zero_results}</Badge> : <span className="qz-table-mono">0</span>}</td>
+                            <td>
+                              {chips === null ? <span className="qz-table-mono">—</span>
+                                : chips.length === 0 ? <span className="t-caption qz-subtle">Rien compris</span>
+                                : <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>{chips.map(c => <Badge key={c.key}>{c.label}</Badge>)}</div>}
+                            </td>
+                            <td className="qz-table-mono">{fmt(r.last_searched)}</td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1648,6 +1738,26 @@ export default function Admin() {
       </PanelLayout>
 
       {modal && <ConfirmModal {...modal} onCancel={modal.onCancel !== undefined ? modal.onCancel : () => setModal(null)} />}
+
+      {showAddAlias && (
+        <div className="qz-scrim" onClick={() => setShowAddAlias(false)}>
+          <div className="qz-modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+            <h2 className="qz-modal__title">Ajouter un alias</h2>
+            <p className="qz-modal__body">Un mot-clé (acronyme, abréviation…) qui doit résoudre vers cette école ou cette faculté dans la recherche.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', margin: 'var(--space-4) 0' }}>
+              <Input label="Alias" placeholder="Ex : ensa, fsr, um5…" value={newAliasText} onChange={e => setNewAliasText(e.target.value)} />
+              <Select label="Université" value={newAliasUni} onChange={e => { setNewAliasUni(e.target.value); setNewAliasFac('') }}
+                options={[{ value: '', label: 'Choisir…' }, ...uniList.map(u => ({ value: u.id, label: u.name }))]} />
+              <Select label="Faculté (optionnel)" value={newAliasFac} onChange={e => setNewAliasFac(e.target.value)} disabled={!newAliasUni}
+                options={[{ value: '', label: 'Toute l\'université' }, ...aliasFacOptions.map(f => ({ value: f.id, label: f.name }))]} />
+            </div>
+            <div className="qz-modal__actions">
+              <Button variant="secondary" onClick={() => setShowAddAlias(false)}>Annuler</Button>
+              <Button variant="primary" disabled={!newAliasText.trim() || !newAliasUni} loading={addAliasBusy} onClick={addAlias}>Ajouter</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

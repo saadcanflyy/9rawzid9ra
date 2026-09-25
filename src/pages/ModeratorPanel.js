@@ -9,6 +9,7 @@ import { qualityLevel, qualityChecklist, displayStatus, REPORT_REASONS } from '.
 import { professorNameParts } from '../lib/professorName'
 
 const css = `
+  .ad-section-title { margin-bottom: var(--space-4); }
   .mp-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-4); }
   .mp-add-form { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: flex-end; margin-bottom: var(--space-5); }
   .mp-field { width: 200px; }
@@ -57,6 +58,16 @@ export default function ModeratorPanel() {
   const [flaggedDocs, setFlaggedDocs] = useState([])
   const [flaggedPosts,setFlaggedPosts]= useState([])
   const [schoolReqs,  setSchoolReqs]  = useState([])
+
+  // Institution aliases (staff can insert/delete directly, RLS "Staff manage institution aliases")
+  const [aliasList, setAliasList] = useState([])
+  const [aliasUniOptions, setAliasUniOptions] = useState([])
+  const [showAddAlias, setShowAddAlias] = useState(false)
+  const [newAliasText, setNewAliasText] = useState('')
+  const [newAliasUni, setNewAliasUni] = useState('')
+  const [newAliasFac, setNewAliasFac] = useState('')
+  const [aliasFacOptions, setAliasFacOptions] = useState([])
+  const [addAliasBusy, setAddAliasBusy] = useState(false)
   const [filiereReqs, setFiliereReqs] = useState([])
   const [modules,     setModules]     = useState([])
   const [users,       setUsers]       = useState([])
@@ -246,11 +257,47 @@ export default function ModeratorPanel() {
 
   const loadSchools = async () => {
     setLoading(true)
-    const { data } = await supabase.from('school_requests')
-      .select('*, user_profiles(name), universities!school_requests_parent_university_id_fkey(name)')
-      .order('created_at', { ascending: false })
+    const [{ data }, { data: aliases }, { data: unis }] = await Promise.all([
+      supabase.from('school_requests')
+        .select('*, user_profiles(name), universities!school_requests_parent_university_id_fkey(name)')
+        .order('created_at', { ascending: false }),
+      supabase.from('institution_aliases').select('*, universities(name), faculties(name)').order('id', { ascending: false }),
+      aliasUniOptions.length ? Promise.resolve({ data: aliasUniOptions }) : supabase.from('universities').select('id, name').order('name'),
+    ])
     setSchoolReqs(data || [])
+    setAliasList(aliases || [])
+    if (!aliasUniOptions.length) setAliasUniOptions(unis || [])
     setLoading(false)
+  }
+
+  useEffect(() => {
+    if (!newAliasUni) { setAliasFacOptions([]); return }
+    supabase.from('faculties').select('id, name').eq('university_id', newAliasUni).neq('name', '__root__').order('name')
+      .then(({ data }) => setAliasFacOptions(data || []))
+  }, [newAliasUni])
+
+  const addAlias = async () => {
+    const text = newAliasText.trim()
+    if (!text || !newAliasUni) { notify.error('Alias et université requis'); return }
+    setAddAliasBusy(true)
+    const { data: norm } = await supabase.rpc('search_norm', { p: text })
+    const { error } = await supabase.from('institution_aliases').insert({
+      alias_norm: norm || text.toLowerCase(),
+      university_id: parseInt(newAliasUni),
+      faculty_id: newAliasFac ? parseInt(newAliasFac) : null,
+    })
+    setAddAliasBusy(false)
+    if (error) { notify.error(error.message); return }
+    notify.success('Alias ajouté')
+    setShowAddAlias(false); setNewAliasText(''); setNewAliasUni(''); setNewAliasFac('')
+    loadSchools()
+  }
+
+  const deleteAlias = async (a) => {
+    const { error } = await supabase.from('institution_aliases').delete().eq('id', a.id)
+    if (error) { notify.error(error.message); return }
+    setAliasList(list => list.filter(x => x.id !== a.id))
+    notify.success('Alias supprimé')
   }
 
   const loadFilieres = async () => {
@@ -733,6 +780,33 @@ export default function ModeratorPanel() {
                 </table>
               </div>
             )}
+
+            <div className="ad-section-title" style={{ marginTop: 'var(--space-8)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className="t-eyebrow qz-subtle">Alias d'établissement</span>
+              <Button variant="secondary" size="sm" icon="plus" onClick={() => setShowAddAlias(true)}>Ajouter un alias</Button>
+            </div>
+            {loading ? <Skeleton height={120} /> :
+             aliasList.length === 0 ? <EmptyState icon="search" title="Aucun alias enregistré" /> : (
+              <div className="qz-table-wrap">
+                <table className="qz-table">
+                  <thead><tr><th>Alias</th><th>Université</th><th>Faculté</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {aliasList.map(a => (
+                      <tr key={a.id}>
+                        <td className="qz-table-mono">{a.alias_norm}</td>
+                        <td>{a.universities?.name || '—'}</td>
+                        <td>{a.faculties?.name || '—'}</td>
+                        <td>
+                          <div className="qz-table-actions">
+                            <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => deleteAlias(a)}>Supprimer</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </>
         )}
 
@@ -1023,6 +1097,26 @@ export default function ModeratorPanel() {
       </PanelLayout>
 
       {modal && <ConfirmModal {...modal} onCancel={modal.onCancel !== undefined ? modal.onCancel : () => setModal(null)} />}
+
+      {showAddAlias && (
+        <div className="qz-scrim" onClick={() => setShowAddAlias(false)}>
+          <div className="qz-modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+            <h2 className="qz-modal__title">Ajouter un alias</h2>
+            <p className="qz-modal__body">Un mot-clé (acronyme, abréviation…) qui doit résoudre vers cette école ou cette faculté dans la recherche.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', margin: 'var(--space-4) 0' }}>
+              <Input label="Alias" placeholder="Ex : ensa, fsr, um5…" value={newAliasText} onChange={e => setNewAliasText(e.target.value)} />
+              <Select label="Université" value={newAliasUni} onChange={e => { setNewAliasUni(e.target.value); setNewAliasFac('') }}
+                options={[{ value: '', label: 'Choisir…' }, ...aliasUniOptions.map(u => ({ value: u.id, label: u.name }))]} />
+              <Select label="Faculté (optionnel)" value={newAliasFac} onChange={e => setNewAliasFac(e.target.value)} disabled={!newAliasUni}
+                options={[{ value: '', label: 'Toute l\'université' }, ...aliasFacOptions.map(f => ({ value: f.id, label: f.name }))]} />
+            </div>
+            <div className="qz-modal__actions">
+              <Button variant="secondary" onClick={() => setShowAddAlias(false)}>Annuler</Button>
+              <Button variant="primary" disabled={!newAliasText.trim() || !newAliasUni} loading={addAliasBusy} onClick={addAlias}>Ajouter</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
