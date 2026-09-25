@@ -104,7 +104,13 @@ import { trapFocus, focusFirst } from './focusTrap';
   /* ---- SearchBar ---- */
   function SearchBar(props) {
     var compact = props.variant === 'compact';
-    var inputProps = { ref: props.inputRef, type: 'search', placeholder: props.placeholder || 'Module, filière ou école…', onChange: props.onChange, 'aria-label': props.placeholder || 'Rechercher' };
+    var inputProps = {
+      ref: props.inputRef, type: 'search', placeholder: props.placeholder || 'Module, filière ou école…',
+      onChange: props.onChange, onKeyDown: props.onKeyDown, onFocus: props.onFocus, onBlur: props.onBlur,
+      role: props.role, 'aria-label': props.placeholder || 'Rechercher',
+      'aria-expanded': props['aria-expanded'], 'aria-controls': props['aria-controls'],
+      'aria-activedescendant': props['aria-activedescendant'], 'aria-autocomplete': props['aria-autocomplete'],
+    };
     if (props.value !== undefined) inputProps.value = props.value; else inputProps.defaultValue = props.defaultValue;
     return h('form', { className: cx('qz-search', compact && 'qz-search--compact'), role: 'search', onSubmit: function (e) { e.preventDefault(); var input = e.currentTarget.querySelector('input'); if (props.onSubmit) props.onSubmit(input ? input.value : '', e); } },
       h(Icon, { name: 'search', size: 18 }),

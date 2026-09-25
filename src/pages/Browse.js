@@ -5,9 +5,12 @@ import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
 import {
   Breadcrumb, SearchBar, Select, Chip, Tabs, ModuleCard, DocumentRow, Card, Button,
-  Input, Sheet, Badge, EmptyState, Skeleton, ProgressBar, Icon,
+  Input, Sheet, Badge, EmptyState, Skeleton, ProgressBar, Icon, Banner, Switch, LoadMore,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
+import { useSearch } from '../hooks/useSearch'
+import { removeFacet } from '../lib/searchParser'
+import { qualityLevel } from '../lib/quality'
 
 const css = `
   .bw-banner { border-bottom: 1px solid var(--border); background: var(--brand-soft); padding: var(--space-3) var(--space-6); display: flex; align-items: center; justify-content: center; gap: var(--space-3); flex-wrap: wrap; }
@@ -54,6 +57,8 @@ const DOC_TYPES = [
   { k: 'projet_final', l: 'Projet final' },
 ]
 const SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9', 'S10']
+const YEAR_OPTIONS = ['2026/2027', '2025/2026', '2024/2025', '2023/2024', '2022/2023', '2021/2022', '2020/2021', '2019/2020', '2018/2019', '2017/2018', '2016/2017']
+  .map((label) => ({ value: label.split('/')[1], label }))
 
 export default function Browse() {
   const navigate = useNavigate()
@@ -74,9 +79,10 @@ export default function Browse() {
   const [selFil, setSelFil] = useState(sp.get('fil') || '')
   const [selSem, setSelSem] = useState(sp.get('sem') || '')
   const [selType, setSelType] = useState(sp.get('type') || '')
+  const [selYear, setSelYear] = useState(sp.get('year') || '')
+  const [verifiedOnly, setVerifiedOnly] = useState(sp.get('verified') === '1')
   const [sortMode, setSortMode] = useState('pertinence')
   const [viewMode, setViewMode] = useState('grid')
-  const [docStats, setDocStats] = useState({})
   const [bookmarked, setBookmarked] = useState(new Set())
   const [fetchErr, setFetchErr] = useState('')
   const [uniSearch, setUniSearch] = useState('')
@@ -124,13 +130,32 @@ export default function Browse() {
       .then(({ data }) => setBookmarked(new Set((data || []).map(b => b.module_id))))
   }, [user?.id]) // eslint-disable-line
 
-  // Sync from URL when navigated here externally (e.g. Navbar search → /browse?q=)
+  // Sync from URL when navigated here externally (e.g. Navbar search → /browse?q=,
+  // or SearchAutocomplete → /browse?fil=<id> / ?uni=<id>)
   useEffect(() => {
     setQuery(sp.get('q') || '')
     setSelUni(sp.get('uni') || '')
     setSelSem(sp.get('sem') || '')
     setSelType(sp.get('type') || '')
+    setSelYear(sp.get('year') || '')
+    setVerifiedOnly(sp.get('verified') === '1')
+    if (sp.get('fac')) restoringRef.current.fac = sp.get('fac')
+    if (sp.get('fil')) restoringRef.current.fil = sp.get('fil')
   }, [sp])
+
+  // Deep link from SearchAutocomplete's filière suggestions (/browse?fil=<id> alone,
+  // with no uni/fac in the URL) — resolve the rest of the hierarchy server-side.
+  useEffect(() => {
+    const filParam = sp.get('fil')
+    if (!filParam || sp.get('uni') || filParam === selFil) return
+    supabase.from('filieres').select('id, faculty_id, faculties(university_id)').eq('id', filParam).single()
+      .then(({ data }) => {
+        if (!data?.faculties?.university_id) return
+        restoringRef.current.fac = String(data.faculty_id)
+        restoringRef.current.fil = String(data.id)
+        setSelUni(String(data.faculties.university_id))
+      })
+  }, [sp]) // eslint-disable-line
 
   // Debounce: query → debouncedQuery after 500ms idle
   useEffect(() => {
@@ -148,10 +173,12 @@ export default function Browse() {
     if (selFil) p.fil = selFil
     if (selSem) p.sem = selSem
     if (selType) p.type = selType
+    if (selYear) p.year = selYear
+    if (verifiedOnly) p.verified = '1'
     setSearchParams(p, { replace: true })
     const qs = new URLSearchParams(p).toString()
     sessionStorage.setItem('lastBrowseUrl', '/browse' + (qs ? '?' + qs : ''))
-  }, [query, selUni, selFac, selFil, selSem, selType, setSearchParams])
+  }, [query, selUni, selFac, selFil, selSem, selType, selYear, verifiedOnly, setSearchParams])
 
   // Load universities once
   useEffect(() => {
@@ -335,6 +362,7 @@ export default function Browse() {
   const reset = () => {
     setSearchParams({})
     setQuery(''); setDebouncedQuery(''); setSelUni(''); setSelFac(''); setSelFil(''); setSelSem(''); setSelType('')
+    setSelYear(''); setVerifiedOnly(false)
     setUniSearch(''); setShowUniDd(false)
     setShowUniReq(false); setUniReqName(''); setUniReqCity(''); setUniReqSent(false)
     setFacsReady(false)
@@ -343,23 +371,6 @@ export default function Browse() {
     setShowModReq(false); setModReqName(''); setModReqSem('S1'); setModReqFilId('')
     setModReqSent(false); setModReqDup(null)
   }
-
-  // Real per-module document stats (types present + count) for the modules on screen —
-  // powers the coverage rail, sort-by-docs, and each ModuleCard's type list.
-  useEffect(() => {
-    if (mods.length === 0) { setDocStats({}); return }
-    const ids = mods.slice(0, 60).map(m => m.id)
-    supabase.from('documents').select('module_id, doc_type').in('module_id', ids).eq('is_verified', true)
-      .then(({ data }) => {
-        const byMod = {}
-        for (const d of (data || [])) {
-          if (!byMod[d.module_id]) byMod[d.module_id] = { types: new Set(), count: 0 }
-          byMod[d.module_id].types.add(d.doc_type)
-          byMod[d.module_id].count++
-        }
-        setDocStats(byMod)
-      })
-  }, [mods])
 
   const uniName = unis.find(u => u.id === parseInt(selUni))?.name
   const facNameRaw = facs.find(f => f.id === parseInt(selFac))?.name
@@ -375,13 +386,13 @@ export default function Browse() {
     const arr = [...mods]
     if (sortMode === 'az') arr.sort((a, b) => a.name.localeCompare(b.name))
     else if (sortMode === 'recent') arr.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    else if (sortMode === 'docs') arr.sort((a, b) => (docStats[b.id]?.count || 0) - (docStats[a.id]?.count || 0))
+    else if (sortMode === 'docs') arr.sort((a, b) => (b.docs_count || 0) - (a.docs_count || 0))
     return arr
   })()
 
   const coverageRows = selSem ? mods.slice(0, 6).map(m => ({
     id: m.id, name: m.name,
-    pct: Math.round(((docStats[m.id]?.types.size) || 0) / DOC_TYPES.length * 100),
+    pct: Math.round(((m.doc_types?.length || 0) / DOC_TYPES.length) * 100),
   })).sort((a, b) => b.pct - a.pct) : []
 
   const breadcrumbItems = [
@@ -391,6 +402,19 @@ export default function Browse() {
     filName && { label: filName },
     selSem && { label: selSem },
   ].filter(Boolean)
+
+  // Search mode (free-text query) takes over the results area from the hierarchy
+  // browsing below — ranking, fuzzy fallback and quality come from the database.
+  const searchMode = debouncedQuery.trim().length > 0
+  const search = useSearch(debouncedQuery, {
+    universityId: selUni ? parseInt(selUni) : null,
+    facultyId: selFac ? parseInt(selFac) : null,
+    filiereId: selFil ? parseInt(selFil) : null,
+    semester: selSem || null,
+    docType: selType || null,
+    year: selYear || null,
+    verifiedOnly,
+  }, { enabled: searchMode })
 
   const requestForm = (form) => {
     // form: 'uni' | 'fac' | 'fil'
@@ -525,6 +549,15 @@ export default function Browse() {
           ))}
         </div>
       </div>
+
+      <div className="bw-filter-group">
+        <Select label="Année" value={selYear} onChange={e => setSelYear(e.target.value)}
+          options={[{ value: '', label: 'Toutes les années' }, ...YEAR_OPTIONS]} />
+      </div>
+
+      <div className="bw-filter-group">
+        <Switch label="Documents vérifiés uniquement" checked={verifiedOnly} onChange={e => setVerifiedOnly(e.target.checked)} />
+      </div>
     </>
   )
 
@@ -579,9 +612,18 @@ export default function Browse() {
             </div>
           )}
 
+          {searchMode && search.parsed.chips.length > 0 && (
+            <div className="bw-chips-row">
+              <span className="t-caption qz-subtle">Compris :</span>
+              {search.parsed.chips.map(c => (
+                <Chip key={c.id} selected onClick={() => setQuery(removeFacet(query, c.id))}>{c.label} <Icon name="x" /></Chip>
+              ))}
+            </div>
+          )}
+
           {fetchErr && <div className="qz-card" style={{ borderColor: 'var(--danger)' }}><span className="t-body-sm" style={{ color: 'var(--danger)' }}>{fetchErr}</span></div>}
 
-          {hasActiveFilter && (
+          {!searchMode && hasActiveFilter && (
             <div className="bw-results-bar">
               <span className="t-mono qz-subtle"><b className="qz-muted" style={{ color: 'var(--text)' }}>{displayed.length}</b> module{displayed.length !== 1 ? 's' : ''} trouvé{displayed.length !== 1 ? 's' : ''}</span>
               <div className="bw-results-actions">
@@ -596,7 +638,78 @@ export default function Browse() {
           )}
 
           <div id="browse-results">
-            {!hasActiveFilter ? (
+            {searchMode ? (
+              <>
+                {search.fuzzy && (
+                  <Banner>Aucun résultat exact pour « {debouncedQuery} ». Voici les plus proches.</Banner>
+                )}
+                {search.loading && search.documents.length === 0 && search.modules.length === 0 ? (
+                  <div className="bw-grid">{Array(6).fill(0).map((_, i) => <Card key={i}><Skeleton height={110} /></Card>)}</div>
+                ) : search.documents.length === 0 && search.modules.length === 0 ? (
+                  <EmptyState icon="search" title={`Rien pour « ${debouncedQuery} »`}>
+                    Vérifie l'orthographe ou demande-le : on l'ajoute vite.
+                    <div className="bw-empty-actions">
+                      <Button variant="secondary" onClick={() => { setShowModReq(true); setModReqName(search.parsed.text || debouncedQuery.trim()); if (search.parsed.semester) setModReqSem(search.parsed.semester) }}>Demander ce document</Button>
+                      <Button variant="ghost" onClick={reset}>Effacer les filtres</Button>
+                    </div>
+                  </EmptyState>
+                ) : (
+                  <>
+                    {search.documents.length > 0 && (
+                      <div style={{ marginBottom: 'var(--space-8)' }}>
+                        <span className="t-eyebrow qz-subtle">Documents</span>
+                        <div className="qz-list" style={{ marginTop: 'var(--space-3)' }}>
+                          {search.documents.map(d => (
+                            <div key={d.id} onClick={() => search.logClick(`document:${d.id}`)}>
+                              <DocumentRow
+                                linkAs={Link}
+                                href={`/module/${d.module_slug || d.module_id}`}
+                                hideActions
+                                type={d.doc_type}
+                                title={d.title || `${DOC_TYPES.find(t => t.k === d.doc_type)?.l || d.doc_type} ${d.academic_year || ''}`}
+                                year={d.academic_year}
+                                professor={[d.module_name, d.semester, d.university_name].filter(Boolean).join(' · ')}
+                                verified={d.status === 'verified'}
+                              />
+                              <span className="t-caption qz-subtle" style={{ marginLeft: 'var(--space-4)' }}>{qualityLevel(d)?.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {search.modules.length > 0 && (
+                      <div>
+                        <div className="bw-results-bar">
+                          <span className="t-eyebrow qz-subtle">Modules</span>
+                          <span className="t-mono qz-subtle">{search.totalModules} module{search.totalModules !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div className="bw-grid" style={{ marginTop: 'var(--space-3)' }}>
+                          {search.modules.map(m => (
+                            <div key={m.id} onClick={() => search.logClick(`module:${m.id}`)}>
+                              <ModuleCard
+                                linkAs={Link}
+                                href={`/module/${m.slug || m.id}`}
+                                name={m.name}
+                                semester={m.semester}
+                                school={m.university_name}
+                                filiere={m.filiere_name}
+                                types={m.doc_types || []}
+                                docs={m.docs_count}
+                                completeness={Math.round(((m.doc_types?.length || 0) / DOC_TYPES.length) * 100)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        {search.modules.length < search.totalModules && (
+                          <LoadMore loading={search.loading} onClick={search.loadMore} />
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            ) : !hasActiveFilter ? (
               <EmptyState icon="search" title="Sélectionne ton université pour commencer">
                 Utilise les filtres pour trouver tes modules.
               </EmptyState>
@@ -669,11 +782,11 @@ export default function Browse() {
                         href={`/module/${m.slug || m.id}`}
                         linkAs={Link}
                         hideActions
-                        type={(docStats[m.id]?.types && [...docStats[m.id].types][0]) || 'cours'}
+                        type={m.doc_types?.[0] || 'cours'}
                         title={m.name}
                         year={`S${m.semester}`}
                         professor={m.filieres?.name}
-                        downloads={docStats[m.id]?.count}
+                        downloads={m.docs_count}
                       />
                     ))}
                   </div>
@@ -687,9 +800,9 @@ export default function Browse() {
                       semester={m.semester}
                       school={m.filieres?.faculties?.universities?.name}
                       filiere={m.filieres?.faculties?.name && m.filieres.faculties.name !== '__root__' ? `${m.filieres?.name} · ${m.filieres.faculties.name}` : m.filieres?.name}
-                      types={docStats[m.id] ? [...docStats[m.id].types] : []}
-                      docs={docStats[m.id]?.count || 0}
-                      completeness={Math.round(((docStats[m.id]?.types.size) || 0) / DOC_TYPES.length * 100)}
+                      types={m.doc_types || []}
+                      docs={m.docs_count || 0}
+                      completeness={Math.round(((m.doc_types?.length || 0) / DOC_TYPES.length) * 100)}
                       bookmarked={bookmarked.has(m.id)}
                     />
                   ))

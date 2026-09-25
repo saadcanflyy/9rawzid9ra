@@ -2,8 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
-import { Wordmark, Button, SearchBar, Avatar, Badge, Icon, Sheet, ThemeToggle, Banner } from '../design-system/ui'
+import { Wordmark, Button, Avatar, Badge, Icon, Sheet, ThemeToggle, Banner } from '../design-system/ui'
 import { useTheme } from '../design-system/theme'
+import SearchAutocomplete from './SearchAutocomplete'
 
 const fmtAgo = d => {
   const s = Math.floor((Date.now() - new Date(d)) / 1000)
@@ -235,7 +236,7 @@ export default function Navbar({ activePage = '' }) {
         </nav>
 
         <div className="qz-navbar__search">
-          <SearchBar variant="compact" placeholder="Rechercher un module" shortcut="/" inputRef={searchRef} onSubmit={handleSearchSubmit} />
+          <SearchAutocomplete variant="compact" placeholder="Rechercher un module" shortcut="/" inputRef={searchRef} onSubmit={handleSearchSubmit} />
         </div>
 
         <div className="qz-navbar__end">
@@ -348,7 +349,7 @@ export default function Navbar({ activePage = '' }) {
 
       {mobileSearchOpen && (
         <Sheet title="Rechercher" onClose={() => setMobileSearchOpen(false)}>
-          <SearchBar placeholder="Module, filière ou école…" inputRef={mobileSearchRef} onSubmit={handleSearchSubmit} />
+          <SearchAutocomplete embedded placeholder="Module, filière ou école…" inputRef={mobileSearchRef} onSubmit={handleSearchSubmit} />
         </Sheet>
       )}
 

@@ -5,10 +5,11 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import {
-  Badge, SearchBar, Chip, StatStrip, DocumentRow, ModuleCard, SchoolCard, Skeleton, Card, Button, Banner, Icon, Avatar, ProgressBar,
+  Badge, Chip, StatStrip, DocumentRow, ModuleCard, SchoolCard, Skeleton, Card, Button, Banner, Icon, Avatar, ProgressBar,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
 import { levelFor } from '../lib/reputation'
+import SearchAutocomplete from '../components/SearchAutocomplete'
 
 const css = `
   .home-hero { padding: var(--space-16) var(--space-6) var(--space-12); text-align: center; }
@@ -247,7 +248,7 @@ function VisitorHome() {
           </p>
 
           <div className="home-hero__search">
-            <SearchBar inputRef={searchInputRef} placeholder="Module, filière ou école… ex. Analyse S2" shortcut="⌘K" onSubmit={onSearch} />
+            <SearchAutocomplete inputRef={searchInputRef} placeholder="Module, filière ou école… ex. Analyse S2" shortcut="⌘K" onSubmit={onSearch} />
           </div>
 
           <div className="home-hero__tags">
@@ -493,7 +494,7 @@ function PersonalizedHome() {
           </div>
 
           <div className="ph-search">
-            <SearchBar variant="compact" inputRef={searchInputRef} placeholder="Module, filière ou école…" onSubmit={onSearch} />
+            <SearchAutocomplete variant="compact" inputRef={searchInputRef} placeholder="Module, filière ou école…" onSubmit={onSearch} />
           </div>
 
           {!loading && !p?.onboarded && (
