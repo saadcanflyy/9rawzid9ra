@@ -1,11 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import ConfirmModal from '../components/ConfirmModal'
 import PanelLayout from '../components/PanelLayout'
-import { Button, Input, Select, Badge, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, Banner, QualityBadge } from '../design-system/ui'
+import { Button, Input, Select, Badge, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, Banner, QualityBadge, Chip } from '../design-system/ui'
 import { notify } from '../design-system/toast'
 import { STATUS, qualityLevel, REPORT_REASONS } from '../lib/quality'
+import { professorNameParts } from '../lib/professorName'
 
 const css = `
   .mp-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-4); }
@@ -59,6 +60,22 @@ export default function ModeratorPanel() {
   const [filiereReqs, setFiliereReqs] = useState([])
   const [modules,     setModules]     = useState([])
   const [users,       setUsers]       = useState([])
+
+  // Professors
+  const [professors, setProfessors] = useState([])
+  const [profUniOptions, setProfUniOptions] = useState([])
+  const [verifyingProfId, setVerifyingProfId] = useState(null)
+  const [verifyFirst, setVerifyFirst] = useState('')
+  const [verifyLast, setVerifyLast] = useState('')
+  const [verifyUni, setVerifyUni] = useState('')
+  const [verifyFac, setVerifyFac] = useState('')
+  const [verifyFacOptions, setVerifyFacOptions] = useState([])
+  const [verifyBusy, setVerifyBusy] = useState(false)
+  const [mergingProfId, setMergingProfId] = useState(null)
+  const [mergeQuery, setMergeQuery] = useState('')
+  const [mergeResults, setMergeResults] = useState([])
+  const [mergeTargetId, setMergeTargetId] = useState(null)
+  const [mergeBusy, setMergeBusy] = useState(false)
 
   const [modSearch,    setModSearch]    = useState('')
   const modSearchDebounceRef = useRef(null)
@@ -124,18 +141,20 @@ export default function ModeratorPanel() {
     if (activeTab === 'schools') loadSchools()
     if (activeTab === 'filieres') loadFilieres()
     if (activeTab === 'modules') loadModules()
+    if (activeTab === 'professors') loadProfessors()
     if (activeTab === 'users') loadUsers()
     if (activeTab === 'messages') loadMessages()
   }, [activeTab, profile]) // eslint-disable-line
 
   const loadStats = async () => {
-    const [docs, posts, schools, filieres, mods, usrs] = await Promise.all([
+    const [docs, posts, schools, filieres, mods, usrs, profsPending] = await Promise.all([
       supabase.from('admin_documents').select('*', { count:'exact', head:true }).gt('report_count', 0),
       supabase.from('senpai_posts').select('*', { count:'exact', head:true }).eq('is_flagged', true),
       supabase.from('school_requests').select('*', { count:'exact', head:true }).eq('status', 'pending'),
       supabase.from('filiere_suggestions').select('*', { count:'exact', head:true }).eq('status', 'pending'),
       supabase.from('modules').select('*', { count:'exact', head:true }),
       supabase.from('user_profiles').select('*', { count:'exact', head:true }),
+      supabase.from('professors').select('*', { count:'exact', head:true }).eq('status', 'pending'),
     ])
     setStats({
       flaggedDocs:    docs.count     || 0,
@@ -144,6 +163,7 @@ export default function ModeratorPanel() {
       pendingFils:    filieres.count || 0,
       totalModules:   mods.count     || 0,
       totalUsers:     usrs.count     || 0,
+      pendingProfessors: profsPending.count || 0,
     })
   }
 
@@ -251,6 +271,87 @@ export default function ModeratorPanel() {
     setModules(mods || [])
     setFilieresList(fils || [])
     setLoading(false)
+  }
+
+  const loadProfessors = async () => {
+    setLoading(true)
+    const [{ data }, uniRes] = await Promise.all([
+      supabase.rpc('get_professor_queue', { p_limit: 100 }),
+      profUniOptions.length ? Promise.resolve({ data: profUniOptions }) : supabase.from('universities').select('id, name').order('name'),
+    ])
+    setProfessors(data || [])
+    if (!profUniOptions.length) setProfUniOptions(uniRes.data || [])
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (!verifyUni) { setVerifyFacOptions([]); return }
+    supabase.from('faculties').select('id, name').eq('university_id', verifyUni).neq('name', '__root__').order('name')
+      .then(({ data }) => setVerifyFacOptions(data || []))
+  }, [verifyUni])
+
+  const startVerify = (p) => {
+    setMergingProfId(null)
+    if (verifyingProfId === p.id) { setVerifyingProfId(null); return }
+    setVerifyingProfId(p.id)
+    const parts = professorNameParts(p.display_name)
+    setVerifyFirst(parts.firstName || '')
+    setVerifyLast(parts.lastName || '')
+    setVerifyUni('')
+    setVerifyFac('')
+  }
+
+  const confirmVerify = async (p) => {
+    setVerifyBusy(true)
+    const { error } = await supabase.rpc('verify_professor', {
+      p_id: p.id, p_first_name: verifyFirst.trim() || null, p_last_name: verifyLast.trim() || null,
+      p_university_id: verifyUni ? parseInt(verifyUni, 10) : null, p_faculty_id: verifyFac ? parseInt(verifyFac, 10) : null,
+    })
+    setVerifyBusy(false)
+    if (error) { notify.error(error.message); return }
+    notify.success('Professeur vérifié')
+    setVerifyingProfId(null)
+    loadProfessors()
+  }
+
+  const startMerge = (p) => {
+    setVerifyingProfId(null)
+    if (mergingProfId === p.id) { setMergingProfId(null); return }
+    setMergingProfId(p.id)
+    setMergeQuery(''); setMergeResults([]); setMergeTargetId(null)
+  }
+
+  const searchMergeTargets = async (q, fromId) => {
+    setMergeQuery(q)
+    if (q.trim().length < 2) { setMergeResults([]); return }
+    const { data } = await supabase.rpc('search_professors', { p_query: q.trim(), p_limit: 6 })
+    setMergeResults((data || []).filter(r => r.id !== fromId))
+  }
+
+  const confirmMerge = async (p) => {
+    if (!mergeTargetId) return
+    setMergeBusy(true)
+    const { error } = await supabase.rpc('merge_professors', { p_from: p.id, p_into: mergeTargetId })
+    setMergeBusy(false)
+    if (error) { notify.error(error.message); return }
+    notify.success('Profils fusionnés')
+    setMergingProfId(null)
+    loadProfessors()
+  }
+
+  const handleRejectProfessor = (p) => {
+    setModal({
+      title: 'Refuser ce profil ?',
+      message: `"${p.display_name}" sera refusé. Les documents garderont le nom tapé mais perdront le lien.`,
+      confirmText: 'Refuser', confirmColor: '#F87171',
+      onConfirm: async () => {
+        setModal(null)
+        const { error } = await supabase.rpc('reject_professor', { p_id: p.id })
+        if (error) { notify.error(error.message); return }
+        notify.success('Profil refusé')
+        loadProfessors()
+      },
+    })
   }
 
   const loadUsers = async () => {
@@ -422,6 +523,7 @@ export default function ModeratorPanel() {
     { id: 'schools',   label: 'Écoles', icon: 'shield', count: stats?.pendingSchools },
     { id: 'filieres',  label: 'Filières', icon: 'file', count: stats?.pendingFils },
     { id: 'modules',   label: 'Modules', icon: 'bookmark' },
+    { id: 'professors', label: 'Professeurs', icon: 'user', count: stats?.pendingProfessors },
     { id: 'users',     label: 'Utilisateurs', icon: 'user' },
     { id: 'messages',  label: 'Messages', icon: 'inbox', count: unreadMsgCount },
   ]
@@ -433,6 +535,7 @@ export default function ModeratorPanel() {
     schools: ['Écoles', "Demandes d'ajout — lecture seule."],
     filieres: ['Filières', "Demandes d'ajout — lecture seule."],
     modules: ['Modules', 'Ajoute, renomme ou recherche un module.'],
+    professors: ['Professeurs', 'Profils en attente de vérification.'],
     users: ['Utilisateurs', 'Gère les bannissements.'],
     messages: ['Messages', 'Réponds aux utilisateurs.'],
   }
@@ -708,6 +811,99 @@ export default function ModeratorPanel() {
               </div>
             )}
           </>
+        )}
+
+        {activeTab === 'professors' && (
+          loading ? <Skeleton height={200} /> :
+          professors.length === 0 ? <EmptyState icon="user" title="Aucun profil en attente" /> : (
+            <div className="qz-table-wrap">
+              <table className="qz-table">
+                <thead><tr><th>Professeur</th><th>École</th><th>Documents</th><th>Ajouté le</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {professors.map(p => (
+                    <Fragment key={p.id}>
+                      <tr>
+                        <td>
+                          <span className="qz-table-name">{p.display_name}</span>
+                          {p.aliases?.length > 0 && <div className="qz-table-mono">{p.aliases.join(', ')}</div>}
+                          {p.possible_duplicates?.length > 0 && (
+                            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+                              {p.possible_duplicates.map(d => (
+                                <Chip key={d.id} onClick={() => { startMerge(p); setMergeTargetId(d.id); setMergeQuery(d.display_name) }}>
+                                  Doublon : {d.display_name}
+                                </Chip>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="qz-table-mono">{p.university_name || '—'}</td>
+                        <td className="qz-table-mono">{p.documents_count}</td>
+                        <td className="qz-table-mono">{fmt(p.created_at)}</td>
+                        <td>
+                          <div className="qz-table-actions">
+                            <Button variant="secondary" size="sm" icon="check" onClick={() => startVerify(p)}>Vérifier</Button>
+                            <Button variant="ghost" size="sm" onClick={() => startMerge(p)}>Fusionner avec…</Button>
+                            <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => handleRejectProfessor(p)}>Refuser</Button>
+                          </div>
+                        </td>
+                      </tr>
+                      {verifyingProfId === p.id && (
+                        <tr>
+                          <td colSpan={5} style={{ padding: 0, background: 'var(--surface-2)' }}>
+                            <div className="mp-mod-panel" style={{ maxWidth: 480, margin: 'var(--space-3) var(--space-5)' }}>
+                              <span className="t-eyebrow qz-subtle">Vérifier {p.display_name}</span>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                <Input placeholder="Prénom" value={verifyFirst} onChange={e => setVerifyFirst(e.target.value)} style={{ maxWidth: 160 }} />
+                                <Input placeholder="Nom" value={verifyLast} onChange={e => setVerifyLast(e.target.value)} style={{ maxWidth: 160 }} />
+                              </div>
+                              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                <Select value={verifyUni} onChange={e => { setVerifyUni(e.target.value); setVerifyFac('') }}
+                                  options={[{ value: '', label: 'École…' }, ...profUniOptions.map(u => ({ value: u.id, label: u.name }))]} />
+                                <Select value={verifyFac} onChange={e => setVerifyFac(e.target.value)} disabled={!verifyUni}
+                                  options={[{ value: '', label: 'Faculté (optionnel)…' }, ...verifyFacOptions.map(f => ({ value: f.id, label: f.name }))]} />
+                              </div>
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <Button variant="secondary" size="sm" disabled={verifyBusy} onClick={() => confirmVerify(p)}>{verifyBusy ? '...' : 'Confirmer (Vérifié)'}</Button>
+                                <Button variant="ghost" size="sm" onClick={() => setVerifyingProfId(null)}>Annuler</Button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      {mergingProfId === p.id && (
+                        <tr>
+                          <td colSpan={5} style={{ padding: 0, background: 'var(--surface-2)' }}>
+                            <div className="mp-mod-panel" style={{ maxWidth: 480, margin: 'var(--space-3) var(--space-5)' }}>
+                              <span className="t-eyebrow qz-subtle">Fusionner avec un autre profil</span>
+                              <Input placeholder="Rechercher un professeur…" value={mergeQuery} onChange={e => searchMergeTargets(e.target.value, p.id)} />
+                              {mergeResults.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  {mergeResults.map(r => (
+                                    <div key={r.id} onClick={() => { setMergeTargetId(r.id); setMergeQuery(r.display_name) }}
+                                      style={{ cursor: 'pointer', padding: '6px 10px', borderRadius: 'var(--radius-sm)', background: mergeTargetId === r.id ? 'var(--brand-soft)' : 'var(--surface)', color: mergeTargetId === r.id ? 'var(--brand-text)' : 'var(--text-muted)' }}>
+                                      {r.display_name}
+                                      {r.university_name && <span className="t-mono qz-subtle" style={{ marginLeft: 6 }}>{r.university_name}</span>}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              {mergeTargetId && (
+                                <p className="t-caption qz-subtle">Les documents et avis de « {p.display_name} » passent sur « {mergeQuery} ».</p>
+                              )}
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <Button variant="secondary" size="sm" disabled={!mergeTargetId || mergeBusy} onClick={() => confirmMerge(p)}>{mergeBusy ? '...' : 'Confirmer la fusion'}</Button>
+                                <Button variant="ghost" size="sm" onClick={() => setMergingProfId(null)}>Annuler</Button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
         )}
 
         {activeTab === 'users' && (

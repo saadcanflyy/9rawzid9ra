@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import ConfirmModal from '../components/ConfirmModal'
+import ProfessorPicker from '../components/ProfessorPicker'
 import {
   Avatar, Badge, Button, Input, Select, Tabs, StatStrip, EmptyState, Card, Sheet,
   Dropdown, Icon, ThemeToggle, Skeleton, DocType, QualityBadge, ProgressBar,
@@ -114,7 +115,9 @@ export default function Profile() {
   const [editingDocId, setEditingDocId] = useState(null)
   const [editDocNumber, setEditDocNumber] = useState('')
   const [editDocYear, setEditDocYear] = useState('')
-  const [editDocProf, setEditDocProf] = useState('')
+  const [editDocProf, setEditDocProf] = useState(null)
+  const [editDocProfUni, setEditDocProfUni] = useState(null)
+  const [editDocProfFac, setEditDocProfFac] = useState(null)
   const [editDocSaving, setEditDocSaving] = useState(false)
 
   const [moveReqDocId, setMoveReqDocId] = useState(null)
@@ -159,7 +162,7 @@ export default function Profile() {
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', uid),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', uid),
         supabase.from('documents')
-          .select('id, doc_type, doc_number, academic_year, professor, pages_count, downloads, is_verified, is_flagged, created_at, files, status, quality_score, quality_signals, verification_source, flag_reason, modules(id, name, semester)')
+          .select('id, doc_type, doc_number, academic_year, professor, professor_id, pages_count, downloads, is_verified, is_flagged, created_at, files, status, quality_score, quality_signals, verification_source, flag_reason, modules(id, name, semester, filieres(faculty_id, faculties(university_id)))')
           .eq('uploader_id', uid)
           .order('created_at', { ascending: false })
           .then(res => res.error ? supabase.from('documents')
@@ -304,7 +307,9 @@ export default function Profile() {
     setEditingDocId(doc.id)
     setEditDocNumber(doc.doc_number || '')
     setEditDocYear(doc.academic_year || '')
-    setEditDocProf(doc.professor || '')
+    setEditDocProf(doc.professor_id || doc.professor ? { id: doc.professor_id, display_name: doc.professor } : null)
+    setEditDocProfFac(doc.modules?.filieres?.faculty_id || null)
+    setEditDocProfUni(doc.modules?.filieres?.faculties?.university_id || null)
   }
 
   const handleSaveDoc = async (docId) => {
@@ -312,10 +317,12 @@ export default function Profile() {
     await supabase.from('documents').update({
       doc_number: editDocNumber.trim() || null,
       academic_year: editDocYear || null,
-      professor: editDocProf.trim() || null,
+      professor: editDocProf?.display_name || null,
+      professor_id: editDocProf?.id || null,
     }).eq('id', docId)
     setUploads(u => u.map(d => d.id === docId ? {
-      ...d, doc_number: editDocNumber.trim() || null, academic_year: editDocYear || null, professor: editDocProf.trim() || null,
+      ...d, doc_number: editDocNumber.trim() || null, academic_year: editDocYear || null,
+      professor: editDocProf?.display_name || null, professor_id: editDocProf?.id || null,
     } : d))
     setEditDocSaving(false)
     setEditingDocId(null)
@@ -607,7 +614,9 @@ export default function Profile() {
                           {doc.academic_year && <span>{doc.academic_year}</span>}
                           <span>{doc.modules?.semester || '—'}</span>
                           <span>{doc.pages_count} p.</span>
-                          {doc.professor && <span>Prof. {doc.professor}</span>}
+                          {doc.professor && (doc.professor_id ? (
+                            <Link to={`/professeur/${doc.professor_id}`} onClick={e => e.stopPropagation()}>Prof. {doc.professor}</Link>
+                          ) : <span>Prof. {doc.professor}</span>)}
                           <span>{doc.downloads || 0} ↓</span>
                           <Badge tone={STATUS[status]?.tone || 'neutral'}>{STATUS[status]?.label || status}</Badge>
                           {level && <QualityBadge score={doc.quality_score ?? 0} label={level.label} tone={level.tone} />}
@@ -642,7 +651,7 @@ export default function Profile() {
                           <Input label="Label / Numéro" placeholder="Ex : Examen 1, TD n°3…" value={editDocNumber} onChange={e => setEditDocNumber(e.target.value)} />
                           <Select label="Année académique" value={editDocYear} onChange={e => setEditDocYear(e.target.value)} options={[{ value: '', label: '—' }, ...YEARS.map(y => ({ value: y, label: y }))]} />
                         </div>
-                        <Input label="Professeur (optionnel)" placeholder="Ex : Dr. Alaoui, Pr. Benali…" value={editDocProf} onChange={e => setEditDocProf(e.target.value)} />
+                        <ProfessorPicker value={editDocProf} onChange={setEditDocProf} universityId={editDocProfUni} facultyId={editDocProfFac} />
                         <div style={{ display: 'flex', gap: 8 }}>
                           <Button variant="primary" size="sm" loading={editDocSaving} onClick={() => handleSaveDoc(doc.id)}>Sauvegarder</Button>
                           <Button variant="ghost" size="sm" onClick={() => setEditingDocId(null)}>Annuler</Button>

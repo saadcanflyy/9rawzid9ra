@@ -520,7 +520,9 @@ export default function ModulePage() {
                           <p className="qz-row__title">{doc.doc_number || TYPE_LABELS[doc.doc_type] || doc.doc_type}</p>
                           <div className="qz-meta">
                             {doc.academic_year && <span>{doc.academic_year}</span>}
-                            {doc.professor && <span>Prof. {doc.professor}</span>}
+                            {doc.professor && (doc.professor_id ? (
+                              <Link to={`/professeur/${doc.professor_id}`} onClick={e => e.stopPropagation()}>Prof. {doc.professor}</Link>
+                            ) : <span>Prof. {doc.professor}</span>)}
                             <span>{doc.files?.length > 1 ? `${doc.files.length} fichiers` : `${doc.pages_count || 1} p.`}</span>
                             <span>{doc.downloads || 0} ↓</span>
                             <button type="button" className="qz-btn qz-btn--link" style={{ fontSize: 13 }} onClick={e => { e.stopPropagation(); navigate(`/user/${doc.uploader_id}`) }}>

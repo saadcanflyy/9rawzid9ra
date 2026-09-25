@@ -12,10 +12,10 @@ export const STATUS = {
 
 // documents.display_status (generated column, 20260926000200_quality_v2.sql) — what students see.
 export const DISPLAY_STATUS = {
-  pending:            { label: 'En attente',                 tone: 'warning', icon: 'clock',        hint: 'Pas encore assez d’avis. Tu peux aider en évaluant ce document.' },
-  community_approved: { label: 'Approuvé par la communauté', tone: 'success', icon: 'users',        hint: 'Au moins 5 étudiants confirment : bon module, bonne école, lisible, complet.' },
-  verified:           { label: 'Vérifié',                    tone: 'success', icon: 'shield-check', hint: 'Contrôlé par l’équipe de modération.' },
-  rejected:           { label: 'Refusé',                     tone: 'danger',  icon: 'x-circle',     hint: 'Retiré par la modération.' },
+  pending:            { label: 'En attente',                 tone: 'warning', icon: 'info',  hint: 'Pas encore assez d’avis. Tu peux aider en évaluant ce document.' },
+  community_approved: { label: 'Approuvé par la communauté', tone: 'success', icon: 'check', hint: 'Au moins 5 étudiants confirment : bon module, bonne école, lisible, complet.' },
+  verified:           { label: 'Vérifié',                    tone: 'success', icon: 'shield', hint: 'Contrôlé par l’équipe de modération.' },
+  rejected:           { label: 'Refusé',                     tone: 'danger',  icon: 'x',     hint: 'Retiré par la modération.' },
 };
 
 /** Status badge for a document; falls back to the raw status for rows loaded before quality v2. */

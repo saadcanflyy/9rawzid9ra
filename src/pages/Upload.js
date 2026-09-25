@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import ConfirmModal from '../components/ConfirmModal'
+import ProfessorPicker from '../components/ProfessorPicker'
 import {
   Card, Button, Input, Select, Chip, Dropzone, Badge, ProgressBar, Icon, Skeleton, Banner,
 } from '../design-system/ui'
@@ -239,9 +240,7 @@ export default function Upload() {
   // Doc info
   const [docType, setDocType] = useState('')
   const [year, setYear] = useState('')
-  const [professor, setProfessor] = useState('')
-  const [profSuggestions, setProfSuggestions] = useState([])
-  const [showProfDD, setShowProfDD] = useState(false)
+  const [professorSel, setProfessorSel] = useState(null)
   const [docNumber, setDocNumber] = useState('')
   const [files, setFiles] = useState([])
   const [previews, setPreviews] = useState([])
@@ -316,18 +315,6 @@ export default function Upload() {
       .limit(8)
       .then(({ data }) => setModResults(data || []))
   }, [modSearch, selFil, selSem])
-
-  useEffect(() => {
-    if (!selMod?.id || selMod.custom) { setProfSuggestions([]); return }
-    supabase.from('documents')
-      .select('professor')
-      .eq('module_id', selMod.id)
-      .not('professor', 'is', null)
-      .then(({ data }) => {
-        const names = [...new Set((data || []).map(d => d.professor).filter(Boolean))]
-        setProfSuggestions(names)
-      })
-  }, [selMod])
 
   // Real filename-based detection (no OCR/AI — just parsing the filename text)
   // for the two fields that live on this step: document type and academic year.
@@ -723,7 +710,8 @@ export default function Upload() {
         doc_type: docType,
         doc_number: docNumber.trim() || null,
         academic_year: year,
-        professor: professor.trim() || null,
+        professor: professorSel?.display_name || null,
+        professor_id: professorSel?.id || null,
         file_type: fileType,
         files: uploadedFiles.map(f => f.url),
         file_names: uploadedFiles.map(f => f.name),
@@ -762,7 +750,7 @@ export default function Upload() {
   const resetForm = () => {
     setStep(1); setSuccess(false); setFiles([]); setPreviews([])
     setSelMod(null); setDocType(''); setYear(''); setDocNumber('')
-    setProfessor(''); setProfSuggestions([]); setShowProfDD(false)
+    setProfessorSel(null)
     setProgress(0); setEarnedPoints(null); setHeldForReview(false)
     setModSearch(''); setError('')
     fileFlagsRef.current = {}; pendingScansRef.current = []; setDetected([])
@@ -1104,19 +1092,7 @@ export default function Upload() {
                       <Select label="Année académique" value={year} onChange={e => setYear(e.target.value)} options={[{ value: '', label: 'Sélectionner…' }, ...YEARS.map(y => ({ value: y, label: y }))]} />
                       <span className="qz-hint" style={{ color: 'var(--danger)' }}>Obligatoire pour examens, CCs et corrigés</span>
                     </div>
-                    <div className="up-uni-wrap">
-                      <Input label="Professeur (optionnel)" placeholder="Ex : Dr. Alaoui, Pr. Benali…" value={professor}
-                        onChange={e => setProfessor(e.target.value)} onFocus={() => setShowProfDD(true)} onBlur={() => setTimeout(() => setShowProfDD(false), 150)} />
-                      {showProfDD && profSuggestions.length > 0 && (() => {
-                        const q = professor.trim().toLowerCase()
-                        const filtered = q ? profSuggestions.filter(n => n.toLowerCase().includes(q)) : profSuggestions
-                        return filtered.length > 0 ? (
-                          <div className="qz-dropdown" style={{ position: 'absolute', left: 0, right: 0, width: 'auto', padding: 8, flexDirection: 'row', flexWrap: 'wrap', display: 'flex', gap: 6 }}>
-                            {filtered.map(name => <Chip key={name} onMouseDown={e => { e.preventDefault(); setProfessor(name); setShowProfDD(false) }}>{name}</Chip>)}
-                          </div>
-                        ) : null
-                      })()}
-                    </div>
+                    <ProfessorPicker value={professorSel} onChange={setProfessorSel} universityId={selUni || null} facultyId={selFac || null} />
                   </div>
 
                   {['td', 'tp', 'cours', 'corrige_td', 'corrige_tp'].includes(docType) && (
@@ -1185,7 +1161,7 @@ export default function Upload() {
                     ['Semestre', selSem],
                     ['Type', DOC_TYPES.find(t => t.k === docType)?.l],
                     ['Année', year || '—'],
-                    ['Professeur', professor || '—'],
+                    ['Professeur', professorSel?.display_name || '—'],
                     ...(docNumber ? [['Numéro / Chapitre', docNumber]] : []),
                     ['Fichiers', `${files.length} fichier${files.length > 1 ? 's' : ''} (${files.map(f => fmt(f.size)).join(', ')})`],
                   ].map(([k, v]) => (

@@ -17,6 +17,7 @@ import SenpaiZone from './pages/SenpaiZone'
 import AICoach from './pages/AICoach'
 import MyModules from './pages/MyModules'
 import Classement from './pages/Classement'
+import ProfessorPage from './pages/ProfessorPage'
 import WelcomeModal from './components/WelcomeModal'
 import ModeratorPanel from './pages/ModeratorPanel'
 import PrivacyPolicy from './pages/PrivacyPolicy'
@@ -108,6 +109,7 @@ function App() {
         <Route path="/ai" element={<AICoach />} />
         <Route path="/my-modules" element={<MyModules />} />
         <Route path="/classement" element={<Classement />} />
+        <Route path="/professeur/:id" element={<ProfessorPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/about" element={<About />} />
