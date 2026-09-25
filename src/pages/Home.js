@@ -4,8 +4,11 @@ import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
-import { Badge, SearchBar, Chip, StatStrip, DocumentRow, SchoolCard, Skeleton, Card, Button, Banner, Icon, Avatar } from '../design-system/ui'
+import {
+  Badge, SearchBar, Chip, StatStrip, DocumentRow, ModuleCard, SchoolCard, Skeleton, Card, Button, Banner, Icon, Avatar, ProgressBar,
+} from '../design-system/ui'
 import { notify } from '../design-system/toast'
+import { levelFor } from '../lib/reputation'
 
 const css = `
   .home-hero { padding: var(--space-16) var(--space-6) var(--space-12); text-align: center; }
@@ -19,6 +22,21 @@ const css = `
   .home-section { max-width: 1120px; margin: 0 auto; padding: var(--space-16) var(--space-6); }
   .home-section__head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap; }
   .home-schools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); }
+  .home-pillars { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); }
+  .home-pillar { display: flex; flex-direction: column; gap: var(--space-3); }
+  @media (max-width: 900px) { .home-pillars { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .home-pillars { grid-template-columns: 1fr; } }
+  .home-compare-table { width: 100%; border-collapse: collapse; }
+  .home-compare-table th, .home-compare-table td { text-align: left; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); font-size: 14px; }
+  .home-compare-table th { font: 500 12px/16px var(--font-mono); text-transform: uppercase; letter-spacing: .04em; color: var(--text-subtle); }
+  .home-compare-cell { display: flex; align-items: center; gap: var(--space-2); }
+  .home-compare-cards { display: none; flex-direction: column; gap: var(--space-3); }
+  @media (max-width: 640px) {
+    .home-compare-table { display: none; }
+    .home-compare-cards { display: flex; }
+  }
+  .home-compare-card { border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+  .home-compare-card__row { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
   .home-metrics { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); padding: var(--space-12) var(--space-6); }
   .home-metrics__inner { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-8); }
   .home-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-6); margin-top: var(--space-6); }
@@ -36,16 +54,44 @@ const css = `
     .home-cta__actions { align-items: stretch; }
     .home-section { padding: var(--space-12) var(--space-4); }
   }
+
+  /* Personalised home (signed in) */
+  .ph-layout { max-width: 1120px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-16); display: grid; grid-template-columns: 1fr 320px; gap: var(--space-8); align-items: start; }
+  @media (max-width: 900px) { .ph-layout { grid-template-columns: 1fr; } }
+  .ph-header { margin-bottom: var(--space-6); }
+  .ph-header__row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .ph-search { margin: var(--space-4) 0 var(--space-8); }
+  .ph-section { margin-bottom: var(--space-10); }
+  .ph-section__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
+  .ph-modules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); }
+  .ph-missing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); }
+  .ph-request-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+  .ph-request-row + .ph-request-row { border-top: 1px solid var(--border); }
+  .ph-side { display: flex; flex-direction: column; gap: var(--space-4); position: sticky; top: 80px; }
 `
 
 const ADMIN_ID = '84c11086-6041-4118-8f4c-138a0664966f'
 const TAGS = ['Analyse 1', 'Algorithmique', 'Droit Civil', 'Comptabilité', 'POO Java', 'Marketing']
 
+const PILLARS = [
+  { icon: 'file', title: 'Tout est rangé', desc: 'Université → filière → semestre → module. Fini de scroller 3 000 messages Telegram.' },
+  { icon: 'check', title: 'Des documents fiables', desc: 'Chaque document a un score qualité, les avis des étudiants et un badge Vérifié.' },
+  { icon: 'search', title: 'Une recherche qui comprend', desc: 'Tape « exam réseau GI 2024 » : on comprend le type, la filière et l’année.' },
+  { icon: 'star', title: 'Par et pour les étudiants', desc: 'Tu partages, tu aides ta promo, tu gagnes des points et des badges.' },
+]
+
+const COMPARE_ROWS = [
+  { label: 'Retrouver un examen de 2023', them: 'Perdu dans le fil', us: 'Rangé par module et année' },
+  { label: 'Savoir si c’est le bon fichier', them: 'Aucune idée', us: 'Score qualité + avis' },
+  { label: 'Accès', them: 'Il faut être dans le groupe', us: 'Ouvert à tous, gratuit' },
+  { label: 'Corrigés', them: 'Rares', us: 'Filtrables en un clic' },
+  { label: 'Recherche', them: 'Aucune', us: 'Par type, année, semestre' },
+]
+
 const STEPS = [
-  { n: '01', title: 'Sélectionne ton école', desc: 'Choisis ton université ou école. Publique ou privée — tout est couvert.' },
-  { n: '02', title: 'Filtre par module', desc: 'Navigue jusqu’à ton semestre et ton module exact.' },
-  { n: '03', title: 'Accède aux documents', desc: 'Examens finaux, contrôles continus, TDs, TPs — partagés par la communauté.' },
-  { n: '04', title: 'Contribue & progresse', desc: 'Partage tes propres annales, gagne des points et aide les étudiants de ta promo.' },
+  { n: '01', title: 'Choisis ta filière', desc: 'Sélectionne ton école, ta filière et ton semestre — ta page d’accueil se personnalise.' },
+  { n: '02', title: 'Trouve ou partage', desc: 'Télécharge ce dont tu as besoin, ou partage tes propres annales en 30 secondes.' },
+  { n: '03', title: 'Aide ta promo et monte de niveau', desc: 'Chaque contribution gagne des points, des badges et fait avancer toute ta filière.' },
 ]
 
 const FAQS = [
@@ -64,13 +110,14 @@ const fmtAgo = d => {
 }
 
 export default function Home() {
+  const { user } = useAuth()
+  return user ? <PersonalizedHome /> : <VisitorHome />
+}
+
+function VisitorHome() {
   const navigate = useNavigate()
   const { user, profile } = useAuth()
-  const [docCount, setDocCount] = useState(0)
-  const [uniCount, setUniCount] = useState(null)
-  const [modCount, setModCount] = useState(null)
-  const [filiereCount, setFiliereCount] = useState(null)
-  const [weekDelta, setWeekDelta] = useState(null)
+  const [stats, setStats] = useState(null)
   const [recentDocs, setRecentDocs] = useState([])
   const [recentReady, setRecentReady] = useState(false)
   const [activeTag, setActiveTag] = useState(-1)
@@ -89,24 +136,23 @@ export default function Home() {
 
   useEffect(() => {
     document.title = '9rawZid9ra — Annales & examens pour étudiants marocains'
-    supabase.from('documents').select('*', { count: 'exact', head: true })
-      .eq('is_verified', true)
-      .then(({ count }) => { if (count) setDocCount(count) })
 
-    supabase.from('universities').select('*', { count: 'exact', head: true }).then(({ count }) => setUniCount(count || 0))
-    supabase.from('modules').select('*', { count: 'exact', head: true }).then(({ count }) => setModCount(count || 0))
-    supabase.from('filieres').select('*', { count: 'exact', head: true }).then(({ count }) => setFiliereCount(count || 0))
-
-    // Real weekly delta — computed from documents.created_at
-    supabase.from('documents').select('created_at').eq('is_verified', true)
-      .gte('created_at', new Date(Date.now() - 14 * 86400000).toISOString())
-      .then(({ data }) => {
-        const rows = data || []
-        const cutoff = new Date(Date.now() - 7 * 86400000).toISOString()
-        const thisWeek = rows.filter(r => r.created_at > cutoff).length
-        const prevWeek = rows.length - thisWeek
-        setWeekDelta(prevWeek > 0 || thisWeek > 0 ? thisWeek - prevWeek : null)
+    supabase.rpc('get_platform_stats').then(({ data, error }) => {
+      if (!error && data) { setStats(data); return }
+      // Fallback while the onboarding migration isn't applied yet.
+      Promise.all([
+        supabase.from('documents').select('*', { count: 'exact', head: true }).eq('is_verified', true),
+        supabase.from('universities').select('*', { count: 'exact', head: true }),
+        supabase.from('modules').select('*', { count: 'exact', head: true }),
+        supabase.from('filieres').select('*', { count: 'exact', head: true }),
+      ]).then(([docs, unis, mods, fils]) => {
+        setStats({
+          documents: docs.count || 0, universities: unis.count || 0,
+          modules: mods.count || 0, filieres: fils.count || 0,
+          documents_this_week: 0, contributors: 0,
+        })
       })
+    })
 
     // Real recent-activity feed
     supabase.from('documents')
@@ -194,12 +240,11 @@ export default function Home() {
 
       <section className="home-hero">
         <div className="home-hero__inner">
-          <Badge tone="accent" dot>{docCount || 0} documents{weekDelta ? ` · +${weekDelta} cette semaine` : ''}</Badge>
-          <h1 className="t-display">Tes annales, sans chercher.</h1>
+          <Badge tone="accent" dot>{stats?.documents ?? 0} documents{stats?.documents_this_week ? ` · +${stats.documents_this_week} cette semaine` : ''}</Badge>
+          <h1 className="t-display">Le réseau organisé du savoir étudiant marocain.</h1>
           <p className="t-body-lg qz-muted">
-            Examens, CC, TD, TP et cours de ta filière, partagés par les étudiants{uniCount ? ` de ${uniCount} établissements` : ''}. Gratuit.
+            Examens, CC, TD, TP et corrigés, rangés par école, filière, semestre et module — partagés et vérifiés par les étudiants.
           </p>
-          <p className="t-body-sm qz-subtle">9ra w zid 9ra — par des étudiants, pour des étudiants.</p>
 
           <div className="home-hero__search">
             <SearchBar inputRef={searchInputRef} placeholder="Module, filière ou école… ex. Analyse S2" shortcut="⌘K" onSubmit={onSearch} />
@@ -216,10 +261,10 @@ export default function Home() {
 
       <div className="home-stats">
         <StatStrip items={[
-          { value: modCount != null ? modCount.toLocaleString() : '—', label: 'Modules' },
-          { value: uniCount != null ? uniCount : '—', label: 'Établissements' },
-          { value: docCount || 0, label: 'Documents', delta: weekDelta ? `+${weekDelta} cette semaine` : undefined },
-          { value: '0 MAD', label: 'Toujours gratuit' },
+          { value: stats?.modules != null ? stats.modules.toLocaleString() : '—', label: 'Modules' },
+          { value: stats?.universities ?? '—', label: 'Établissements' },
+          { value: stats?.documents ?? 0, label: 'Documents' },
+          { value: stats?.contributors ?? '—', label: 'Contributeurs' },
         ]} />
       </div>
 
@@ -239,6 +284,49 @@ export default function Home() {
           </Card>
         </div>
       )}
+
+      <section className="home-section">
+        <span className="t-eyebrow qz-subtle">Pourquoi 9rawZid9ra ?</span>
+        <h2 className="t-h2" style={{ marginBottom: 'var(--space-6)' }}>Ce que Google et les groupes WhatsApp ne t'offrent pas</h2>
+        <div className="home-pillars">
+          {PILLARS.map(p => (
+            <Card key={p.title} className="home-pillar">
+              <span className="qz-icon-tile" style={{ background: 'var(--brand-soft)', color: 'var(--brand-text)' }}><Icon name={p.icon} /></span>
+              <h3 className="t-h3">{p.title}</h3>
+              <p className="t-body-sm qz-muted">{p.desc}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section className="home-section">
+        <Card>
+          <h2 className="t-h2" style={{ marginBottom: 'var(--space-5)' }}>Groupes WhatsApp vs 9rawZid9ra</h2>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="home-compare-table">
+              <thead><tr><th>Critère</th><th>Groupes WhatsApp / Telegram</th><th>9rawZid9ra</th></tr></thead>
+              <tbody>
+                {COMPARE_ROWS.map(r => (
+                  <tr key={r.label}>
+                    <td className="t-label">{r.label}</td>
+                    <td><span className="home-compare-cell"><span style={{ color: 'var(--text-subtle)', display: 'inline-flex' }}><Icon name="x" size={16} /></span><span className="qz-muted">{r.them}</span></span></td>
+                    <td><span className="home-compare-cell"><span style={{ color: 'var(--success)', display: 'inline-flex' }}><Icon name="check" size={16} /></span>{r.us}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="home-compare-cards">
+            {COMPARE_ROWS.map(r => (
+              <div className="home-compare-card" key={r.label}>
+                <span className="t-label">{r.label}</span>
+                <div className="home-compare-card__row"><span style={{ color: 'var(--text-subtle)', display: 'inline-flex' }}><Icon name="x" size={16} /></span><span className="t-body-sm qz-muted">{r.them}</span></div>
+                <div className="home-compare-card__row"><span style={{ color: 'var(--success)', display: 'inline-flex' }}><Icon name="check" size={16} /></span><span className="t-body-sm">{r.us}</span></div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </section>
 
       <section className="home-section">
         <div className="home-section__head">
@@ -292,9 +380,9 @@ export default function Home() {
       <div className="home-metrics">
         <div className="home-metrics__inner">
           {[
-            { v: modCount != null ? modCount.toLocaleString() : '—', l: 'Modules structurés', s: 'Organisés par filière et semestre' },
-            { v: uniCount != null ? uniCount : '—', l: 'Établissements', s: 'Toutes les grandes écoles' },
-            { v: filiereCount != null ? filiereCount : '—', l: 'Filières couvertes', s: 'Licence, Ingénieur, Master' },
+            { v: stats?.modules != null ? stats.modules.toLocaleString() : '—', l: 'Modules structurés', s: 'Organisés par filière et semestre' },
+            { v: stats?.universities ?? '—', l: 'Établissements', s: 'Toutes les grandes écoles' },
+            { v: stats?.filieres ?? '—', l: 'Filières couvertes', s: 'Licence, Ingénieur, Master' },
             { v: '0 MAD', l: 'Coût d’accès', s: 'Gratuit pour tous les étudiants' },
           ].map(m => (
             <div key={m.l}>
@@ -328,17 +416,8 @@ export default function Home() {
             <p className="t-body qz-muted">Chaque document partagé aide des dizaines d'étudiants. Partage tes examens, gagne des points.</p>
           </div>
           <div className="home-cta__actions">
-            {user ? (
-              <>
-                <Button variant="primary" size="lg" as={Link} to="/upload">Partager un document</Button>
-                <Button variant="secondary" size="lg" as={Link} to="/my-modules">Mes modules</Button>
-              </>
-            ) : (
-              <>
-                <Button variant="primary" size="lg" as={Link} to="/register">Créer un compte gratuit</Button>
-                <Button variant="secondary" size="lg" as={Link} to="/browse">Explorer</Button>
-              </>
-            )}
+            <Button variant="primary" size="lg" as={Link} to="/register">Créer un compte gratuit</Button>
+            <Button variant="secondary" size="lg" as={Link} to="/browse">Explorer</Button>
           </div>
         </Card>
       </section>
@@ -358,6 +437,165 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      <Footer />
+    </div>
+  )
+}
+
+function PersonalizedHome() {
+  const navigate = useNavigate()
+  const { profile } = useAuth()
+  const [feed, setFeed] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const searchInputRef = useRef(null)
+
+  const load = () => {
+    supabase.rpc('get_home_feed').then(({ data, error }) => {
+      if (!error) setFeed(data)
+      setLoading(false)
+    })
+  }
+
+  useEffect(() => {
+    document.title = '9rawZid9ra — Ton espace'
+    load()
+  }, []) // eslint-disable-line
+
+  const onSearch = (value) => {
+    navigate(`/browse${value && value.trim() ? `?q=${encodeURIComponent(value.trim())}` : ''}`)
+  }
+
+  const openOnboarding = () => window.dispatchEvent(new CustomEvent('open-onboarding'))
+
+  const firstName = (profile?.name || 'toi').split(' ')[0]
+  const p = feed?.profile
+  const rep = feed?.reputation
+  const level = rep ? levelFor(rep.total_points) : null
+
+  return (
+    <div>
+      <style>{css}</style>
+      <Navbar activePage="home" />
+
+      <div className="ph-layout">
+        <div>
+          <div className="ph-header">
+            {p?.onboarded ? (
+              <span className="t-eyebrow qz-subtle">
+                {[p.filiere_abbreviation || p.filiere_name, p.semester, p.university_name].filter(Boolean).join(' · ')}
+              </span>
+            ) : null}
+            <div className="ph-header__row">
+              <h1 className="t-h1">Salut {firstName}</h1>
+              {p?.onboarded && <Button variant="link" size="sm" onClick={openOnboarding}>Changer</Button>}
+            </div>
+          </div>
+
+          <div className="ph-search">
+            <SearchBar variant="compact" inputRef={searchInputRef} placeholder="Module, filière ou école…" onSubmit={onSearch} />
+          </div>
+
+          {!loading && !p?.onboarded && (
+            <div style={{ marginBottom: 'var(--space-8)' }}>
+              <Banner action={<Button variant="primary" size="sm" onClick={openOnboarding}>Choisir ma filière</Button>}>
+                Dis-nous ta filière pour voir tes modules.
+              </Banner>
+            </div>
+          )}
+
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+              {[...Array(3)].map((_, i) => <Card key={i}><Skeleton height={100} /></Card>)}
+            </div>
+          ) : p?.onboarded ? (
+            <>
+              {feed.my_modules?.length > 0 && (
+                <section className="ph-section">
+                  <div className="ph-section__head">
+                    <h2 className="t-h2">Tes modules {p.semester ? `— ${p.semester}` : ''}</h2>
+                    <Button variant="link" size="sm" as={Link} to="/my-modules">Tout voir</Button>
+                  </div>
+                  <div className="ph-modules-grid">
+                    {feed.my_modules.slice(0, 6).map(m => (
+                      <ModuleCard key={m.id} linkAs={Link} href={`/module/${m.slug || m.id}`}
+                        name={m.name} semester={m.semester} types={m.doc_types || []} docs={m.docs_count}
+                        completeness={Math.round(((m.doc_types?.length || 0) / 10) * 100)}
+                        bookmarked={m.followed} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {feed.recent_documents?.length > 0 && (
+                <section className="ph-section">
+                  <div className="ph-section__head"><h2 className="t-h2">Nouveau dans ta filière</h2></div>
+                  <div className="qz-list">
+                    {feed.recent_documents.map(d => (
+                      <DocumentRow key={d.id} linkAs={Link} href={`/module/${d.module_slug || d.module_id}`} hideActions
+                        type={d.doc_type} title={d.title || d.module_name} year={d.academic_year} verified={d.status === 'verified'} />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {feed.missing?.length > 0 && (
+                <section className="ph-section">
+                  <div className="ph-section__head"><h2 className="t-h2">Sois le premier</h2></div>
+                  <p className="t-body-sm qz-muted" style={{ marginBottom: 'var(--space-4)' }}>Les 100 premiers contributeurs de 9rawZid9ra reçoivent le badge Fondateur.</p>
+                  <div className="ph-missing-grid">
+                    {feed.missing.map(m => (
+                      <Card key={m.id}>
+                        <p className="t-label">{m.name}</p>
+                        <p className="t-caption qz-subtle" style={{ margin: '4px 0 var(--space-3)' }}>Aucun document{m.open_requests > 0 ? ` · ${m.open_requests} demande${m.open_requests > 1 ? 's' : ''}` : ''}</p>
+                        <Button variant="secondary" size="sm" as={Link} to={`/upload?module=${m.id}`}>Partager</Button>
+                      </Card>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {feed.requests?.length > 0 && (
+                <section className="ph-section">
+                  <div className="ph-section__head"><h2 className="t-h2">Ta promo demande</h2></div>
+                  <Card style={{ padding: 0 }}>
+                    {feed.requests.map(r => (
+                      <div className="ph-request-row" key={r.id}>
+                        <Badge>{r.doc_type}</Badge>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p className="t-label">{r.module_name}</p>
+                          <p className="t-caption qz-subtle">{r.votes} vote{r.votes !== 1 ? 's' : ''}</p>
+                        </div>
+                        <Button variant="secondary" size="sm" as={Link} to={`/upload?module=${r.module_id}`}>J'ai ce document</Button>
+                      </div>
+                    ))}
+                  </Card>
+                </section>
+              )}
+            </>
+          ) : null}
+        </div>
+
+        <div className="ph-side">
+          {level && (
+            <Card>
+              <span className="t-eyebrow qz-subtle">Réputation</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: 'var(--space-2) 0' }}>
+                <span className="t-h3">{level.name}</span>
+                <span className="t-mono qz-subtle">{rep.total_points} pts</span>
+              </div>
+              <ProgressBar value={level.progress * 100} />
+              {level.next && <p className="t-caption qz-subtle" style={{ marginTop: 6 }}>Encore {level.toNext} points pour {level.nextName}</p>}
+              <div style={{ marginTop: 'var(--space-4)' }}><Button variant="secondary" size="sm" block as={Link} to="/profile">Voir mon profil</Button></div>
+            </Card>
+          )}
+          <Card>
+            <span className="t-eyebrow qz-subtle">Rejoins la communauté</span>
+            <p className="t-body-sm qz-muted" style={{ margin: 'var(--space-2) 0 var(--space-3)' }}>Partage un document et aide ta promo.</p>
+            <Button variant="secondary" size="sm" block as={Link} to="/upload">Partager un document</Button>
+          </Card>
+        </div>
+      </div>
 
       <Footer />
     </div>

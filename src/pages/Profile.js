@@ -122,6 +122,13 @@ export default function Profile() {
   const [editUni, setEditUni] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const [editFacId, setEditFacId] = useState('')
+  const [editFilId, setEditFilId] = useState('')
+  const [editSemester, setEditSemester] = useState('')
+  const [studyFacs, setStudyFacs] = useState([])
+  const [studyFils, setStudyFils] = useState([])
+  const [savingStudies, setSavingStudies] = useState(false)
+
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
@@ -159,6 +166,9 @@ export default function Profile() {
       setEditName(prof?.name || '')
       setEditBio(prof?.bio || '')
       setEditUni(prof?.university_id ? String(prof.university_id) : '')
+      setEditFacId(prof?.faculty_id ? String(prof.faculty_id) : '')
+      setEditFilId(prof?.filiere_id ? String(prof.filiere_id) : '')
+      setEditSemester(prof?.current_semester || '')
       setFollowersCount(frs || 0)
       setFollowingCount(fng || 0)
       setUploads(docs || [])
@@ -202,6 +212,52 @@ export default function Profile() {
     }
     load()
   }, [targetId]) // eslint-disable-line
+
+  // Cascading École → Faculté → Filière pickers for the settings tab.
+  useEffect(() => {
+    if (!editUni) { setStudyFacs([]); return }
+    supabase.from('faculties').select('id, name, type').eq('university_id', parseInt(editUni)).order('name')
+      .then(({ data }) => {
+        const facs = data || []
+        setStudyFacs(facs)
+        // Independent school: only the hidden root faculty exists — skip straight to filières.
+        if (facs.length === 1 && facs[0].type === 'root') {
+          setEditFacId(String(facs[0].id))
+        } else if (!facs.some(f => String(f.id) === editFacId)) {
+          setEditFacId('')
+        }
+      })
+  }, [editUni]) // eslint-disable-line
+
+  useEffect(() => {
+    if (!editFacId) { setStudyFils([]); return }
+    supabase.from('filieres').select('id, name, abbreviation, total_semesters').eq('faculty_id', parseInt(editFacId)).order('name')
+      .then(({ data }) => {
+        setStudyFils(data || [])
+        if (!(data || []).some(f => String(f.id) === editFilId)) setEditFilId('')
+      })
+  }, [editFacId]) // eslint-disable-line
+
+  const saveStudies = async () => {
+    setSavingStudies(true)
+    const { error } = await supabase.rpc('complete_onboarding', {
+      p_university_id: editUni ? parseInt(editUni) : null,
+      p_faculty_id: editFacId ? parseInt(editFacId) : null,
+      p_filiere_id: editFilId ? parseInt(editFilId) : null,
+      p_semester: editSemester || null,
+      p_follow_modules: false,
+    })
+    setSavingStudies(false)
+    if (error) { notify.error(error.message); return }
+    notify.success('Études mises à jour')
+    setProfile(p => ({
+      ...p,
+      university_id: editUni ? parseInt(editUni) : null,
+      faculty_id: editFacId ? parseInt(editFacId) : null,
+      filiere_id: editFilId ? parseInt(editFilId) : null,
+      current_semester: editSemester || null,
+    }))
+  }
 
   const isOwnProfile = !targetId || (currentUser && currentUser.id === targetId)
   const totalDLReceived = uploads.reduce((s, d) => s + (d.downloads || 0), 0)
@@ -302,7 +358,6 @@ export default function Profile() {
     const cleanName = stripHtml(editName).slice(0, 60)
     const { error } = await supabase.from('user_profiles').update({
       name: cleanName, bio: cleanBio,
-      university_id: editUni ? parseInt(editUni) : null,
     }).eq('id', currentUser.id)
     if (!error) await supabase.auth.updateUser({ data: { name: editName.trim() } })
     setSaving(false)
@@ -310,7 +365,7 @@ export default function Profile() {
       notify.error('Erreur lors de la sauvegarde.')
     } else {
       notify.success('Profil mis à jour')
-      setProfile(p => ({ ...p, name: cleanName, bio: cleanBio, university_id: editUni || null }))
+      setProfile(p => ({ ...p, name: cleanName, bio: cleanBio }))
     }
   }
 
@@ -627,13 +682,29 @@ export default function Profile() {
                 <Input label="Nom d'affichage" value={editName} onChange={e => setEditName(e.target.value)} placeholder="Ton nom complet" />
                 <Input label="Bio" multiline maxLength={300} counter value={editBio} onChange={e => setEditBio(e.target.value.slice(0, 300))}
                   placeholder="Décris-toi en quelques mots — filière, objectifs…" />
-                <Select label="Université" value={editUni} onChange={e => setEditUni(e.target.value)}
-                  options={[{ value: '', label: 'Sélectionner une université' }, ...unis.map(u => ({ value: String(u.id), label: u.name }))]} />
                 <div className="pf-theme-row">
                   <span className="t-label">Thème</span>
                   <ThemeToggle mode={themeMode} onToggle={cycleTheme} />
                 </div>
                 <div><Button variant="primary" loading={saving} onClick={handleSave}>Enregistrer</Button></div>
+              </div>
+            </Card>
+
+            <Card>
+              <span className="t-eyebrow qz-subtle">École, filière, semestre</span>
+              <p className="t-body-sm qz-muted" style={{ margin: '4px 0 var(--space-4)' }}>Utilisé pour personnaliser ta page d'accueil et tes modules suivis.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                <Select label="Université" value={editUni} onChange={e => setEditUni(e.target.value)}
+                  options={[{ value: '', label: 'Sélectionner une université' }, ...unis.map(u => ({ value: String(u.id), label: u.name }))]} />
+                {studyFacs.length > 1 || (studyFacs.length === 1 && studyFacs[0].type !== 'root') ? (
+                  <Select label="Faculté" value={editFacId} onChange={e => setEditFacId(e.target.value)}
+                    options={[{ value: '', label: 'Sélectionner une faculté' }, ...studyFacs.map(f => ({ value: String(f.id), label: f.name }))]} />
+                ) : null}
+                <Select label="Filière" value={editFilId} onChange={e => setEditFilId(e.target.value)} disabled={!editFacId}
+                  options={[{ value: '', label: 'Sélectionner une filière' }, ...studyFils.map(f => ({ value: String(f.id), label: f.abbreviation ? `${f.name} (${f.abbreviation})` : f.name }))]} />
+                <Select label="Semestre" value={editSemester} onChange={e => setEditSemester(e.target.value)} disabled={!editFilId}
+                  options={[{ value: '', label: 'Sélectionner un semestre' }, ...Array.from({ length: studyFils.find(f => String(f.id) === editFilId)?.total_semesters || 10 }, (_, i) => `S${i + 1}`).map(s => ({ value: s, label: s }))]} />
+                <div><Button variant="secondary" loading={savingStudies} onClick={saveStudies}>Enregistrer</Button></div>
               </div>
             </Card>
 
