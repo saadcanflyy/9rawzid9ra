@@ -1,13 +1,21 @@
-# Database reference — security, quality, reputation, search, onboarding
+# Database reference — security, quality, reputation, search, onboarding, professors, assistant
 
-Covers the five migrations in `supabase/migrations/`, applied in this order:
+Covers the migrations in `supabase/migrations/`, all applied, in this order:
 
+Phase 2 (2026-09-25):
 1. `20260925000100_security_hardening.sql`
 2. `20260925000200_document_quality.sql`
 3. `20260925000300_reputation.sql`
 4. `20260925000400_search.sql`
 5. `20260925000500_onboarding_home.sql`
-6. `20260925000600_notify_email_vault.sql` (manual secrets setup required — see bottom)
+6. `20260925000600_notify_email_vault.sql`
+
+Phase 3 (2026-09-26) — see the "Phase 3" section below:
+7. `20260926000100_professors.sql`
+8. `20260926000200_quality_v2.sql`
+9. `20260926000300_search_v2.sql`
+10. `20260926000400_reputation_v2.sql`
+11. `20260926000500_assistant.sql` (database schema only — edge function not deployed)
 
 All privileged writes go through `SECURITY DEFINER` functions (RPCs) that check the caller with `is_admin()` / `is_staff()`. The browser only ever reads or writes its own rows through RLS-permitted columns.
 
@@ -147,14 +155,79 @@ A `level_up` notification fires automatically the moment a user's total crosses 
 
 **Community verification**: a `published` document with ≥ 5 answers on every feedback criterion, ≥ 80% "yes" on each, an average rating ≥ 4★ (if any ratings exist) and zero open reports is auto-promoted to `verified` with `verification_source = 'community'` — no staff action needed.
 
-## Email webhook (migration 600) — apply manually, not yet run
+## Email webhook (migration 600) — applied 2026-09-25
 
-1. Generate a secret: `openssl rand -hex 32`.
-2. `supabase secrets set WEBHOOK_SECRET=<that secret>` (edge function environment).
-3. In the SQL editor:
-   ```sql
-   select vault.create_secret('<that same secret>', 'notify_email_webhook_secret');
-   select vault.create_secret('<project anon key>', 'supabase_anon_key');
-   ```
-4. Only then apply `20260925000600_notify_email_vault.sql` — it refuses to run if either vault secret is missing.
-5. Afterwards, consider rolling the service_role key in Supabase dashboard → Settings → API if the old trigger body (which had it in plain text) may have been exposed, and update it wherever it's used (edge functions pick up the new one automatically).
+Both Vault secrets (`notify_email_webhook_secret`, `supabase_anon_key`) were created and the migration applied and tested end-to-end (trigger → Vault → authenticated HTTP call → edge function, HTTP 200). Rolling the `service_role` key (the old trigger had it in plain text) is optional and not yet done.
+
+# Phase 3 — professors, quality v2, search v2, reputation v2, assistant (2026-09-26)
+
+Applied 2026-09-25, migrations `20260926000100`–`500` (the assistant *database schema* only — the edge function/UI were intentionally not deployed). Requires all six 2026-09-25 migrations.
+
+## New tables
+
+| Table | Purpose |
+|---|---|
+| `professors` | One row per real person: `display_name`, `name_key`/`first_key` (matching keys), `status` (`pending`\|`verified`\|`merged`\|`rejected`), `merged_into`. |
+| `professor_aliases` | Every raw spelling ever seen for a professor (`alias_norm` primary key), so "Benali"/"Pr Benali"/"A. Benali" all resolve to the same profile. |
+| `professor_feedback` | Structured, resource-focused feedback only: `exam_style`, `materials_help` (boolean), `difficulty` (1–5). No free text. Shown only from ≥ 3 answers. Unique on `(professor_id, user_id, module_id)`. |
+| `search_place_words` | City/place-name words excluded when deriving acronym aliases (so "Faculté des Sciences de Rabat" → `fs`, not `fsdr`). |
+| `institution_aliases` | Curated school/faculty aliases names don't already contain (`um5`, `uit`, `uh2c`, …). Staff-writable, publicly readable. |
+| `assistant_conversations` / `assistant_messages` | AI assistant conversation history (owner-only RLS). Messages keep the `cards` shown and the `context` understood. Schema only — no edge function deployed, so these sit unused until the assistant is built. |
+
+## New columns
+
+- **`documents`**: `professor_id` (FK to `professors`), `display_status` (generated: `pending`\|`community_approved`\|`verified`\|`rejected`, derived from `status`+`verification_source`), `search_text` (title/number/professor name, trigram-indexed).
+- **`document_feedback`**: `correct_university` (boolean) — the "Bonne école" criterion.
+- **`universities`/`faculties`/`filieres`**: `search_aliases` (text, cached acronyms/abbreviations, kept current by triggers).
+- **`user_badges`**: `times_awarded`, `last_period` (for repeatable monthly badges).
+
+## RPCs
+
+### Professors (migration 100)
+
+- `professor_name_parts(p_raw)` → `(title, first_name, last_name, name_key, first_key, display_name)`. Pure parsing, no auth — strips titles, detects family name (ALL-CAPS or last word, particles like `ben`/`el`/`ait` glued to it).
+- `resolve_professor(p_raw, p_university_id, p_faculty_id, p_limit)` → ranked candidate profiles (score ≥ 0.9 = safe auto-link), staff+internal use.
+- `link_professor(...)` → internal only (no grants); links or creates a profile, called by the upload trigger and `propose_professor`.
+- `search_professors(p_query, p_university_id, p_limit)` → anon+authenticated, powers the upload picker.
+- `get_professor(p_id)` → jsonb profile page (affiliations, modules, teaching history, documents, feedback summary, aliases); follows `merged_into` redirects. anon+authenticated.
+- `propose_professor(p_name, p_university_id, p_faculty_id)` → authenticated; explicit "not in the list" add from the picker.
+- Staff: `get_professor_queue(p_limit)`, `verify_professor(...)`, `merge_professors(p_from, p_into)`, `reject_professor(p_id)`.
+- Trigger `trg_documents_link_professor` (before insert/update of `professor`/`professor_id`/`module_id`) keeps `documents.professor_id` in sync with whatever the browser sends (free text or a picked id).
+
+### Quality v2 (migration 200)
+
+- `compute_document_quality_v2(...)` → `(score, signals)`. New weights: validation 25 (verified 25 · community 22 · published 10), rating 20, bon module 15, bonne école 5, lisible 15, complet 15, utile 5, −8/report (max −40).
+- `fn_documents_quality()` **replaces the phase-2 trigger function in place** (same name, same trigger `trg_documents_z_quality` — no re-`CREATE TRIGGER` needed). Adds the "bonne école" criterion to community-approval (≥ 3 answers, ≥ 80% yes) alongside the existing module/readable/complete checks.
+- `documents.display_status` is what the UI should read now instead of deriving status itself: `pending` / `community_approved` / `verified` / `rejected`.
+
+### Search v2 (migration 300)
+
+- `search_norm(p)` **replaces the phase-2 version** — now also folds roman numerals II–VIII to digits ("Analyse II" ↔ "analyse 2"); I and V are left alone (`"Mohammed V"`).
+- `entity_aliases(p_name, p_abbr)` → generic alias derivation (parenthesised acronym, prefix before " - ", initials with/without place words).
+- `resolve_academic_context(p_text)` → jsonb `{ university, faculty, filiere, module, module_candidates[], professor, semester, year, doc_types[], remaining }`. anon+authenticated. Used by search and (if built) the assistant.
+- `search_catalog(...)` **replaces the phase-2 version**, same name, adds `p_module_id`, `p_professor_id`, `p_doc_types text[]`. Ranking: validation (verified 0.45 / community 0.35) → usefulness (helpful + quality) → recency (half-weight ~1yr) → contributor reputation → own-school/filière boost.
+- `search_suggest(p_prefix, p_limit)` **replaces the phase-2 version** — adds `faculty` and `professor` kinds.
+- Institution/module/filière/faculty/university "search_aliases"/"search_doc" columns are rebuilt by triggers whenever names or `institution_aliases` change.
+
+### Reputation v2 (migration 400)
+
+- `reputation_level(p_points)` **replaces the phase-2 version** — new thresholds: Nouveau 0 · Contributeur 50 · Contributeur de confiance 250 · Expert 750 · Légende du campus 2500.
+- New badges: `downloads_100`, `quality_contributor`, `community_helper` (phase-2's `verified_5`/`helper_10` were folded into these, old codes deleted), `top_university_contributor` (repeatable monthly, `times_awarded`/`last_period`).
+- `award_top_university_contributors(p_month default null)` → staff or scheduler only. Scheduled via `pg_cron` on the 1st of each month at 02:00 UTC **if the extension is enabled** (Dashboard → Database → Extensions); otherwise call it manually.
+- `get_leaderboard(...)` **replaces the phase-2 version** — adds `p_faculty_id`, returns `faculty_id`/`faculty_name`.
+- `get_faculty_leaderboard(p_period, p_university_id, p_limit)` → new, school-scoped faculty rankings.
+- `get_my_reputation(...)` **replaces the phase-2 version** — adds `faculty_rank`.
+
+### Assistant / recommendations (migration 500, schema only)
+
+- `assistant_quota()` / `assistant_consume(p_tokens)` → authenticated. Daily limit 15 (free) / 200 (premium), counted in the existing `ai_usage` table (`feature = 'assistant'`).
+- `get_module_overview(p_module_id)` → jsonb (by doc type, missing types, professors, open requests). anon+authenticated.
+- `get_related_modules(p_module_id, p_limit)` → same filière / same subject elsewhere / "also downloaded". anon+authenticated.
+- `recommend_for_me(p_limit)` → authenticated only; documents for the caller's filière/semester/bookmarked modules they haven't downloaded.
+- `get_missing_resources(p_filiere_id, p_semester, p_limit)` → anon+authenticated; modules missing doc types + open request counts.
+- **Not deployed**: the `supabase/functions/assistant` edge function and its UI — these RPCs and tables exist but nothing calls them yet.
+
+## Known follow-ups
+
+- `pg_cron` is not enabled on this project — the monthly top-contributor award needs either enabling it (Dashboard → Database → Extensions) and re-running that `do $$ ... $$` block from migration 400, or calling `select award_top_university_contributors();` manually on the 1st of each month.
+- `pg_trgm` remains installed in `public` (not moved to `extensions`) — several `SECURITY DEFINER` functions are pinned to `search_path = public` only, and moving the extension would break their trigram operator resolution. Left as-is deliberately; low-severity advisor note, not a real exposure.

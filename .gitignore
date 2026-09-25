@@ -21,3 +21,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# manual pre-migration data snapshots (contain user ids / points, local safety net only)
+.migration-snapshot-*.json

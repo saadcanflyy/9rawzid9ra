@@ -3,10 +3,10 @@
 cd "$(dirname "$0")/../.."
 PSQL="psql -h ${PGHOST:-/tmp} -p ${PGPORT:-5433} -U postgres"
 total=0; failed=0
-for suite in 01 02 03 04 05; do
+for suite in $(ls supabase/tests/test_*.sh | sed -E "s/.*test_([0-9]+).sh/\1/"); do
   $PSQL -q -c "drop database if exists t" -c "create database t" >/dev/null
   $PSQL -d t -q -v ON_ERROR_STOP=1 -f supabase/tests/00_stub.sql -f supabase/tests/01_seed.sql >/dev/null
-  for f in supabase/migrations/2026092500*.sql; do $PSQL -d t -q -v ON_ERROR_STOP=1 -f "$f" 2>&1 | grep -v NOTICE; done
+  for f in supabase/migrations/2026092*.sql; do $PSQL -d t -q -v ON_ERROR_STOP=1 -f "$f" 2>&1 | grep -v NOTICE; done
   out=$(bash supabase/tests/test_$suite.sh)
   p=$(grep -c '^PASS' <<<"$out"); fl=$(grep -c '^FAIL' <<<"$out")
   echo "suite $suite: $p passed, $fl failed"; grep '^FAIL' <<<"$out"

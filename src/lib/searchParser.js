@@ -1,178 +1,188 @@
-// 9rawZid9ra — search query parser: turns free text like "exam réseau GI 2024" into
-// facets (doc type, semester, year) + the remaining free-text terms, for search_catalog
-// (see supabase/migrations/20260925000400_search.sql).
+// 9rawZid9ra — turns what a student types into search filters.
+//   parseQuery('exam réseau GI 2024')
+//   → { text: 'réseau GI', docType: 'examen', year: '2024', semester: null, chips: [...] }
+// The remaining words go to supabase.rpc('search_catalog', { p_query: text, ... }),
+// which handles accents, typos, synonyms and filière abbreviations (GI, SMI…) server-side.
 
-const normalizeWord = (w) => w.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const strip = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-const BASE_TYPE_BY_WORD = {
-  exam: 'examen', examen: 'examen', examens: 'examen',
-  td: 'td',
-  tp: 'tp',
-  cours: 'cours', cour: 'cours',
-  quiz: 'quiz',
-  projet: 'projet_final',
-};
-const CORRIGE_WORDS = new Set(['corrige', 'corriges', 'correction', 'corrections']);
-const CORRIGE_BASE = new Set(['td', 'tp', 'examen']);
-
-export const TYPE_CHIP_LABELS = {
-  examen: 'Examen',
-  projet_final: 'Projet',
-  cc: 'CC',
-  td: 'TD',
-  tp: 'TP',
-  cours: 'Cours',
-  quiz: 'Quiz',
-  corrige: 'Corrigé',
-  corrige_td: 'Corrigé TD',
-  corrige_tp: 'Corrigé TP',
-  corrige_examen: 'Corrigé Examen',
+// word (without accents) → documents.doc_type value. 'corrige' = any corrigé (server side).
+const TYPE_WORDS = {
+  exam: 'examen', exams: 'examen', examen: 'examen', examens: 'examen', final: 'examen', finale: 'examen',
+  cc: 'cc', cc1: 'cc', cc2: 'cc', cc3: 'cc', controle: 'cc', controles: 'cc', partiel: 'cc', partiels: 'cc', ds: 'cc',
+  td: 'td', tds: 'td', tp: 'tp', tps: 'tp',
+  cours: 'cours', cour: 'cours', poly: 'cours', polycopie: 'cours', resume: 'cours', resumes: 'cours', support: 'cours',
+  quiz: 'quiz', qcm: 'quiz',
+  projet: 'projet_final', projets: 'projet_final', pfe: 'projet_final',
+  corrige: 'corrige', corriges: 'corrige', correction: 'corrige', corrections: 'corrige', corr: 'corrige', solution: 'corrige', solutions: 'corrige',
 };
 
-const TYPE_QUERY_WORD = {
-  examen: 'examen',
-  projet_final: 'projet',
-  cc: 'cc',
-  td: 'td',
-  tp: 'tp',
-  cours: 'cours',
-  quiz: 'quiz',
-  corrige: 'correction',
-  corrige_td: 'corrigé td',
-  corrige_tp: 'corrigé tp',
-  corrige_examen: 'corrigé examen',
+// "corrigé td" / "correction examen" → the precise corrigé type
+const CORRIGE_OF = { examen: 'corrige_examen', td: 'corrige_td', tp: 'corrige_tp' };
+
+export const DOC_TYPE_LABELS = {
+  examen: 'Examen', cc: 'CC', td: 'TD', tp: 'TP', cours: 'Cours', quiz: 'Quiz', projet_final: 'Projet',
+  corrige: 'Corrigé', corrige_examen: 'Corrigé examen', corrige_td: 'Corrigé TD', corrige_tp: 'Corrigé TP',
 };
 
-function detectDocType(words) {
-  for (let i = 0; i < words.length; i++) {
-    const w = normalizeWord(words[i]);
-    if (/^cc\d*$/.test(w) || w === 'controle') {
-      const consumed = [i];
-      if (words[i + 1] && normalizeWord(words[i + 1]) === 'continu') consumed.push(i + 1);
-      return { docType: 'cc', consumed };
-    }
-    if (CORRIGE_WORDS.has(w)) {
-      const next = words[i + 1] ? normalizeWord(words[i + 1]) : null;
-      const nextType = next ? BASE_TYPE_BY_WORD[next] : null;
-      if (nextType && CORRIGE_BASE.has(nextType)) {
-        return { docType: 'corrige_' + nextType, consumed: [i, i + 1] };
-      }
-      return { docType: 'corrige', consumed: [i] };
-    }
-    if (BASE_TYPE_BY_WORD[w]) {
-      return { docType: BASE_TYPE_BY_WORD[w], consumed: [i] };
-    }
+const YEAR_RE = /^(?:(19|20)?(\d{2}))(?:[/-](?:(19|20)?(\d{2})))?$/;
+
+function parseYear(token) {
+  const m = YEAR_RE.exec(token);
+  if (!m) return null;
+  const a = Number((m[1] || '20') + m[2]);
+  if (a < 2000 || a > 2100) return null;
+  if (m[4] !== undefined) {
+    const b = Number((m[3] || '20') + m[4]);
+    if (b !== a + 1) return null;
+    return String(b);            // "2023/2024" → June session 2024 → matches '…/2024' first
   }
-  return null;
+  // bare 2-digit numbers are too ambiguous ("s3 21"?) — only 4 digits count as a year
+  return m[1] ? String(a) : null;
 }
 
-function detectSemester(words) {
-  for (let i = 0; i < words.length; i++) {
-    const w = normalizeWord(words[i]);
-    const single = w.match(/^s(\d{1,2})$/);
-    if (single) return { semester: 'S' + parseInt(single[1], 10), consumed: [i] };
-    const fused = w.match(/^semestre(\d{1,2})$/);
-    if (fused) return { semester: 'S' + parseInt(fused[1], 10), consumed: [i] };
-    if (w === 'semestre' && words[i + 1] && /^\d{1,2}$/.test(words[i + 1])) {
-      return { semester: 'S' + parseInt(words[i + 1], 10), consumed: [i, i + 1] };
-    }
+function parseSemester(token, next) {
+  let m = /^s(\d{1,2})$/.exec(token);
+  if (m && Number(m[1]) >= 1 && Number(m[1]) <= 14) return { value: `S${Number(m[1])}`, consumed: 1 };
+  if (/^(semestre|sem|semester)$/.test(token) && next && /^\d{1,2}$/.test(next)) {
+    const n = Number(next);
+    if (n >= 1 && n <= 14) return { value: `S${n}`, consumed: 2 };
   }
-  return null;
-}
-
-const normalizeYearPart = (s) => (s.length <= 2 ? 2000 + parseInt(s, 10) : parseInt(s, 10));
-
-function detectYear(words) {
-  for (let i = 0; i < words.length; i++) {
-    const w = words[i];
-    const range = w.match(/^(\d{2,4})[/-](\d{2,4})$/);
-    if (range) {
-      const year = Math.max(normalizeYearPart(range[1]), normalizeYearPart(range[2]));
-      return { year: String(year), consumed: [i] };
-    }
-    if (/^(19|20)\d{2}$/.test(w)) return { year: w, consumed: [i] };
-  }
+  m = /^(semestre|sem)(\d{1,2})$/.exec(token);
+  if (m) return { value: `S${Number(m[2])}`, consumed: 1 };
   return null;
 }
 
 /**
- * Parses free-text search input into facets + remaining text.
- * @returns {{ text: string, docType: string|null, semester: string|null, year: string|null, chips: {id:string,label:string}[] }}
+ * @param {string} input what the student typed
+ * @returns {{ text: string, docType: string|null, year: string|null, semester: string|null, chips: {key: string, label: string}[] }}
  */
-export function parseQuery(raw) {
-  const original = (raw || '').trim();
-  if (!original) return { text: '', docType: null, semester: null, year: null, chips: [] };
+export function parseQuery(input) {
+  const raw = String(input || '').trim().replace(/\s+/g, ' ');
+  if (!raw) return { text: '', docType: null, year: null, semester: null, chips: [] };
 
-  let words = original.split(/\s+/);
+  const tokens = raw.split(' ');
+  const keep = [];
+  let docType = null;
+  let year = null;
+  let semester = null;
+  let sawCorrige = false;
 
-  const typeResult = detectDocType(words);
-  const docType = typeResult ? typeResult.docType : null;
-  if (typeResult) words = words.filter((_, idx) => !typeResult.consumed.includes(idx));
+  for (let i = 0; i < tokens.length; i++) {
+    const original = tokens[i];
+    const t = strip(original).replace(/[.,;:!?()"']/g, '');
+    if (!t) continue;
 
-  const semResult = detectSemester(words);
-  const semester = semResult ? semResult.semester : null;
-  if (semResult) words = words.filter((_, idx) => !semResult.consumed.includes(idx));
+    if (!semester) {
+      const s = parseSemester(t, tokens[i + 1] && strip(tokens[i + 1]));
+      if (s) { semester = s.value; i += s.consumed - 1; continue; }
+    }
+    if (!year) {
+      const y = parseYear(t);
+      if (y) { year = y; continue; }
+    }
+    const type = TYPE_WORDS[t];
+    if (type) {
+      if (type === 'corrige') { sawCorrige = true; continue; }
+      if (!docType) { docType = type; continue; }
+    }
+    keep.push(original);
+  }
 
-  const yearResult = detectYear(words);
-  const year = yearResult ? yearResult.year : null;
-  if (yearResult) words = words.filter((_, idx) => !yearResult.consumed.includes(idx));
-
-  const text = words.join(' ').trim();
+  if (sawCorrige) docType = CORRIGE_OF[docType] || (docType ? docType : 'corrige');
+  // "corrigé cours" makes no sense → keep the plain corrigé filter
+  if (sawCorrige && !docType.startsWith('corrige')) docType = 'corrige';
 
   const chips = [];
-  if (docType) chips.push({ id: 'docType', label: TYPE_CHIP_LABELS[docType] || docType });
-  if (semester) chips.push({ id: 'semester', label: semester });
-  if (year) chips.push({ id: 'year', label: year });
+  if (docType) chips.push({ key: 'docType', label: DOC_TYPE_LABELS[docType] || docType });
+  if (semester) chips.push({ key: 'semester', label: semester });
+  if (year) chips.push({ key: 'year', label: year });
 
-  return { text, docType, semester, year, chips };
+  return { text: keep.join(' '), docType, year, semester, chips };
 }
 
-/** Merges a parsed query with explicit filters (explicit wins) into search_catalog RPC params. */
+/**
+ * Builds the search_catalog RPC arguments from the parsed query and the explicit filters
+ * chosen in the UI. Explicit filters win over what was parsed from the text.
+ */
 export function toSearchParams(parsed, filters = {}) {
-  const f = filters || {};
   return {
-    p_query: (parsed?.text || '').trim(),
-    p_doc_type: f.docType ?? parsed?.docType ?? null,
-    p_year: f.year ?? parsed?.year ?? null,
-    p_semester: f.semester ?? parsed?.semester ?? null,
-    p_university_id: f.universityId ?? null,
-    p_faculty_id: f.facultyId ?? null,
-    p_filiere_id: f.filiereId ?? null,
-    p_verified_only: !!f.verifiedOnly,
+    p_query: parsed.text,
+    p_university_id: filters.universityId ?? null,
+    p_faculty_id: filters.facultyId ?? null,
+    p_filiere_id: filters.filiereId ?? null,
+    p_semester: filters.semester ?? parsed.semester ?? null,
+    p_doc_type: filters.docType ?? parsed.docType ?? null,
+    p_year: filters.year ?? parsed.year ?? null,
+    p_verified_only: !!filters.verifiedOnly,
+    p_limit: filters.limit ?? 20,
+    p_offset: filters.offset ?? 0,
+    p_module_id: filters.moduleId ?? null,
+    p_professor_id: filters.professorId ?? null,
+    p_doc_types: filters.docTypes?.length ? filters.docTypes : null,
   };
 }
 
-/** Rewrites a raw query string with one detected facet removed (used by the chip "×" buttons). */
-export function removeFacet(raw, facet) {
-  const p = parseQuery(raw);
+/**
+ * Smart mode (search v2): turns the jsonb returned by supabase.rpc('resolve_academic_context', { p_text })
+ * into UI filters + removable chips. "analyse 2 fs rabat examen" →
+ *   filters { universityId, facultyId, moduleId, docTypes: ['examen'] }, chips [FS Rabat, Analyse 2, Examen].
+ * Only confident matches become filters; module_candidates are offered as "Tu voulais dire…" choices.
+ */
+export function contextToFilters(ctx) {
+  if (!ctx) return { filters: {}, chips: [], text: '', candidates: [] };
+  const filters = {};
+  const chips = [];
+  if (ctx.university) { filters.universityId = ctx.university.id; chips.push({ key: 'universityId', label: ctx.university.name }); }
+  if (ctx.faculty)    { filters.facultyId = ctx.faculty.id;       chips.push({ key: 'facultyId', label: ctx.faculty.name }); }
+  if (ctx.filiere)    { filters.filiereId = ctx.filiere.id;       chips.push({ key: 'filiereId', label: ctx.filiere.abbreviation || ctx.filiere.name }); }
+  if (ctx.semester)   { filters.semester = ctx.semester;          chips.push({ key: 'semester', label: ctx.semester }); }
+  if (ctx.module)     { filters.moduleId = ctx.module.id;         chips.push({ key: 'moduleId', label: ctx.module.name }); }
+  if (ctx.professor)  { filters.professorId = ctx.professor.id;   chips.push({ key: 'professorId', label: ctx.professor.name }); }
+  if (ctx.doc_types?.length) {
+    filters.docTypes = ctx.doc_types;
+    ctx.doc_types.forEach((t) => chips.push({ key: `docType:${t}`, label: DOC_TYPE_LABELS[t] || t }));
+  }
+  if (ctx.year)       { filters.year = ctx.year;                  chips.push({ key: 'year', label: ctx.year }); }
+  // words not understood stay as free text unless a module already covers them
+  const text = ctx.module ? '' : (ctx.remaining || '');
+  const candidates = ctx.module ? [] : (ctx.module_candidates || []);
+  return { filters, chips, text, candidates };
+}
+
+/** Removes one chip from the filters built by contextToFilters. */
+export function dropChip(filters, key) {
+  const next = { ...filters };
+  if (key.startsWith('docType:')) {
+    const t = key.slice(8);
+    next.docTypes = (next.docTypes || []).filter((x) => x !== t);
+    if (!next.docTypes.length) delete next.docTypes;
+  } else {
+    delete next[key];
+  }
+  return next;
+}
+
+/** Removes one understood facet from the typed text (when the student clicks × on a chip). */
+export function removeFacet(input, key) {
+  const p = parseQuery(input);
   const parts = [p.text];
-  if (facet !== 'docType' && p.docType) parts.push(TYPE_QUERY_WORD[p.docType] || p.docType);
-  if (facet !== 'semester' && p.semester) parts.push(p.semester.toLowerCase());
-  if (facet !== 'year' && p.year) parts.push(p.year);
-  return parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
+  if (key !== 'docType' && p.docType) parts.push((DOC_TYPE_LABELS[p.docType] || '').toLowerCase());
+  if (key !== 'semester' && p.semester) parts.push(p.semester);
+  if (key !== 'year' && p.year) parts.push(p.year);
+  return parts.filter(Boolean).join(' ');
 }
 
-const RECENT_KEY = '9rz_recent_searches';
-const RECENT_MAX = 8;
-
+// Recent searches (per browser)
+const RECENT_KEY = 'qz-recent-searches';
 export function getRecentSearches() {
-  try {
-    const raw = localStorage.getItem(RECENT_KEY);
-    const list = raw ? JSON.parse(raw) : [];
-    return Array.isArray(list) ? list : [];
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]').slice(0, 6); } catch (e) { return []; }
 }
-
-export function addRecentSearch(query) {
-  const q = (query || '').trim();
-  if (!q) return;
+export function addRecentSearch(q) {
+  const v = String(q || '').trim();
+  if (v.length < 2) return;
   try {
-    const list = getRecentSearches().filter((s) => s.toLowerCase() !== q.toLowerCase());
-    list.unshift(q);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX)));
-  } catch {
-    // localStorage unavailable (private mode, quota) — recent searches are a convenience only.
-  }
+    const list = [v, ...getRecentSearches().filter((x) => x.toLowerCase() !== v.toLowerCase())].slice(0, 6);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+  } catch (e) { /* storage unavailable */ }
 }

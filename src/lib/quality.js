@@ -10,6 +10,26 @@ export const STATUS = {
   rejected:       { label: 'Refusé',          tone: 'danger' },
 };
 
+// documents.display_status (generated column, 20260926000200_quality_v2.sql) — what students see.
+export const DISPLAY_STATUS = {
+  pending:            { label: 'En attente',                 tone: 'warning', icon: 'clock',        hint: 'Pas encore assez d’avis. Tu peux aider en évaluant ce document.' },
+  community_approved: { label: 'Approuvé par la communauté', tone: 'success', icon: 'users',        hint: 'Au moins 5 étudiants confirment : bon module, bonne école, lisible, complet.' },
+  verified:           { label: 'Vérifié',                    tone: 'success', icon: 'shield-check', hint: 'Contrôlé par l’équipe de modération.' },
+  rejected:           { label: 'Refusé',                     tone: 'danger',  icon: 'x-circle',     hint: 'Retiré par la modération.' },
+};
+
+/** Status badge for a document; falls back to the raw status for rows loaded before quality v2. */
+export function displayStatus(doc) {
+  if (!doc) return null;
+  const key = doc.display_status
+    || (doc.status === 'verified' ? (doc.verification_source === 'community' ? 'community_approved' : 'verified')
+        : doc.status === 'rejected' ? 'rejected' : 'pending');
+  return { key, ...(DISPLAY_STATUS[key] || DISPLAY_STATUS.pending) };
+}
+
+/** "92/100" or null when unrated. */
+export const scoreLabel = (doc) => (doc && !isUnrated(doc) ? `${Math.round(Number(doc.quality_score) || 0)}/100` : null);
+
 export const REPORT_REASONS = [
   { id: 'wrong_module',  label: 'Mauvais module' },
   { id: 'bad_scan',      label: 'Scan illisible ou flou' },
@@ -39,7 +59,8 @@ export function qualityLevel(doc) {
 }
 
 const CRITERIA = [
-  { key: 'correct_module', yes: 'Bon module',        no: 'Module à vérifier',   unknown: 'Module pas encore confirmé' },
+  { key: 'correct_module',     yes: 'Bon module',  no: 'Module à vérifier', unknown: 'Module pas encore confirmé' },
+  { key: 'correct_university', yes: 'Bonne école', no: 'École à vérifier',  unknown: 'École pas encore confirmée' },
   { key: 'readable',       yes: 'Scan lisible',      no: 'Scan peu lisible',    unknown: 'Lisibilité pas encore évaluée' },
   { key: 'complete',       yes: 'Document complet',  no: 'Document incomplet',  unknown: 'Complétude pas encore évaluée' },
 ];
@@ -54,7 +75,7 @@ export function qualityChecklist(doc) {
     const state = s[c.key] === 'yes' || s[c.key] === 'no' ? s[c.key] : 'unknown';
     return { key: c.key, state, label: c[state] };
   });
-  if (doc?.status === 'verified') {
+  if (doc?.status === 'verified' || doc?.display_status === 'verified' || doc?.display_status === 'community_approved') {
     const when = s.verified_at ? relativeDays(s.verified_at) : null;
     const by = doc.verification_source === 'community' ? 'par la communauté' : 'par la modération';
     rows.push({ key: 'verified', state: s.recently_verified ? 'yes' : 'unknown',

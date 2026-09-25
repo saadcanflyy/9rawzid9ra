@@ -54,12 +54,12 @@ describe('levels', () => {
     expect(levelFor(0).name).toBe('Nouveau');
     expect(levelFor(49).name).toBe('Nouveau');
     expect(levelFor(50).name).toBe('Contributeur');
-    expect(levelFor(300).name).toBe('Expert');
-    expect(levelFor(1000).name).toBe('Mentor');
+    expect(levelFor(250).name).toBe('Contributeur de confiance');
+    expect(levelFor(750).name).toBe('Expert');
     expect(levelFor(3500)).toMatchObject({ name: 'Légende du campus', next: null, progress: 1 });
   });
   test('progress to next', () => {
-    expect(levelFor(175)).toMatchObject({ name: 'Contributeur', next: 300, toNext: 125, progress: 0.5 });
+    expect(levelFor(150)).toMatchObject({ name: 'Contributeur', next: 250, toNext: 100, progress: 0.5 });
   });
   test('formatting', () => {
     expect(formatPoints(9955)).toBe('9\u2009955');
@@ -86,7 +86,7 @@ describe('quality', () => {
     const doc = { status: 'verified', verification_source: 'community',
       quality_signals: { correct_module: 'yes', readable: 'yes', complete: 'no', recently_verified: true, verified_at: new Date().toISOString(), feedback_count: 6 } };
     const rows = qualityChecklist(doc);
-    expect(rows.map((r) => r.state)).toEqual(['yes', 'yes', 'no', 'yes']);
-    expect(rows[3].label).toBe("Vérifié par la communauté aujourd'hui");
+    expect(rows.map((r) => r.state)).toEqual(['yes', 'unknown', 'yes', 'no', 'yes']);
+    expect(rows[4].label).toBe("Vérifié par la communauté aujourd'hui");
   });
 });

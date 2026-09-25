@@ -131,3 +131,10 @@ insert into vault.secrets values ('notify_email_webhook_secret','test-secret'),(
 create schema if not exists net;
 create table net.calls (url text, headers jsonb, body jsonb);
 create function net.http_post(url text, headers jsonb, body jsonb, timeout_milliseconds int) returns bigint language sql as $$ insert into net.calls values (url, headers, body); select 1::bigint $$;
+
+-- ai_usage (exists in production, used by the assistant quota)
+create table ai_usage (id serial primary key, user_id uuid, feature text not null, module_id int, tokens_used int default 0, created_at timestamp default now());
+alter table ai_usage enable row level security;
+create policy "User read own ai usage" on ai_usage for select using (auth.uid() = user_id);
+create policy "User insert ai usage" on ai_usage for insert with check (auth.uid() = user_id);
+grant select, insert on ai_usage to authenticated; grant usage, select on sequence ai_usage_id_seq to authenticated;
