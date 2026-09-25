@@ -6,9 +6,11 @@ import ConfirmModal from '../components/ConfirmModal'
 import ProfessorPicker from '../components/ProfessorPicker'
 import {
   Card, Button, Input, Select, Chip, Dropzone, Badge, ProgressBar, Icon, Skeleton, Banner,
+  LevelBadge, LevelProgress,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
 import { sha256Files } from '../lib/fileHash'
+import { levelFor, formatPoints, POINT_RULES } from '../lib/reputation'
 
 // pdfjs-dist + pdf-lib are ~300KB gzipped combined — loaded on demand (dynamic
 // import) so every other page's bundle stays untouched. Only Upload pays for it.
@@ -773,12 +775,7 @@ export default function Upload() {
     { n: '2', label: 'Document', sub: 'Type · Année · Fichier' },
     { n: '3', label: 'Confirmation', sub: 'Vérifier et envoyer' },
   ]
-  const RANKS = [
-    { min: 0, max: 99, label: 'Étudiant', next: 'Contributeur' },
-    { min: 100, max: 299, label: 'Contributeur', next: 'Senpai' },
-    { min: 300, max: 599, label: 'Senpai', next: 'Légende' },
-    { min: 600, max: Infinity, label: 'Légende', next: null },
-  ]
+  const GAIN_RULES = POINT_RULES.filter(r => ['upload_published', 'doc_verified', 'top_university_month'].includes(r.key))
 
   return (
     <div>
@@ -1194,22 +1191,34 @@ export default function Upload() {
           <aside className="up-side">
             {(() => {
               const pts = profile?.points || 0
-              const r = RANKS.find(r => pts >= r.min && pts <= r.max) || RANKS[0]
-              const pct = r.max === Infinity ? 100 : Math.round(((pts - r.min) / (r.max - r.min + 1)) * 100)
+              const lvl = levelFor(pts)
               return (
                 <Card>
                   <span className="t-eyebrow qz-subtle">Tes points</span>
-                  <div className="t-stat" style={{ margin: '6px 0' }}>+50 points</div>
-                  {r.next ? (
-                    <p className="t-body-sm qz-muted">{r.max + 1 - pts} points de plus pour débloquer le rang <b>{r.next}</b>.</p>
-                  ) : (
-                    <p className="t-body-sm qz-muted">Tu es au rang maximum — <b>Légende</b>.</p>
-                  )}
-                  <div style={{ marginTop: 8 }}><ProgressBar value={pct} /></div>
-                  <div className="t-caption qz-subtle" style={{ marginTop: 4 }}>{pts} / {r.max === Infinity ? pts : r.max + 1} pts</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', margin: '6px 0' }}>
+                    <span className="t-stat">{formatPoints(pts)}</span>
+                    <LevelBadge tone={lvl.tone} icon={lvl.icon} name={lvl.name} />
+                  </div>
+                  <LevelProgress progress={lvl.progress} tone={lvl.tone} label={
+                    lvl.next != null
+                      ? `${formatPoints(lvl.toNext)} points de plus pour débloquer ${lvl.nextName}`
+                      : `Tu es au rang maximum — ${lvl.name}.`
+                  } />
                 </Card>
               )
             })()}
+
+            <Card>
+              <span className="t-eyebrow qz-subtle">Ce que tu vas gagner</span>
+              <div style={{ marginTop: 8 }}>
+                {GAIN_RULES.map(r => (
+                  <div key={r.key} className="up-checklist-row" style={{ justifyContent: 'space-between' }}>
+                    <span className="t-body-sm qz-muted">{r.label}</span>
+                    <span className="t-mono" style={{ color: 'var(--success)', flexShrink: 0 }}>+{r.points}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
 
             <Card>
               <span className="t-eyebrow qz-subtle">Checklist qualité</span>

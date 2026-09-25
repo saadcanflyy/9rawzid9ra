@@ -5,7 +5,8 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import {
-  Badge, Chip, StatStrip, DocumentRow, ModuleCard, SchoolCard, Skeleton, Card, Button, Banner, Icon, Avatar, ProgressBar,
+  Badge, Chip, StatStrip, DocumentRow, ModuleCard, SchoolCard, Skeleton, Card, Button, Banner, Icon, Avatar,
+  LevelBadge, LevelProgress,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
 import { levelFor } from '../lib/reputation'
@@ -581,12 +582,11 @@ function PersonalizedHome() {
           {level && (
             <Card>
               <span className="t-eyebrow qz-subtle">Réputation</span>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', margin: 'var(--space-2) 0' }}>
-                <span className="t-h3">{level.name}</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: 'var(--space-2) 0' }}>
+                <LevelBadge tone={level.tone} icon={level.icon} name={level.name} />
                 <span className="t-mono qz-subtle">{rep.total_points} pts</span>
               </div>
-              <ProgressBar value={level.progress * 100} />
-              {level.next && <p className="t-caption qz-subtle" style={{ marginTop: 6 }}>Encore {level.toNext} points pour {level.nextName}</p>}
+              <LevelProgress progress={level.progress} tone={level.tone} label={level.next ? `Encore ${level.toNext} points pour ${level.nextName}` : null} />
               <div style={{ marginTop: 'var(--space-4)' }}><Button variant="secondary" size="sm" block as={Link} to="/profile">Voir mon profil</Button></div>
             </Card>
           )}

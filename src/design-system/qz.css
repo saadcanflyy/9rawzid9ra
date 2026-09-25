@@ -375,6 +375,9 @@ button.qz-badge:hover { filter: brightness(1.15); }
 /* ---------- Status badge ---------- */
 .qz-status-badge { display: inline-flex; }
 
+/* ---------- Badge chip (earned badge pill, icon + name + ×N) ---------- */
+.qz-badge-chip .qz-count { font-family: var(--font-mono); font-size: 11px; color: inherit; opacity: .7; }
+
 /* ---------- Feedback prompt ---------- */
 .qz-feedback-prompt { display: flex; flex-direction: column; gap: var(--space-3); }
 .qz-feedback-prompt__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }

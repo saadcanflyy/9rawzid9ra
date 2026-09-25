@@ -7,9 +7,11 @@ import { useAuth } from '../context/AuthContext'
 import {
   Breadcrumb, Button, Badge, DocType, Tabs, Chip, EmptyState, Card, Icon, Avatar,
   ProgressBar, Sheet, Skeleton, Select, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, Toast, StatusBadge,
+  LevelBadge,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
 import { qualityLevel, qualityChecklist, isUnrated, REPORT_REASONS, displayStatus } from '../lib/quality'
+import { levelFor } from '../lib/reputation'
 
 const css = `
   .mp-hero { padding: var(--space-8) var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface); }
@@ -135,7 +137,7 @@ export default function ModulePage() {
 
         // Visible: published/verified to everyone, plus your own regardless of status
         // (pending_review/needs_review show with a badge; rejected shows greyed with the reason).
-        const docSelect = user ? '*, user_profiles!uploader_id(name, is_fondateur)' : '*'
+        const docSelect = user ? '*, user_profiles!uploader_id(name, is_fondateur, points)' : '*'
         let docQuery = supabase.from('documents').select(docSelect).eq('module_id', parseInt(id))
         docQuery = user
           ? docQuery.or(`status.in.(published,verified),uploader_id.eq.${user.id}`)
@@ -224,7 +226,7 @@ export default function ModulePage() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'documents' }, async payload => {
         if (String(payload.new.module_id) !== String(id) || payload.new.is_flagged) return
         const { data } = await supabase
-          .from('documents').select('*, user_profiles!uploader_id(name, is_fondateur)').eq('id', payload.new.id).single()
+          .from('documents').select('*, user_profiles!uploader_id(name, is_fondateur, points)').eq('id', payload.new.id).single()
         if (data) setDocs(prev => prev.some(d => d.id === data.id) ? prev : [data, ...prev])
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'documents' }, async payload => {
@@ -237,7 +239,7 @@ export default function ModulePage() {
         const alreadyPresent = docsRef.current.some(d => d.id === payload.new.id)
         if (!alreadyPresent && !payload.new.is_flagged) {
           const { data } = await supabase
-            .from('documents').select('*, user_profiles!uploader_id(name, is_fondateur)').eq('id', payload.new.id).single()
+            .from('documents').select('*, user_profiles!uploader_id(name, is_fondateur, points)').eq('id', payload.new.id).single()
           if (data) setDocs(prev => prev.some(d => d.id === data.id) ? prev : [data, ...prev])
         }
       })
@@ -517,10 +519,14 @@ export default function ModulePage() {
                             ) : <span>Prof. {doc.professor}</span>)}
                             <span>{doc.files?.length > 1 ? `${doc.files.length} fichiers` : `${doc.pages_count || 1} p.`}</span>
                             <span>{doc.downloads || 0} ↓</span>
-                            <button type="button" className="qz-btn qz-btn--link" style={{ fontSize: 13 }} onClick={e => { e.stopPropagation(); navigate(`/user/${doc.uploader_id}`) }}>
-                              {doc.user_profiles?.name || 'Anonyme'}
-                            </button>
+                            <span>
+                              Partagé par{' '}
+                              <button type="button" className="qz-btn qz-btn--link" style={{ fontSize: 13 }} onClick={e => { e.stopPropagation(); navigate(`/user/${doc.uploader_id}`) }}>
+                                {doc.user_profiles?.name || 'Anonyme'}
+                              </button>
+                            </span>
                             {doc.user_profiles?.is_fondateur && <Badge tone="founder" icon="star">Fondateur</Badge>}
+                            {(() => { const upLvl = levelFor(doc.user_profiles?.points || 0); return <LevelBadge tone={upLvl.tone} icon={upLvl.icon} name={upLvl.name} /> })()}
                             <StatusBadge {...displayStatus(doc)} />
                             {level && <QualityBadge score={doc.quality_score ?? 0} label={level.label} tone={level.tone} />}
                           </div>

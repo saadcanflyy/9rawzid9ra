@@ -217,6 +217,7 @@ Applied 2026-09-25, migrations `20260926000100`–`500` (the assistant *database
 - `get_leaderboard(...)` **replaces the phase-2 version** — adds `p_faculty_id`, returns `faculty_id`/`faculty_name`.
 - `get_faculty_leaderboard(p_period, p_university_id, p_limit)` → new, school-scoped faculty rankings.
 - `get_my_reputation(...)` **replaces the phase-2 version** — adds `faculty_rank`.
+- `award_top_university_contributors(...)` **updated 2026-09-26 (migration 510, Prompt 26)** — the `badge` notification it inserts now links to `/classement?scope=university` instead of the bare `/classement`, so it lands the recipient on their school's ranking. Frontend: `src/lib/reputation.js` exports `LEVEL_TONES`/`BADGE_TIER_TONES`/`RANKING_SCOPES`/`rankLabel`; `levelFor()` now also returns `icon`/`tone`. New shared components `LevelBadge`/`LevelProgress`/`BadgeChip` in `src/design-system/ui.js` replace the per-page inline `LEVEL_TONES` + `Badge`/`ProgressBar` duplication (Browse, Profile, Home, Classement, Upload, ModulePage). Classement gained a Facultés tab (`get_faculty_leaderboard`) and a Global/Mon école/Ma faculté scope pill for Étudiants (driving `get_leaderboard`'s `p_university_id`/`p_faculty_id`); Profile gained a "Réputation" card with 3 ranks (`get_my_reputation`); ModulePage's document rows now show "Partagé par X" + a level badge; Upload's stale hardcoded `RANKS` (0–99/100–299/300–599/600+, unrelated to the real levels) was replaced with `levelFor()` and a new "Ce que tu vas gagner" card.
 
 ### Assistant / recommendations (migration 500, schema only)
 

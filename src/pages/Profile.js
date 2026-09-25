@@ -6,12 +6,13 @@ import ConfirmModal from '../components/ConfirmModal'
 import ProfessorPicker from '../components/ProfessorPicker'
 import {
   Avatar, Badge, Button, Input, Select, Tabs, StatStrip, EmptyState, Card, Sheet,
-  Dropdown, Icon, ThemeToggle, Skeleton, DocType, QualityBadge, ProgressBar, StatusBadge,
+  Dropdown, Icon, ThemeToggle, Skeleton, DocType, QualityBadge, StatusBadge,
+  LevelBadge, LevelProgress, BadgeChip,
 } from '../design-system/ui'
 import { useTheme } from '../design-system/theme'
 import { notify } from '../design-system/toast'
 import { qualityLevel, displayStatus } from '../lib/quality'
-import { levelFor, formatPoints, POINT_RULES, LEVELS } from '../lib/reputation'
+import { levelFor, formatPoints, POINT_RULES, LEVELS, LEVEL_TONES, BADGE_TIER_TONES, PERIODS, rankLabel } from '../lib/reputation'
 
 const css = `
   .pf-layout { max-width: 960px; margin: 0 auto; padding: var(--space-8) var(--space-6); }
@@ -35,6 +36,8 @@ const css = `
   .pf-follow-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; width: 100%; text-align: left; background: none; border: 0; cursor: pointer; }
   .pf-theme-row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) 0; }
   .pf-settings-list { display: flex; flex-direction: column; gap: var(--space-4); }
+  .pf-rep-ranks { display: flex; gap: var(--space-6); margin-top: var(--space-4); flex-wrap: wrap; }
+  .pf-rep-rank__n { font: 600 20px/1.2 var(--font-mono); }
   .pf-badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: var(--space-3); margin-top: var(--space-3); }
   .pf-badge-tile { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
   .pf-badge-tile--locked { opacity: 0.35; }
@@ -49,8 +52,6 @@ const PT_LABEL = {
   survival_guide: 'Guide de survie', cheat_code: 'Cheat Code', timeline: 'Timeline', red_flag: 'Red Flag', path_review: 'Bilan',
 }
 
-const LEVEL_TONES = { 1: 'neutral', 2: 'accent', 3: 'brand', 4: 'warning', 5: 'founder' }
-const BADGE_TIER_TONES = { bronze: 'neutral', silver: 'accent', gold: 'warning', special: 'founder' }
 const DOC_STATUS_RANK = { verified: 0, community_approved: 1, pending: 2, rejected: 3 }
 const sortDocs = (list) => [...list].sort((a, b) => {
   const r = (DOC_STATUS_RANK[displayStatus(a)?.key] ?? 2) - (DOC_STATUS_RANK[displayStatus(b)?.key] ?? 2)
@@ -107,6 +108,8 @@ export default function Profile() {
   const [listLoading, setListLoading] = useState(false)
 
   const [showPointsInfo, setShowPointsInfo] = useState(false)
+  const [repPeriod, setRepPeriod] = useState('week')
+  const [myRep, setMyRep] = useState(null)
   const [uploadNudgeDismissed, setUploadNudgeDismissed] = useState(
     () => localStorage.getItem('9rz_upload_nudge') === '1'
   )
@@ -182,7 +185,7 @@ export default function Profile() {
           .order('helpful_count', { ascending: false }),
         supabase.from('universities').select('id, name').order('name'),
         supabase.from('badges').select('code, name, description, icon, tier, sort_order').order('sort_order'),
-        supabase.from('user_badges').select('badge_code, awarded_at').eq('user_id', uid),
+        supabase.from('user_badges').select('badge_code, awarded_at, times_awarded').eq('user_id', uid),
       ])
 
       setProfile(prof || {})
@@ -194,7 +197,7 @@ export default function Profile() {
       setEditFilId(prof?.filiere_id ? String(prof.filiere_id) : '')
       setEditSemester(prof?.current_semester || '')
       setBadgeCatalogue(badgeCatalogue || [])
-      setEarnedBadges(Object.fromEntries((userBadgeRows || []).map(b => [b.badge_code, b.awarded_at])))
+      setEarnedBadges(Object.fromEntries((userBadgeRows || []).map(b => [b.badge_code, { awardedAt: b.awarded_at, timesAwarded: b.times_awarded || 1 }])))
       setFollowersCount(frs || 0)
       setFollowingCount(fng || 0)
       setUploads(docs || [])
@@ -238,6 +241,15 @@ export default function Profile() {
     }
     load()
   }, [targetId]) // eslint-disable-line
+
+  // Own-profile "Réputation" card: rank breakdown for the selected period.
+  useEffect(() => {
+    const isOwn = currentUser && (!targetId || currentUser.id === targetId)
+    if (!isOwn) { setMyRep(null); return }
+    supabase.rpc('get_my_reputation', { p_period: repPeriod }).then(({ data, error }) => {
+      if (!error) setMyRep(data?.[0] || null)
+    })
+  }, [currentUser, targetId, repPeriod])
 
   // Cascading École → Faculté → Filière pickers for the settings tab.
   useEffect(() => {
@@ -529,16 +541,38 @@ export default function Profile() {
 
         <div style={{ marginTop: 'var(--space-3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <Badge tone={LEVEL_TONES[level.level]}>{level.name}</Badge>
+            <LevelBadge tone={level.tone} icon={level.icon} name={level.name} />
             <Button variant="ghost" size="sm" iconOnly icon="info" aria-label="Comment fonctionnent les points ?" onClick={() => setShowPointsInfo(true)} />
           </div>
           {level.next != null && (
             <div style={{ maxWidth: 280, marginTop: 8 }}>
-              <ProgressBar value={level.progress * 100} />
-              <p className="t-caption qz-subtle" style={{ marginTop: 4 }}>{formatPoints(level.toNext)} points avant {level.nextName}</p>
+              <LevelProgress progress={level.progress} tone={level.tone} label={`${formatPoints(level.toNext)} points avant ${level.nextName}`} />
             </div>
           )}
         </div>
+
+        {isOwnProfile && myRep && (
+          <Card style={{ marginTop: 'var(--space-4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+              <span className="t-eyebrow qz-subtle">Réputation</span>
+              <Tabs label="Période" value={repPeriod} onChange={setRepPeriod} items={PERIODS.map(p => ({ id: p.id, label: p.label }))} />
+            </div>
+            <div className="pf-rep-ranks">
+              <div className="pf-rep-rank">
+                <div className="pf-rep-rank__n">{rankLabel(myRep.period_rank) || '—'}</div>
+                <div className="t-caption qz-subtle">Global</div>
+              </div>
+              <div className="pf-rep-rank">
+                <div className="pf-rep-rank__n">{rankLabel(myRep.university_rank) || '—'}</div>
+                <div className="t-caption qz-subtle">Mon école</div>
+              </div>
+              <div className="pf-rep-rank">
+                <div className="pf-rep-rank__n">{rankLabel(myRep.faculty_rank) || '—'}</div>
+                <div className="t-caption qz-subtle">Ma faculté</div>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {isOwnProfile && uploads.length === 0 && !uploadNudgeDismissed && (
           <div className="qz-banner" style={{ marginTop: 'var(--space-4)' }}>
@@ -573,18 +607,21 @@ export default function Profile() {
             <span className="t-eyebrow qz-subtle">Badges ({Object.keys(earnedBadges).length}/{badgeCatalogue.length})</span>
             <div className="pf-badges-grid">
               {badgeCatalogue.map(b => {
-                const earned = !!earnedBadges[b.code]
+                const award = earnedBadges[b.code]
+                const earned = !!award
                 const tone = BADGE_TIER_TONES[b.tier] || 'neutral'
+                const hint = `${b.name} — ${b.description}${earned ? ` (obtenu le ${fmtShort(award.awardedAt)})` : ' (à débloquer)'}`
                 return (
-                  <div key={b.code} className={`pf-badge-tile${earned ? '' : ' pf-badge-tile--locked'}`}
-                    title={`${b.name} — ${b.description}${earned ? ` (obtenu le ${fmtShort(earnedBadges[b.code])})` : ' (à débloquer)'}`}>
+                  <div key={b.code} className={`pf-badge-tile${earned ? '' : ' pf-badge-tile--locked'}`} title={earned ? undefined : hint}>
                     <span className="pf-badge-tile__icon" style={{
                       background: tone === 'neutral' ? 'var(--surface-2)' : `var(--${tone}-soft)`,
                       color: tone === 'neutral' ? 'var(--text-subtle)' : `var(--${tone})`,
                     }}>
                       <Icon name={b.icon} size={20} />
                     </span>
-                    <span className="pf-badge-tile__label">{b.name}</span>
+                    {earned
+                      ? <BadgeChip name={b.name} tone={tone} count={award.timesAwarded} hint={hint} />
+                      : <span className="pf-badge-tile__label">{b.name}</span>}
                   </div>
                 )
               })}
@@ -839,7 +876,7 @@ export default function Profile() {
           <div style={{ marginTop: 8 }}>
             {LEVELS.map(l => (
               <div key={l.level} className="pf-activity-row">
-                <Badge tone={LEVEL_TONES[l.level]}>{l.name}</Badge>
+                <LevelBadge tone={LEVEL_TONES[l.level]} icon={l.icon} name={l.name} />
                 <span className="t-caption qz-subtle">{formatPoints(l.min)}+ pts</span>
               </div>
             ))}

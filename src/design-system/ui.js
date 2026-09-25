@@ -508,6 +508,27 @@ import { trapFocus, focusFirst } from './focusTrap';
       h(Badge, { tone: props.tone, icon: props.icon }, props.label));
   }
 
+  /* ---- LevelBadge ---- */
+  function LevelBadge(props) {
+    return h(Badge, { tone: props.tone, icon: props.icon, onClick: props.onClick }, props.name);
+  }
+
+  /* ---- LevelProgress ---- */
+  function LevelProgress(props) {
+    return h('div', { className: 'qz-level-progress' },
+      h(ProgressBar, { value: (props.progress || 0) * 100, tone: props.tone }),
+      props.label ? h('p', { className: 't-caption qz-subtle', style: { marginTop: 4 } }, props.label) : null);
+  }
+
+  /* ---- BadgeChip ---- */
+  function BadgeChip(props) {
+    var tone = props.tone || 'neutral';
+    return h('span', { className: cx('qz-badge', 'qz-badge-chip', tone !== 'neutral' && 'qz-badge--' + tone), title: props.hint },
+      props.icon ? h(Icon, { name: props.icon }) : null,
+      h('span', null, props.name),
+      props.count > 1 ? h('span', { className: 'qz-count' }, '×' + props.count) : null);
+  }
+
   var QUALITY_WEIGHTS = [
     ['Validation', 'Vérifié 25 · Approuvé par la communauté 22 · Publié 10'],
     ['Note moyenne', 'jusqu’à 20 pts'],
@@ -616,4 +637,4 @@ import { trapFocus, focusFirst } from './focusTrap';
           h('button', { type: 'button', className: 'qz-btn qz-btn--danger', disabled: !reason, onClick: function () { if (props.onSubmit) props.onSubmit(reason, details); } }, 'Signaler'))));
   }
 
-  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, StatusBadge };
+  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, StatusBadge, LevelBadge, LevelProgress, BadgeChip };

@@ -205,6 +205,7 @@ export default function Navbar({ activePage = '' }) {
     } else if (n.type === 'new_document') navigate(n.link || '/browse')
     else if (['helpful', 'reaction', 'comment', 'download', 'request_fulfilled'].includes(n.type)) navigate(`/module/${rid}`)
     else if (n.type === 'doc_request') navigate('/browse')
+    else if (n.type === 'badge') navigate(n.link || '/profile')
     else if (n.type === 'announcement') navigate('/')
     else if (n.post_id) { localStorage.setItem('senpai_highlight_post', String(n.post_id)); navigate('/senpai') }
     else navigate('/profile')

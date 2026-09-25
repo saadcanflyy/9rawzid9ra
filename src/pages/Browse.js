@@ -6,15 +6,13 @@ import { useAuth } from '../context/AuthContext'
 import {
   Breadcrumb, SearchBar, Select, Chip, Tabs, ModuleCard, DocType, DocumentRow, Card, Button,
   Input, Sheet, Badge, EmptyState, Skeleton, ProgressBar, Icon, Banner, Switch, LoadMore,
-  QualityBadge, StatusBadge,
+  QualityBadge, StatusBadge, LevelBadge,
 } from '../design-system/ui'
 import ProfessorPicker from '../components/ProfessorPicker'
 import { notify } from '../design-system/toast'
 import { useSearch } from '../hooks/useSearch'
 import { qualityLevel, displayStatus } from '../lib/quality'
 import { levelFor } from '../lib/reputation'
-
-const LEVEL_TONES = { 1: 'neutral', 2: 'accent', 3: 'brand', 4: 'warning', 5: 'founder' }
 
 const css = `
   .bw-banner { border-bottom: 1px solid var(--border); background: var(--brand-soft); padding: var(--space-3) var(--space-6); display: flex; align-items: center; justify-content: center; gap: var(--space-3); flex-wrap: wrap; }
@@ -742,7 +740,7 @@ export default function Browse() {
                                       <Link to={`/professeur/${d.professor_id}`} onClick={e => e.stopPropagation()}>Prof. {d.professor}</Link>
                                     ) : <span>Prof. {d.professor}</span>)}
                                     <span>partagé par {d.uploader_name || 'Anonyme'}</span>
-                                    <Badge tone={LEVEL_TONES[upLevel.level]}>{upLevel.name}</Badge>
+                                    <LevelBadge tone={upLevel.tone} icon={upLevel.icon} name={upLevel.name} />
                                   </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>

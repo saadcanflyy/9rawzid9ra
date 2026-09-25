@@ -2,12 +2,15 @@
 // Must match supabase/migrations/20260926000400_reputation_v2.sql (reputation_level, reputation_rules, badges).
 
 export const LEVELS = [
-  { level: 1, name: 'Nouveau',                   min: 0,    short: 'Nouveau',      icon: 'sprout' },
+  { level: 1, name: 'Nouveau',                   min: 0,    short: 'Nouveau',      icon: 'user' },
   { level: 2, name: 'Contributeur',              min: 50,   short: 'Contributeur', icon: 'upload' },
-  { level: 3, name: 'Contributeur de confiance', min: 250,  short: 'Confiance',    icon: 'shield-check' },
-  { level: 4, name: 'Expert',                    min: 750,  short: 'Expert',       icon: 'award' },
+  { level: 3, name: 'Contributeur de confiance', min: 250,  short: 'Confiance',    icon: 'shield' },
+  { level: 4, name: 'Expert',                    min: 750,  short: 'Expert',       icon: 'sparkle' },
   { level: 5, name: 'Légende du campus',         min: 2500, short: 'Légende',      icon: 'star' },
 ];
+
+// Tone per level, for Badge/LevelBadge — must cover every LEVELS entry.
+export const LEVEL_TONES = { 1: 'neutral', 2: 'accent', 3: 'brand', 4: 'warning', 5: 'founder' };
 
 /** @returns {{ level, name, min, next, nextName, progress (0–1), toNext }} */
 export function levelFor(points) {
@@ -20,6 +23,8 @@ export function levelFor(points) {
     level: cur.level,
     name: cur.name,
     min: cur.min,
+    icon: cur.icon,
+    tone: LEVEL_TONES[cur.level],
     next: nxt ? nxt.min : null,
     nextName: nxt ? nxt.name : null,
     progress: nxt ? (p - cur.min) / (nxt.min - cur.min) : 1,
@@ -43,6 +48,7 @@ export const POINT_RULES = [
 ];
 
 export const BADGE_TIERS = { bronze: 'Bronze', silver: 'Argent', gold: 'Or', special: 'Spécial' };
+export const BADGE_TIER_TONES = { bronze: 'neutral', silver: 'accent', gold: 'warning', special: 'founder' };
 
 export const formatPoints = (n) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(n) || 0)).replace(/ | /g, ' ');
 export const signedPoints = (n) => (n > 0 ? `+${formatPoints(n)}` : `−${formatPoints(Math.abs(n))}`);
