@@ -7,12 +7,15 @@ import ProfessorPicker from '../components/ProfessorPicker'
 import {
   Avatar, Badge, Button, Input, Select, Tabs, StatStrip, EmptyState, Card, Sheet,
   Dropdown, Icon, ThemeToggle, Skeleton, DocType, QualityBadge, StatusBadge,
-  LevelBadge, LevelProgress, BadgeChip,
+  LevelBadge, LevelProgress, BadgeChip, Chip, Switch,
 } from '../design-system/ui'
 import { useTheme } from '../design-system/theme'
 import { notify } from '../design-system/toast'
 import { qualityLevel, displayStatus } from '../lib/quality'
 import { levelFor, formatPoints, POINT_RULES, LEVELS, LEVEL_TONES, BADGE_TIER_TONES, PERIODS, rankLabel } from '../lib/reputation'
+import {
+  HELP_WITH_OPTIONS, RESPONSE_ESTIMATES, helpWithLabel, responseLabel, contactSenpai, senpaiContactErrorMessage,
+} from '../lib/senpai'
 
 const css = `
   .pf-layout { max-width: 960px; margin: 0 auto; padding: var(--space-8) var(--space-6); }
@@ -110,6 +113,13 @@ export default function Profile() {
   const [showPointsInfo, setShowPointsInfo] = useState(false)
   const [repPeriod, setRepPeriod] = useState('week')
   const [myRep, setMyRep] = useState(null)
+  const [senpaiInfo, setSenpaiInfo] = useState(null)
+  const [myMentorProfile, setMyMentorProfile] = useState(null)
+  const [mentorHelpWith, setMentorHelpWith] = useState([])
+  const [mentorResponse, setMentorResponse] = useState('days')
+  const [mentorWeeklyLimit, setMentorWeeklyLimit] = useState('5')
+  const [mentorSaving, setMentorSaving] = useState(false)
+  const [mentorPausing, setMentorPausing] = useState(false)
   const [uploadNudgeDismissed, setUploadNudgeDismissed] = useState(
     () => localStorage.getItem('9rz_upload_nudge') === '1'
   )
@@ -250,6 +260,39 @@ export default function Profile() {
       if (!error) setMyRep(data?.[0] || null)
     })
   }, [currentUser, targetId, repPeriod])
+
+  // Senpai de filière: badge/contact for the viewed profile, plus "Mon espace senpai" when own.
+  useEffect(() => {
+    const uid = targetId || currentUser?.id
+    if (!currentUser || !uid) { setSenpaiInfo(null); return }
+    supabase.rpc('get_user_senpai_profile', { p_user_id: uid }).then(({ data, error }) => setSenpaiInfo(error ? null : (data?.[0] || null)))
+    const isOwn = !targetId || currentUser.id === targetId
+    if (isOwn) supabase.rpc('get_my_senpai_profile').then(({ data, error }) => {
+      if (error) return
+      setMyMentorProfile(data)
+      if (data) { setMentorHelpWith(data.help_with || []); setMentorResponse(data.response_estimate || 'days'); setMentorWeeklyLimit(String(data.weekly_limit || 5)) }
+    })
+  }, [currentUser, targetId])
+
+  const saveMentorProfile = async () => {
+    setMentorSaving(true)
+    const { error } = await supabase.rpc('update_senpai_profile', {
+      p_help_with: mentorHelpWith, p_response_estimate: mentorResponse, p_weekly_limit: parseInt(mentorWeeklyLimit, 10) || 5,
+    })
+    setMentorSaving(false)
+    if (error) { notify.error(error.message); return }
+    notify.success('Profil senpai mis à jour')
+    setMyMentorProfile(p => ({ ...p, help_with: mentorHelpWith, response_estimate: mentorResponse, weekly_limit: parseInt(mentorWeeklyLimit, 10) || 5 }))
+  }
+
+  const toggleMentorPause = async () => {
+    setMentorPausing(true)
+    const nextPaused = myMentorProfile?.status !== 'paused'
+    const { error } = await supabase.rpc('pause_senpai', { p_paused: nextPaused })
+    setMentorPausing(false)
+    if (error) { notify.error(error.message); return }
+    setMyMentorProfile(p => ({ ...p, status: nextPaused ? 'paused' : 'active' }))
+  }
 
   // Cascading École → Faculté → Filière pickers for the settings tab.
   useEffect(() => {
@@ -466,6 +509,7 @@ export default function Profile() {
         { id: 'posts', label: 'Posts', count: senpaiPosts.length },
         { id: 'replies', label: 'Réponses', count: userReplies.length },
         { id: 'uploads', label: 'Uploadés', count: uploads.length },
+        ...(myMentorProfile ? [{ id: 'senpai', label: 'Mon espace senpai' }] : []),
         { id: 'settings', label: 'Paramètres' },
       ]
     : [
@@ -493,6 +537,7 @@ export default function Profile() {
               {profile?.is_admin && <Badge tone="danger" icon="shield">Admin</Badge>}
               {profile?.is_fondateur && <Badge tone="founder" icon="star">Fondateur</Badge>}
               {profile?.is_moderator && !profile?.is_admin && <Badge tone="brand" icon="shield">Modérateur</Badge>}
+              {senpaiInfo && <Badge tone="accent" icon="heart">Senpai de filière · {senpaiInfo.filiere_name}</Badge>}
             </div>
             {profile?.universities?.name && <p className="t-body-sm qz-muted">{profile.universities.name}</p>}
             {profile?.bio && <p className="t-body" style={{ marginTop: 6, maxWidth: 520 }}>{profile.bio}</p>}
@@ -510,6 +555,12 @@ export default function Profile() {
             ) : currentUser && (
               <>
                 <Button variant={isFollowing ? 'secondary' : 'primary'} disabled={followBusy} onClick={handleFollow}>{isFollowing ? 'Suivi' : 'Suivre'}</Button>
+                {senpaiInfo && (
+                  <Button variant="secondary" onClick={async () => {
+                    try { await contactSenpai(supabase, { ...senpaiInfo, name: profile?.name || 'Étudiant' }, { filiereName: senpaiInfo.filiere_name }) }
+                    catch (error) { notify.error(senpaiContactErrorMessage(error)) }
+                  }}>Lui écrire</Button>
+                )}
                 {canSendMessage && (
                   <Button variant="secondary" iconOnly icon="message" aria-label="Message"
                     onClick={() => window.dispatchEvent(new CustomEvent('open-dm', { detail: { userId: targetId, name: profile?.name || 'Étudiant' } }))} />
@@ -781,6 +832,53 @@ export default function Profile() {
               ))}
             </div>
           )
+        )}
+
+        {activeTab === 'senpai' && isOwnProfile && myMentorProfile && (
+          <div className="pf-settings-list">
+            <Card>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                <span className="t-eyebrow qz-subtle">Statut</span>
+                <Badge tone={myMentorProfile.status === 'active' ? 'success' : myMentorProfile.status === 'paused' ? 'warning' : 'neutral'}>
+                  {myMentorProfile.status === 'active' ? 'Actif' : myMentorProfile.status === 'paused' ? 'En pause' : 'En attente de vérification'}
+                </Badge>
+              </div>
+              {myMentorProfile.status !== 'pending' && (
+                <div style={{ marginTop: 'var(--space-3)' }}>
+                  <Switch label="En pause (exams, vacances…)" checked={myMentorProfile.status === 'paused'} disabled={mentorPausing} onChange={toggleMentorPause} />
+                </div>
+              )}
+              <StatStrip items={[
+                { value: myMentorProfile.contacts_total || 0, label: 'Messages reçus' },
+                { value: myMentorProfile.contacts_week || 0, label: 'Cette semaine' },
+                { value: myMentorProfile.helpful_count || 0, label: '« Ça m\'a aidé »' },
+              ]} />
+            </Card>
+
+            <Card>
+              <span className="t-eyebrow qz-subtle">Ce que tu peux aider à faire</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 'var(--space-3)' }}>
+                {HELP_WITH_OPTIONS.map(o => (
+                  <Chip key={o.id} selected={mentorHelpWith.includes(o.id)}
+                    onClick={() => setMentorHelpWith(p => p.includes(o.id) ? p.filter(x => x !== o.id) : [...p, o.id])}>
+                    {o.label}
+                  </Chip>
+                ))}
+              </div>
+              <span className="t-eyebrow qz-subtle" style={{ display: 'block', marginTop: 'var(--space-4)' }}>Tu réponds généralement en</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 'var(--space-3)' }}>
+                {RESPONSE_ESTIMATES.map(o => (
+                  <Chip key={o.id} selected={mentorResponse === o.id} onClick={() => setMentorResponse(o.id)}>{o.label}</Chip>
+                ))}
+              </div>
+              <div style={{ marginTop: 'var(--space-4)', maxWidth: 220 }}>
+                <Input label="Messages max par semaine" type="number" min="1" max="50" value={mentorWeeklyLimit} onChange={e => setMentorWeeklyLimit(e.target.value)} />
+              </div>
+              <div style={{ marginTop: 'var(--space-4)' }}>
+                <Button variant="primary" loading={mentorSaving} disabled={mentorHelpWith.length === 0} onClick={saveMentorProfile}>Enregistrer</Button>
+              </div>
+            </Card>
+          </div>
         )}
 
         {activeTab === 'settings' && isOwnProfile && (

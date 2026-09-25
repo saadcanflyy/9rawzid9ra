@@ -9,6 +9,8 @@ import {
   EmptyState, Skeleton, Icon, Dropdown, Card,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
+import SenpaiSection from '../components/SenpaiSection'
+import { HELP_WITH_OPTIONS, RESPONSE_ESTIMATES, semesterAtLeast } from '../lib/senpai'
 
 const PT = {
   survival_guide: { label: 'Guide de survie', icon: 'file', tone: 'accent' },
@@ -72,6 +74,15 @@ export default function SenpaiZone() {
   const [posts, setPosts] = useState([])
   const [unis, setUnis] = useState([])
   const [loading, setLoading] = useState(true)
+
+  // Senpai de filière
+  const [viewMode, setViewMode] = useState(sp.get('devenir') ? 'apply' : 'feed')
+  const [applyHelpWith, setApplyHelpWith] = useState([])
+  const [applyResponse, setApplyResponse] = useState('days')
+  const [applyWeeklyLimit, setApplyWeeklyLimit] = useState('5')
+  const [applyIsGraduate, setApplyIsGraduate] = useState(false)
+  const [applying, setApplying] = useState(false)
+  const [myMentorProfile, setMyMentorProfile] = useState(null)
 
   const [feedTab, setFeedTab] = useState('recent')
   const [filterType, setFilterType] = useState(sp.get('type') || '')
@@ -221,13 +232,28 @@ export default function SenpaiZone() {
   useEffect(() => {
     if (!user) { setProfile(null); setFollowing(new Set()); return }
     Promise.all([
-      supabase.from('user_profiles').select('name,university_id,is_admin').eq('id', user.id).single(),
+      supabase.from('user_profiles').select('name,university_id,is_admin,filiere_id,current_semester,points').eq('id', user.id).single(),
       supabase.from('user_follows').select('following_id').eq('follower_id', user.id),
     ]).then(([{ data: prof }, { data: fols }]) => {
       setProfile(prof)
       setFollowing(new Set((fols || []).map(f => f.following_id)))
     })
+    supabase.rpc('get_my_senpai_profile').then(({ data, error }) => { if (!error) setMyMentorProfile(data) })
   }, [user?.id]) // eslint-disable-line
+
+  const submitApplication = async () => {
+    setApplying(true)
+    const { error } = await supabase.rpc('apply_to_be_senpai', {
+      p_help_with: applyHelpWith, p_response_estimate: applyResponse,
+      p_weekly_limit: parseInt(applyWeeklyLimit, 10) || 5, p_is_graduate: applyIsGraduate,
+    })
+    setApplying(false)
+    if (error) { notify.error(error.message); return }
+    const { data } = await supabase.rpc('get_my_senpai_profile')
+    setMyMentorProfile(data)
+    notify.success(data?.status === 'active' ? 'Tu es maintenant senpai de ta filière !' : 'Candidature envoyée, elle sera vérifiée par l\'équipe.')
+    setViewMode('mentors')
+  }
 
   const filtered = useMemo(() => {
     let f = posts
@@ -655,6 +681,13 @@ export default function SenpaiZone() {
               <Icon name={l.icon} /> {l.label}
             </button>
           ))}
+          <span className="sn-left-section t-eyebrow qz-subtle">Senpai de filière</span>
+          <button type="button" className="qz-dropdown__item" style={viewMode === 'mentors' ? { background: 'var(--surface-2)', color: 'var(--text)' } : undefined} onClick={() => setViewMode('mentors')}>
+            <Icon name="heart" /> Senpais de ta filière
+          </button>
+          <button type="button" className="qz-dropdown__item" style={viewMode === 'apply' ? { background: 'var(--surface-2)', color: 'var(--text)' } : undefined} onClick={() => setViewMode('apply')}>
+            <Icon name="plus" /> Devenir senpai
+          </button>
           <span className="sn-left-section t-eyebrow qz-subtle">Type de post</span>
           <div className="sn-left-type-wrap">
             <Chip selected={!filterType} onClick={() => setFilterType('')}>Tous</Chip>
@@ -675,6 +708,75 @@ export default function SenpaiZone() {
             <p className="t-body-sm qz-muted">Partage ton expérience, tes conseils et tes astuces avec la communauté.</p>
           </div>
 
+          <div className="sn-feed-tabs-row">
+            <Tabs label="Section" variant="pill" value={viewMode} onChange={setViewMode}
+              items={[{ id: 'feed', label: 'Fil' }, { id: 'mentors', label: 'Senpais de filière' }]} />
+          </div>
+
+          {viewMode === 'apply' && (
+            <div style={{ padding: 'var(--space-5)' }}>
+              <span className="t-eyebrow qz-subtle">Devenir senpai</span>
+              <h2 className="t-h2" style={{ margin: '4px 0 var(--space-2)' }}>Aide les étudiants de ta filière</h2>
+              {!user ? (
+                <p className="t-body qz-muted">Connecte-toi pour devenir senpai de ta filière.</p>
+              ) : !profile?.filiere_id ? (
+                <p className="t-body qz-muted">Ajoute ta filière dans ton profil avant de devenir senpai.</p>
+              ) : myMentorProfile ? (
+                <p className="t-body qz-muted">
+                  {myMentorProfile.status === 'active' ? 'Tu es déjà senpai de ta filière.'
+                    : myMentorProfile.status === 'pending' ? 'Ta candidature est en cours de vérification.'
+                    : 'Ta candidature précédente a été refusée. Tu peux réessayer ci-dessous.'}
+                </p>
+              ) : null}
+              {user && profile?.filiere_id && (!myMentorProfile || myMentorProfile.status === 'rejected') && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', maxWidth: 460, marginTop: 'var(--space-4)' }}>
+                  <div>
+                    <span className="t-label" style={{ display: 'block', marginBottom: 8 }}>Tu peux aider sur…</span>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {HELP_WITH_OPTIONS.map(o => (
+                        <Chip key={o.id} selected={applyHelpWith.includes(o.id)}
+                          onClick={() => setApplyHelpWith(p => p.includes(o.id) ? p.filter(x => x !== o.id) : [...p, o.id])}>
+                          {o.label}
+                        </Chip>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="t-label" style={{ display: 'block', marginBottom: 8 }}>Tu réponds généralement en…</span>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {RESPONSE_ESTIMATES.map(o => (
+                        <Chip key={o.id} selected={applyResponse === o.id} onClick={() => setApplyResponse(o.id)}>{o.label}</Chip>
+                      ))}
+                    </div>
+                  </div>
+                  <Input label="Messages max par semaine" type="number" min="1" max="50" value={applyWeeklyLimit} onChange={e => setApplyWeeklyLimit(e.target.value)} style={{ maxWidth: 200 }} />
+                  <Switch label="Je suis diplômé(e) de cette filière" checked={applyIsGraduate} onChange={e => setApplyIsGraduate(e.target.checked)} />
+                  <div>
+                    <Button variant="primary" loading={applying} disabled={applyHelpWith.length === 0} onClick={submitApplication}>Envoyer ma candidature</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {viewMode === 'mentors' && (
+            <div style={{ padding: 'var(--space-5)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap', marginBottom: 'var(--space-4)' }}>
+                <span className="t-eyebrow qz-subtle">Senpais de ta filière</span>
+                <Button variant="secondary" size="sm" onClick={() => setViewMode('apply')}>Devenir senpai</Button>
+              </div>
+              {!user ? (
+                <EmptyState icon="message" title="Connecte-toi pour voir les senpais de ta filière" />
+              ) : !profile?.filiere_id ? (
+                <EmptyState icon="message" title="Ajoute ta filière dans ton profil" />
+              ) : (
+                <SenpaiSection filiereId={profile.filiere_id} studentName={profile.name}
+                  recruitEligible={semesterAtLeast(profile.current_semester, 3) || profile.is_admin} />
+              )}
+            </div>
+          )}
+
+          {viewMode === 'feed' && <>
           <div className="sn-mobile-bar">
             <Chip selected={!filterType} onClick={() => setFilterType('')}>Tous</Chip>
             {Object.entries(PT).map(([k, v]) => (
@@ -758,6 +860,7 @@ export default function SenpaiZone() {
               filtered.map(renderCard)
             )}
           </div>
+          </>}
         </main>
 
         <aside className="sn-right">

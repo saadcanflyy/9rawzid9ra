@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
   const loadProfile = async (uid) => {
     const { data } = await supabase
       .from('user_profiles')
-      .select('name, email, is_admin, is_moderator, is_fondateur, points, uploads_count')
+      .select('name, email, is_admin, is_moderator, is_fondateur, points, uploads_count, filiere_id, current_semester')
       .eq('id', uid)
       .single()
     setProfile(data || null)

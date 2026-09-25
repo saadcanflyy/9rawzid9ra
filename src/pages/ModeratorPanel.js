@@ -74,6 +74,9 @@ export default function ModeratorPanel() {
 
   // Professors
   const [professors, setProfessors] = useState([])
+  const [mentorApplications, setMentorApplications] = useState([])
+  const [activeMentors, setActiveMentors] = useState([])
+  const [mentorReports, setMentorReports] = useState([])
   const [profUniOptions, setProfUniOptions] = useState([])
   const [verifyingProfId, setVerifyingProfId] = useState(null)
   const [verifyFirst, setVerifyFirst] = useState('')
@@ -153,12 +156,13 @@ export default function ModeratorPanel() {
     if (activeTab === 'filieres') loadFilieres()
     if (activeTab === 'modules') loadModules()
     if (activeTab === 'professors') loadProfessors()
+    if (activeTab === 'mentors') loadMentors()
     if (activeTab === 'users') loadUsers()
     if (activeTab === 'messages') loadMessages()
   }, [activeTab, profile]) // eslint-disable-line
 
   const loadStats = async () => {
-    const [docs, posts, schools, filieres, mods, usrs, profsPending] = await Promise.all([
+    const [docs, posts, schools, filieres, mods, usrs, profsPending, mentorsPending] = await Promise.all([
       supabase.from('admin_documents').select('*', { count:'exact', head:true }).gt('report_count', 0),
       supabase.from('senpai_posts').select('*', { count:'exact', head:true }).eq('is_flagged', true),
       supabase.from('school_requests').select('*', { count:'exact', head:true }).eq('status', 'pending'),
@@ -166,6 +170,7 @@ export default function ModeratorPanel() {
       supabase.from('modules').select('*', { count:'exact', head:true }),
       supabase.from('user_profiles').select('*', { count:'exact', head:true }),
       supabase.from('professors').select('*', { count:'exact', head:true }).eq('status', 'pending'),
+      supabase.from('senpai_profiles').select('*', { count:'exact', head:true }).eq('status', 'pending'),
     ])
     setStats({
       flaggedDocs:    docs.count     || 0,
@@ -175,6 +180,7 @@ export default function ModeratorPanel() {
       totalModules:   mods.count     || 0,
       totalUsers:     usrs.count     || 0,
       pendingProfessors: profsPending.count || 0,
+      pendingMentors: mentorsPending.count || 0,
     })
   }
 
@@ -330,6 +336,39 @@ export default function ModeratorPanel() {
     setProfessors(data || [])
     if (!profUniOptions.length) setProfUniOptions(uniRes.data || [])
     setLoading(false)
+  }
+
+  const loadMentors = async () => {
+    setLoading(true)
+    const [{ data: pending }, { data: active }, { data: reports }] = await Promise.all([
+      supabase.rpc('get_senpai_applications', { p_status: 'pending' }),
+      supabase.rpc('get_senpai_applications', { p_status: 'active' }),
+      supabase.rpc('get_senpai_reports', { p_resolved: false }),
+    ])
+    setMentorApplications(pending || [])
+    setActiveMentors(active || [])
+    setMentorReports(reports || [])
+    setLoading(false)
+  }
+
+  const approveMentor = async (id) => {
+    const { error } = await supabase.rpc('approve_senpai', { p_id: id })
+    if (error) { notify.error(error.message); return }
+    notify.success('Senpai approuvé')
+    loadMentors()
+  }
+
+  const rejectMentor = async (id) => {
+    const { error } = await supabase.rpc('reject_senpai', { p_id: id })
+    if (error) { notify.error(error.message); return }
+    notify.success('Candidature refusée')
+    loadMentors()
+  }
+
+  const resolveMentorReport = async (id) => {
+    const { error } = await supabase.rpc('resolve_senpai_report', { p_id: id })
+    if (error) { notify.error(error.message); return }
+    setMentorReports(list => list.filter(r => r.id !== id))
   }
 
   useEffect(() => {
@@ -572,6 +611,7 @@ export default function ModeratorPanel() {
     { id: 'filieres',  label: 'Filières', icon: 'file', count: stats?.pendingFils },
     { id: 'modules',   label: 'Modules', icon: 'bookmark' },
     { id: 'professors', label: 'Professeurs', icon: 'user', count: stats?.pendingProfessors },
+    { id: 'mentors',   label: 'Senpais de filière', icon: 'heart', count: stats?.pendingMentors },
     { id: 'users',     label: 'Utilisateurs', icon: 'user' },
     { id: 'messages',  label: 'Messages', icon: 'inbox', count: unreadMsgCount },
   ]
@@ -584,6 +624,7 @@ export default function ModeratorPanel() {
     filieres: ['Filières', "Demandes d'ajout — lecture seule."],
     modules: ['Modules', 'Ajoute, renomme ou recherche un module.'],
     professors: ['Professeurs', 'Profils en attente de vérification.'],
+    mentors: ['Senpais de filière', 'Candidatures, senpais actifs et signalements.'],
     users: ['Utilisateurs', 'Gère les bannissements.'],
     messages: ['Messages', 'Réponds aux utilisateurs.'],
   }
@@ -990,6 +1031,77 @@ export default function ModeratorPanel() {
                 </tbody>
               </table>
             </div>
+          )
+        )}
+
+        {activeTab === 'mentors' && (
+          loading ? <Skeleton height={200} /> : (
+            <>
+              {mentorReports.length > 0 && (
+                <>
+                  <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Signalements</span></div>
+                  <div className="qz-table-wrap" style={{ marginBottom: 'var(--space-6)' }}>
+                    <table className="qz-table">
+                      <thead><tr><th>Senpai</th><th>Signalé par</th><th>Raison</th><th>Actions</th></tr></thead>
+                      <tbody>
+                        {mentorReports.map(r => (
+                          <tr key={r.id}>
+                            <td className="qz-table-name">{r.senpai_name}</td>
+                            <td className="qz-table-mono">{r.reporter_name}</td>
+                            <td>{r.reason}{r.details && <div className="t-caption qz-subtle">{r.details}</div>}</td>
+                            <td><Button variant="secondary" size="sm" onClick={() => resolveMentorReport(r.id)}>Marquer résolu</Button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Candidatures en attente</span></div>
+              {mentorApplications.length === 0 ? <EmptyState icon="heart" title="Aucune candidature en attente" /> : (
+                <div className="qz-table-wrap" style={{ marginBottom: 'var(--space-6)' }}>
+                  <table className="qz-table">
+                    <thead><tr><th>Étudiant</th><th>Filière</th><th>Aide sur</th><th>Candidature</th><th>Actions</th></tr></thead>
+                    <tbody>
+                      {mentorApplications.map(m => (
+                        <tr key={m.id}>
+                          <td className="qz-table-name">{m.name}</td>
+                          <td>{m.filiere_name}<div className="qz-table-mono">{m.university_name}</div></td>
+                          <td className="qz-table-mono">{(m.help_with || []).join(', ') || '—'}</td>
+                          <td className="qz-table-mono">{fmt(m.applied_at)}</td>
+                          <td>
+                            <div className="qz-table-actions">
+                              <Button variant="secondary" size="sm" icon="check" onClick={() => approveMentor(m.id)}>Approuver</Button>
+                              <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => rejectMentor(m.id)}>Refuser</Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Senpais actifs ({activeMentors.length})</span></div>
+              {activeMentors.length === 0 ? <EmptyState icon="heart" title="Aucun senpai actif" /> : (
+                <div className="qz-table-wrap">
+                  <table className="qz-table">
+                    <thead><tr><th>Étudiant</th><th>Filière</th><th>Messages</th><th>« Aidé »</th></tr></thead>
+                    <tbody>
+                      {activeMentors.map(m => (
+                        <tr key={m.id}>
+                          <td className="qz-table-name">{m.name}</td>
+                          <td>{m.filiere_name}<div className="qz-table-mono">{m.university_name}</div></td>
+                          <td className="qz-table-mono">{m.contacts_total}</td>
+                          <td className="qz-table-mono">{m.helpful_count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )
         )}
 

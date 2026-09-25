@@ -9,10 +9,12 @@ import {
   QualityBadge, StatusBadge, LevelBadge,
 } from '../design-system/ui'
 import ProfessorPicker from '../components/ProfessorPicker'
+import SenpaiSection from '../components/SenpaiSection'
 import { notify } from '../design-system/toast'
 import { useSearch } from '../hooks/useSearch'
 import { qualityLevel, displayStatus } from '../lib/quality'
 import { levelFor } from '../lib/reputation'
+import { semesterAtLeast } from '../lib/senpai'
 
 const css = `
   .bw-banner { border-bottom: 1px solid var(--border); background: var(--brand-soft); padding: var(--space-3) var(--space-6); display: flex; align-items: center; justify-content: center; gap: var(--space-3); flex-wrap: wrap; }
@@ -93,7 +95,7 @@ export default function Browse() {
   const [fetchErr, setFetchErr] = useState('')
   const [uniSearch, setUniSearch] = useState('')
   const [showUniDd, setShowUniDd] = useState(false)
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
 
   // Uni request form
   const [showUniReq, setShowUniReq] = useState(false)
@@ -693,6 +695,13 @@ export default function Browse() {
                   { value: 'az', label: 'Trier : A → Z' },
                 ]} />
               </div>
+            </div>
+          )}
+
+          {selFil && (
+            <div style={{ marginBottom: 'var(--space-4)' }}>
+              <SenpaiSection filiereId={parseInt(selFil)} filiereName={filName} studentName={profile?.name}
+                recruitEligible={user && semesterAtLeast(profile?.current_semester, 3)} />
             </div>
           )}
 

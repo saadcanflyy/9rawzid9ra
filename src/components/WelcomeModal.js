@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../supabase'
 import { Wordmark, Button, Input, Chip, Switch, Icon, ProgressBar, Sheet } from '../design-system/ui'
 import { notify } from '../design-system/toast'
+import SenpaiSection from './SenpaiSection'
 
-const TOTAL_STEPS = 4
+const TOTAL_STEPS = 5
 
 export default function WelcomeModal() {
   const [show, setShow] = useState(false)
@@ -282,6 +283,24 @@ export default function WelcomeModal() {
         )}
 
         {step === 4 && (
+          <div className="qz-wm__slide">
+            <span className="qz-icon-tile" style={{ background: 'var(--brand-soft)', color: 'var(--brand-text)' }}><Icon name="heart" /></span>
+            <span className="t-eyebrow qz-subtle" style={{ textAlign: 'center' }}>Ton senpai</span>
+            <h2 className="t-h2" style={{ textAlign: 'center' }}>Voici ton senpai de filière</h2>
+            <p className="t-body qz-muted" style={{ textAlign: 'center' }}>
+              Un étudiant bénévole de {selFil?.name || 'ta filière'} qui répond aux questions sur les examens, les modules et l'orientation.
+            </p>
+            <div style={{ width: '100%' }}>
+              <SenpaiSection filiereId={selFil?.id} filiereName={selFil?.name} recruitEligible />
+            </div>
+            <div className="qz-wm__actions">
+              <Button variant="primary" block onClick={() => setStep(5)}>Continuer</Button>
+            </div>
+            <Button variant="link" block onClick={() => setStep(5)}>Plus tard</Button>
+          </div>
+        )}
+
+        {step === 5 && (
           <div className="qz-wm__slide">
             <span className="qz-icon-tile" style={{ background: 'var(--success-soft)', color: 'var(--success)' }}><Icon name="check" /></span>
             <span className="t-eyebrow qz-subtle" style={{ textAlign: 'center' }}>C'est prêt</span>

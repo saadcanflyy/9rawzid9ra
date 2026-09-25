@@ -12,7 +12,9 @@ import { notify } from '../design-system/toast'
 import { levelFor } from '../lib/reputation'
 import { displayStatus } from '../lib/quality'
 import { cachedRpc } from '../lib/rpcCache'
+import { semesterAtLeast } from '../lib/senpai'
 import SearchAutocomplete from '../components/SearchAutocomplete'
+import SenpaiSection from '../components/SenpaiSection'
 
 const css = `
   .home-hero { padding: var(--space-16) var(--space-6) var(--space-12); text-align: center; }
@@ -26,7 +28,7 @@ const css = `
   .home-section { max-width: 1120px; margin: 0 auto; padding: var(--space-16) var(--space-6); }
   .home-section__head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap; }
   .home-schools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); }
-  .home-pillars { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); }
+  .home-pillars { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); }
   .home-pillar { display: flex; flex-direction: column; gap: var(--space-3); }
   @media (max-width: 900px) { .home-pillars { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 560px) { .home-pillars { grid-template-columns: 1fr; } }
@@ -85,6 +87,7 @@ const PILLARS = [
   { icon: 'check', title: 'Des documents fiables', desc: 'Chaque document a un score qualité, les avis des étudiants et un badge Vérifié.' },
   { icon: 'search', title: 'Une recherche qui comprend', desc: 'Tape « exam réseau GI 2024 » : on comprend le type, la filière et l’année.' },
   { icon: 'star', title: 'Par et pour les étudiants', desc: 'Tu partages, tu aides ta promo, tu gagnes des points et des badges.' },
+  { icon: 'heart', title: 'Un senpai pour t’aider', desc: 'Un senpai de ta filière pour répondre à tes questions.' },
 ]
 
 const COMPARE_ROWS = [
@@ -640,6 +643,12 @@ function PersonalizedHome() {
         </div>
 
         <div className="ph-side">
+          {p?.filiere_id && (
+            <Card>
+              <SenpaiSection filiereId={p.filiere_id} filiereName={p.filiere_name} studentName={profile?.name}
+                recruitEligible={semesterAtLeast(p.semester, 3)} compact title="Senpai de ta filière" />
+            </Card>
+          )}
           {level && (
             <Card>
               <span className="t-eyebrow qz-subtle">Réputation</span>

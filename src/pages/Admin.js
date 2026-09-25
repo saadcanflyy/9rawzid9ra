@@ -89,6 +89,11 @@ export default function Admin() {
   const [aliasFacOptions, setAliasFacOptions] = useState([])
   const [addAliasBusy, setAddAliasBusy] = useState(false)
 
+  // Senpais de filière
+  const [mentorApplications, setMentorApplications] = useState([])
+  const [activeMentors, setActiveMentors] = useState([])
+  const [mentorReports, setMentorReports] = useState([])
+
   // Professors
   const [professors, setProfessors] = useState([])
   const [profUniOptions, setProfUniOptions] = useState([])
@@ -200,6 +205,7 @@ export default function Admin() {
     if (activeTab === 'schools') loadSchools()
     if (activeTab === 'filieres') loadFilieres()
     if (activeTab === 'professors') loadProfessors()
+    if (activeTab === 'mentors') loadMentors()
     if (activeTab === 'users') loadUsers()
     if (activeTab === 'senpai') loadSenpai()
     if (activeTab === 'messages') loadMessages()
@@ -217,7 +223,7 @@ export default function Admin() {
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString()
 
     const [docs, mods, schools, usrs, docsMonth, docsLastMonth, usrsMonth, top10, flagged, filieres_sug,
-           feedDocs, feedSchools, feedFils, feedModSugs, profsPending] = await Promise.all([
+           feedDocs, feedSchools, feedFils, feedModSugs, profsPending, mentorsPending] = await Promise.all([
       supabase.from('documents').select('*', { count:'exact', head:true }),
       supabase.from('modules').select('*', { count:'exact', head:true }).eq('verified', false),
       supabase.from('school_requests').select('*', { count:'exact', head:true }).eq('status', 'pending'),
@@ -233,6 +239,7 @@ export default function Admin() {
       supabase.from('filiere_suggestions').select('id, filiere_name, created_at, user_profiles(name)').order('created_at', { ascending: false }).limit(6),
       supabase.from('modules').select('id, name, created_at').eq('verified', false).order('created_at', { ascending: false }).limit(6),
       supabase.from('professors').select('*', { count:'exact', head:true }).eq('status', 'pending'),
+      supabase.from('senpai_profiles').select('*', { count:'exact', head:true }).eq('status', 'pending'),
     ])
     setStats({
       pendingDocs:      docs.count         || 0,
@@ -245,6 +252,7 @@ export default function Admin() {
       flaggedPosts:     flagged.count      || 0,
       pendingFilieres:  filieres_sug.count || 0,
       pendingProfessors: profsPending.count || 0,
+      pendingMentors: mentorsPending.count || 0,
     })
     setTopUsers(top10.data || [])
 
@@ -361,6 +369,39 @@ export default function Admin() {
     setProfessors(data || [])
     if (!profUniOptions.length) setProfUniOptions(uniRes.data || [])
     setLoading(false)
+  }
+
+  const loadMentors = async () => {
+    setLoading(true)
+    const [{ data: pending }, { data: active }, { data: reports }] = await Promise.all([
+      supabase.rpc('get_senpai_applications', { p_status: 'pending' }),
+      supabase.rpc('get_senpai_applications', { p_status: 'active' }),
+      supabase.rpc('get_senpai_reports', { p_resolved: false }),
+    ])
+    setMentorApplications(pending || [])
+    setActiveMentors(active || [])
+    setMentorReports(reports || [])
+    setLoading(false)
+  }
+
+  const approveMentor = async (id) => {
+    const { error } = await supabase.rpc('approve_senpai', { p_id: id })
+    if (error) { notify.error(error.message); return }
+    notify.success('Senpai approuvé')
+    loadMentors()
+  }
+
+  const rejectMentor = async (id) => {
+    const { error } = await supabase.rpc('reject_senpai', { p_id: id })
+    if (error) { notify.error(error.message); return }
+    notify.success('Candidature refusée')
+    loadMentors()
+  }
+
+  const resolveMentorReport = async (id) => {
+    const { error } = await supabase.rpc('resolve_senpai_report', { p_id: id })
+    if (error) { notify.error(error.message); return }
+    setMentorReports(list => list.filter(r => r.id !== id))
   }
 
   useEffect(() => {
@@ -898,6 +939,7 @@ export default function Admin() {
     { id: 'schools',   label: 'Écoles', icon: 'shield', count: stats?.pendingSchools },
     { id: 'filieres',  label: 'Filières', icon: 'file', count: stats?.pendingFilieres },
     { id: 'professors', label: 'Professeurs', icon: 'user', count: stats?.pendingProfessors },
+    { id: 'mentors',   label: 'Senpais de filière', icon: 'heart', count: stats?.pendingMentors },
     { id: 'users',     label: 'Utilisateurs', icon: 'user' },
     { id: 'senpai',    label: 'Senpai Zone', icon: 'message', count: stats?.flaggedPosts },
     { id: 'messages',  label: 'Messages', icon: 'inbox', count: unreadMsgCount },
@@ -911,6 +953,7 @@ export default function Admin() {
     schools: ['Écoles', 'Universités et facultés enregistrées.'],
     filieres: ['Filières', 'Filières enregistrées.'],
     professors: ['Professeurs', 'Profils en attente de vérification.'],
+    mentors: ['Senpais de filière', 'Candidatures, senpais actifs et signalements.'],
     users: ['Utilisateurs', 'Gère les rôles et les bannissements.'],
     senpai: ['Senpai Zone', '100 derniers posts.'],
     messages: ['Messages', 'Réponds aux utilisateurs.'],
@@ -1565,6 +1608,77 @@ export default function Admin() {
                 </tbody>
               </table>
             </div>
+          )
+        )}
+
+        {activeTab === 'mentors' && (
+          loading ? <Skeleton height={200} /> : (
+            <>
+              {mentorReports.length > 0 && (
+                <>
+                  <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Signalements</span></div>
+                  <div className="qz-table-wrap" style={{ marginBottom: 'var(--space-6)' }}>
+                    <table className="qz-table">
+                      <thead><tr><th>Senpai</th><th>Signalé par</th><th>Raison</th><th>Actions</th></tr></thead>
+                      <tbody>
+                        {mentorReports.map(r => (
+                          <tr key={r.id}>
+                            <td className="qz-table-name">{r.senpai_name}</td>
+                            <td className="qz-table-mono">{r.reporter_name}</td>
+                            <td>{r.reason}{r.details && <div className="t-caption qz-subtle">{r.details}</div>}</td>
+                            <td><Button variant="secondary" size="sm" onClick={() => resolveMentorReport(r.id)}>Marquer résolu</Button></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Candidatures en attente</span></div>
+              {mentorApplications.length === 0 ? <EmptyState icon="heart" title="Aucune candidature en attente" /> : (
+                <div className="qz-table-wrap" style={{ marginBottom: 'var(--space-6)' }}>
+                  <table className="qz-table">
+                    <thead><tr><th>Étudiant</th><th>Filière</th><th>Aide sur</th><th>Candidature</th><th>Actions</th></tr></thead>
+                    <tbody>
+                      {mentorApplications.map(m => (
+                        <tr key={m.id}>
+                          <td className="qz-table-name">{m.name}</td>
+                          <td>{m.filiere_name}<div className="qz-table-mono">{m.university_name}</div></td>
+                          <td className="qz-table-mono">{(m.help_with || []).join(', ') || '—'}</td>
+                          <td className="qz-table-mono">{fmt(m.applied_at)}</td>
+                          <td>
+                            <div className="qz-table-actions">
+                              <Button variant="secondary" size="sm" icon="check" onClick={() => approveMentor(m.id)}>Approuver</Button>
+                              <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => rejectMentor(m.id)}>Refuser</Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="ad-section-title"><span className="t-eyebrow qz-subtle">Senpais actifs ({activeMentors.length})</span></div>
+              {activeMentors.length === 0 ? <EmptyState icon="heart" title="Aucun senpai actif" /> : (
+                <div className="qz-table-wrap">
+                  <table className="qz-table">
+                    <thead><tr><th>Étudiant</th><th>Filière</th><th>Messages</th><th>« Aidé »</th></tr></thead>
+                    <tbody>
+                      {activeMentors.map(m => (
+                        <tr key={m.id}>
+                          <td className="qz-table-name">{m.name}</td>
+                          <td>{m.filiere_name}<div className="qz-table-mono">{m.university_name}</div></td>
+                          <td className="qz-table-mono">{m.contacts_total}</td>
+                          <td className="qz-table-mono">{m.helpful_count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )
         )}
 

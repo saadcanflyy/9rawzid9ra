@@ -11,6 +11,7 @@ import {
 import { notify } from '../design-system/toast'
 import { sha256Files } from '../lib/fileHash'
 import { levelFor, formatPoints, POINT_RULES } from '../lib/reputation'
+import { semesterAtLeast } from '../lib/senpai'
 
 // pdfjs-dist + pdf-lib are ~300KB gzipped combined — loaded on demand (dynamic
 // import) so every other page's bundle stays untouched. Only Upload pays for it.
@@ -271,7 +272,7 @@ export default function Upload() {
         } else {
           setUser(session.user)
           setAuthLoad(false)
-          supabase.from('user_profiles').select('points, uploads_count').eq('id', session.user.id).single()
+          supabase.from('user_profiles').select('points, uploads_count, current_semester').eq('id', session.user.id).single()
             .then(({ data }) => setProfile(data))
           supabase.from('documents')
             .select('id, doc_type, is_verified, created_at, modules(name)')
@@ -834,21 +835,19 @@ export default function Upload() {
                 </p>
 
                 {earnedPoints !== null && (() => {
-                  const pts = earnedPoints
-                  const r = RANKS.find(r => pts >= r.min && pts <= r.max) || RANKS[0]
-                  const pct = r.max === Infinity ? 100 : Math.round(((pts - r.min) / (r.max - r.min + 1)) * 100)
+                  const lvl = levelFor(earnedPoints)
                   return (
                     <Card className="up-rank-card">
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                         <span className="t-eyebrow qz-subtle">Ton niveau</span>
-                        <span className="t-mono" style={{ color: 'var(--brand-text)' }}>{pts} pts</span>
+                        <span className="t-mono" style={{ color: 'var(--brand-text)' }}>{formatPoints(earnedPoints)} pts</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                        <span className="t-label">{r.label}</span>
-                        {r.next && <span className="t-caption qz-subtle">→ {r.next} à {r.max + 1} pts</span>}
+                        <LevelBadge tone={lvl.tone} icon={lvl.icon} name={lvl.name} />
+                        {lvl.next != null && <span className="t-caption qz-subtle">→ {lvl.nextName} à {formatPoints(lvl.next)} pts</span>}
                       </div>
-                      <ProgressBar value={pct} />
-                      {r.next && <div className="t-caption qz-subtle" style={{ marginTop: 6 }}>{r.max + 1 - pts} pts jusqu'au rang {r.next}</div>}
+                      <LevelProgress progress={lvl.progress} tone={lvl.tone} />
+                      {lvl.next != null && <div className="t-caption qz-subtle" style={{ marginTop: 6 }}>{formatPoints(lvl.toNext)} pts jusqu'au rang {lvl.nextName}</div>}
                     </Card>
                   )
                 })()}
@@ -857,6 +856,12 @@ export default function Upload() {
                   <Button variant="primary" onClick={() => navigate(`/module/${uploadedModuleId}`)}>Voir le module</Button>
                   <Button variant="secondary" onClick={resetForm}>Partager un autre</Button>
                 </div>
+
+                {semesterAtLeast(profile?.current_semester, 3) && (
+                  <p className="t-caption qz-subtle" style={{ marginTop: 'var(--space-4)' }}>
+                    Tu aides déjà ta promo. <Link to="/senpai?devenir=1">Deviens senpai de ta filière</Link>.
+                  </p>
+                )}
               </div>
             </Card>
           ) : (

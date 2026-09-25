@@ -222,6 +222,21 @@ import { trapFocus, focusFirst } from './focusTrap';
         props.quality ? h(QualityBadge, props.quality) : null) : null);
   }
 
+  /* ---- SenpaiCard (senpai de filière — volunteer mentor card) ---- */
+  function SenpaiCard(props) {
+    var meta = [props.semesterLabel, props.responseLabel].filter(Boolean).join(' · ');
+    return h('div', { className: cx('qz-senpai-card', props.compact && 'qz-senpai-card--compact') },
+      h(Avatar, { name: props.name, size: props.compact ? 'sm' : 'md', founder: props.founder }),
+      h('div', { className: 'qz-senpai-card__main' },
+        h('div', { className: 'qz-senpai-card__top' },
+          h('span', { className: 't-label' }, props.name),
+          props.levelName ? h(LevelBadge, { tone: props.tone, icon: props.icon, name: props.levelName }) : null),
+        meta ? h('p', { className: 't-caption qz-subtle' }, meta) : null,
+        !props.compact && (props.helpWith || []).length > 0 ? h('div', { className: 'qz-meta', style: { marginTop: 4 } },
+          (props.helpWith || []).map(function (t) { return h('span', { key: t }, t); })) : null),
+      h(Button, { variant: 'secondary', size: 'sm', onClick: props.onContact }, 'Lui écrire'));
+  }
+
   /* ---- SchoolCard ---- */
   function SchoolCard(props) {
     var tone = { 'Public': 'accent', 'Privé': 'brand', 'Semi-public': 'neutral' }[props.kind] || 'neutral';
@@ -651,4 +666,4 @@ import { trapFocus, focusFirst } from './focusTrap';
           h('button', { type: 'button', className: 'qz-btn qz-btn--danger', disabled: !reason, onClick: function () { if (props.onSubmit) props.onSubmit(reason, details); } }, 'Signaler'))));
   }
 
-  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, DocumentCard, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, StatusBadge, LevelBadge, LevelProgress, BadgeChip };
+  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, DocumentCard, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, StatusBadge, LevelBadge, LevelProgress, BadgeChip, SenpaiCard };

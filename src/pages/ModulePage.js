@@ -13,6 +13,7 @@ import { notify } from '../design-system/toast'
 import { qualityLevel, qualityChecklist, isUnrated, REPORT_REASONS, displayStatus } from '../lib/quality'
 import { levelFor } from '../lib/reputation'
 import { cachedRpc } from '../lib/rpcCache'
+import { contactSenpai, senpaiContactErrorMessage } from '../lib/senpai'
 
 const css = `
   .mp-hero { padding: var(--space-8) var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface); }
@@ -87,6 +88,7 @@ export default function ModulePage() {
   const [docs, setDocs] = useState([])
   const [relatedModules, setRelatedModules] = useState(null)
   const [moduleOverview, setModuleOverview] = useState(null)
+  const [moduleSenpai, setModuleSenpai] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
   const [verifiedOnly, setVerifiedOnly] = useState(false)
@@ -142,6 +144,10 @@ export default function ModulePage() {
             .then(({ data, error }) => { if (!error) setModuleOverview(data) })
           cachedRpc(supabase, 'get_related_modules', { p_module_id: parseInt(id), p_limit: 6 })
             .then(({ data, error }) => setRelatedModules(error ? [] : (data || [])))
+          if (user && m.filiere_id) {
+            cachedRpc(supabase, 'get_filiere_senpais', { p_filiere_id: m.filiere_id }, 60000)
+              .then(({ data, error }) => setModuleSenpai(error || !data?.length ? null : data[0]))
+          }
         }
 
         // Visible: published/verified to everyone, plus your own regardless of status
@@ -448,6 +454,18 @@ export default function ModulePage() {
                     </span>
                   ))}
                 </div>
+              )}
+              {moduleSenpai && (
+                <p className="t-caption qz-subtle" style={{ marginTop: 6 }}>
+                  Une question sur ce module ?{' '}
+                  <button type="button" className="qz-btn qz-btn--link" style={{ fontSize: 13 }}
+                    onClick={async () => {
+                      try { await contactSenpai(supabase, moduleSenpai, { filiereName: filName }) }
+                      catch (error) { notify.error(senpaiContactErrorMessage(error)) }
+                    }}>
+                    Demande à {moduleSenpai.name} (senpai {filName || ''})
+                  </button>
+                </p>
               )}
             </div>
           </div>

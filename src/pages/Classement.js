@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
 import { Avatar, Card, Tabs, Chip, Switch, EmptyState, Skeleton, LevelBadge, LevelProgress } from '../design-system/ui'
 import { levelFor, formatPoints, PERIODS, RANKING_SCOPES, rankLabel, LEVELS, LEVEL_TONES } from '../lib/reputation'
+import { semesterAtLeast } from '../lib/senpai'
 
 const css = `
   .cl-header { max-width: 900px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-4); }
@@ -101,6 +102,11 @@ export default function Classement() {
         <span className="t-eyebrow qz-subtle">Classement</span>
         <h1 className="t-h1" style={{ margin: '4px 0 4px' }}>Qui contribue le plus ?</h1>
         <p className="t-body qz-muted">Points gagnés en partageant, en aidant et en vérifiant des documents.</p>
+        {user && semesterAtLeast(profile?.current_semester, 3) && (
+          <p className="t-caption qz-subtle" style={{ marginTop: 'var(--space-2)' }}>
+            Tu aides déjà ta promo. <Link to="/senpai?devenir=1">Deviens senpai de ta filière</Link>.
+          </p>
+        )}
       </div>
 
       <div className="cl-body">

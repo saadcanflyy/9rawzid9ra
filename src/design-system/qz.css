@@ -385,6 +385,14 @@ button.qz-badge:hover { filter: brightness(1.15); }
 /* ---------- Badge chip (earned badge pill, icon + name + ×N) ---------- */
 .qz-badge-chip .qz-count { font-family: var(--font-mono); font-size: 11px; color: inherit; opacity: .7; }
 
+/* ---------- Senpai card (senpai de filière) ---------- */
+.qz-senpai-card { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); }
+.qz-senpai-card__main { flex: 1; min-width: 0; }
+.qz-senpai-card__top { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.qz-senpai-card--compact { padding: var(--space-2) var(--space-3); }
+.qz-senpai-card + .qz-senpai-card { margin-top: var(--space-2); }
+.qz-senpai-empty { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; padding: var(--space-3); border: 1px dashed var(--border-strong); border-radius: var(--radius-lg); }
+
 /* ---------- Feedback prompt ---------- */
 .qz-feedback-prompt { display: flex; flex-direction: column; gap: var(--space-3); }
 .qz-feedback-prompt__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
