@@ -5,6 +5,7 @@ import PanelLayout from '../components/PanelLayout'
 import { Button, Input, Select, Badge, Chip, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, ProgressBar, Icon, QualityBadge } from '../design-system/ui'
 import { notify } from '../design-system/toast'
 import { STATUS, qualityLevel, REPORT_REASONS } from '../lib/quality'
+import { formatPoints } from '../lib/reputation'
 
 const css = `
   .ad-announce { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6); }
@@ -637,6 +638,28 @@ export default function Admin() {
       supabase.from('documents').select('*', { count:'exact', head:true }).eq('is_flagged', true),
     ])
     setAnalytics(a => ({ ...a, totalDocs: tdocs.count || 0, totalUsers: tusers.count || 0, flaggedDocs: tflagged.count || 0 }))
+
+    // Search, quality and moderation insights (migrations 200/300/400)
+    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
+    const STATUS_KEYS = ['pending_review', 'published', 'verified', 'needs_review', 'rejected']
+    const [searchInsights, statusCounts, qualityRows, modCount, pointsWeek, badgesWeek] = await Promise.all([
+      supabase.rpc('get_search_insights', { p_days: 30 }),
+      Promise.all(STATUS_KEYS.map(s => supabase.from('documents').select('*', { count: 'exact', head: true }).eq('status', s))),
+      supabase.from('documents').select('quality_score').not('quality_score', 'is', null).limit(5000),
+      supabase.from('moderation_log').select('*', { count: 'exact', head: true }).gte('created_at', weekAgo),
+      supabase.from('reputation_events').select('points').gt('points', 0).gte('created_at', weekAgo).limit(5000),
+      supabase.from('user_badges').select('*', { count: 'exact', head: true }).gte('awarded_at', weekAgo),
+    ])
+    const scores = (qualityRows.data || []).map(r => r.quality_score).filter(n => n != null)
+    setAnalytics(a => ({
+      ...a,
+      searchInsights: searchInsights.data || [],
+      statusCounts: Object.fromEntries(STATUS_KEYS.map((s, i) => [s, statusCounts[i].count || 0])),
+      avgQuality: scores.length ? Math.round(scores.reduce((s, n) => s + n, 0) / scores.length) : null,
+      modActionsWeek: modCount.count || 0,
+      pointsAwardedWeek: (pointsWeek.data || []).reduce((s, r) => s + (r.points || 0), 0),
+      badgesAwardedWeek: badgesWeek.count || 0,
+    }))
     setLoading(false)
   }
 
@@ -1378,6 +1401,38 @@ export default function Admin() {
                   </Card>
                 </div>
               </div>
+
+              <div className="ad-section-title" style={{ marginTop: 'var(--space-8)' }}><span className="t-eyebrow qz-subtle">Qualité & modération</span></div>
+              <StatStrip items={[
+                { value: analytics.avgQuality ?? '—', label: 'Score qualité moyen' },
+                { value: analytics.modActionsWeek ?? 0, label: 'Actions modération (7j)' },
+                { value: '+' + formatPoints(analytics.pointsAwardedWeek || 0), label: 'Points distribués (7j)' },
+                { value: analytics.badgesAwardedWeek ?? 0, label: 'Badges obtenus (7j)' },
+              ]} />
+              {analytics.statusCounts && (
+                <div style={{ marginTop: 'var(--space-4)' }}>
+                  <StatStrip items={Object.entries(analytics.statusCounts).map(([s, n]) => ({ value: n, label: STATUS[s]?.label || s }))} />
+                </div>
+              )}
+
+              <div className="ad-section-title" style={{ marginTop: 'var(--space-8)' }}><span className="t-eyebrow qz-subtle">Recherches sans résultat (30j)</span></div>
+              {(analytics.searchInsights || []).length === 0 ? <EmptyState icon="search" title="Pas encore de données de recherche" /> : (
+                <div className="qz-table-wrap">
+                  <table className="qz-table">
+                    <thead><tr><th>Requête</th><th>Recherches</th><th>Sans résultat</th><th>Dernière fois</th></tr></thead>
+                    <tbody>
+                      {analytics.searchInsights.slice(0, 30).map((r, i) => (
+                        <tr key={i}>
+                          <td className="qz-table-name">{r.query || '(vide)'}</td>
+                          <td className="qz-table-mono">{r.searches}</td>
+                          <td>{r.zero_results > 0 ? <Badge tone="danger">{r.zero_results}</Badge> : <span className="qz-table-mono">0</span>}</td>
+                          <td className="qz-table-mono">{fmt(r.last_searched)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           ) : <EmptyState icon="up" title="Données non disponibles" />
         )}
