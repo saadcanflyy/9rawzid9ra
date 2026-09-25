@@ -229,8 +229,8 @@ export default function ModulePage() {
   const handleDownload = (doc) => {
     if (!user) { setShowAuthGate(true); return }
     if (doc.files && doc.files.length > 0) window.open(doc.files[0], '_blank')
-    supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id }).then()
-    supabase.from('documents').update({ downloads: (doc.downloads || 0) + 1 }).eq('id', doc.id).then()
+    setDocs(p => p.map(d => d.id === doc.id ? { ...d, downloads: (d.downloads || 0) + 1 } : d))
+    supabase.rpc('record_download', { p_document_id: doc.id }).then()
   }
 
   const handleHelpful = async (doc) => {
@@ -255,7 +255,6 @@ export default function ModulePage() {
         { onConflict: 'user_id,document_id,reaction_type' })
     const newSum = (doc.rating_sum || 0) - prev + star
     const newCount = prev === 0 ? (doc.rating_count || 0) + 1 : (doc.rating_count || 0)
-    await supabase.from('documents').update({ rating_sum: newSum, rating_count: newCount }).eq('id', doc.id)
     setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], rating: star } }))
     setDocs(p => p.map(d => d.id === doc.id ? { ...d, rating_sum: newSum, rating_count: newCount } : d))
   }
@@ -269,7 +268,6 @@ export default function ModulePage() {
       if (!stored.includes(doc.id)) localStorage.setItem('signaled_docs', JSON.stringify([...stored, doc.id]))
     } catch {}
     await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'report' })
-    await supabase.from('documents').update({ report_count: (doc.report_count || 0) + 1 }).eq('id', doc.id)
     notify.success('Document signalé', 'Notre équipe va vérifier.')
   }
 
@@ -290,8 +288,8 @@ export default function ModulePage() {
     if (existing) {
       if (userRequested[docType]) return
       await supabase.from('document_request_votes').insert({ user_id: user.id, request_id: existing.id })
-      const newVotes = (existing.votes || 0) + 1
-      await supabase.from('document_requests').update({ votes: newVotes }).eq('id', existing.id)
+      const { data: freshReq } = await supabase.from('document_requests').select('*').eq('id', existing.id).single()
+      const newVotes = freshReq?.votes ?? (existing.votes || 0) + 1
       if (newVotes >= 5 && mod?.filiere_id) {
         const { data: filUploaders } = await supabase.rpc('get_top_uploaders_in_filiere',
           { filiere_id_param: mod.filiere_id, limit_param: 3 })
@@ -303,7 +301,7 @@ export default function ModulePage() {
           })
         }
       }
-      setRequests(p => ({ ...p, [docType]: { ...existing, votes: newVotes } }))
+      setRequests(p => ({ ...p, [docType]: freshReq || { ...existing, votes: newVotes } }))
       setUserRequested(p => ({ ...p, [docType]: true }))
     } else {
       const { data: newReq } = await supabase.from('document_requests')
@@ -462,8 +460,8 @@ export default function ModulePage() {
                                 if (!user) { setShowAuthGate(true); return }
                                 window.open(fileUrl, '_blank')
                                 if (i === 0) {
-                                  supabase.from('downloads_log').insert({ user_id: user.id, document_id: doc.id }).then()
-                                  supabase.from('documents').update({ downloads: (doc.downloads || 0) + 1 }).eq('id', doc.id).then()
+                                  setDocs(p => p.map(d => d.id === doc.id ? { ...d, downloads: (d.downloads || 0) + 1 } : d))
+                                  supabase.rpc('record_download', { p_document_id: doc.id }).then()
                                 }
                               }}>
                                 {doc.file_names?.[i] ? doc.file_names[i].replace(/\.[^/.]+$/, '').replace(/_/g, ' ') : `Fichier ${i + 1}`}

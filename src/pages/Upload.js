@@ -697,7 +697,7 @@ export default function Upload() {
       const flaggedResult = files.map(f => fileFlagsRef.current[fileKey(f)]).find(r => r?.flagged)
       const isFlagged = !!flaggedResult
 
-      const { data: docData, error: dbErr } = await supabase.from('documents').insert({
+      const { error: dbErr } = await supabase.from('documents').insert({
         module_id: moduleId,
         uploader_id: user.id,
         doc_type: docType,
@@ -717,21 +717,11 @@ export default function Upload() {
       if (dbErr) throw new Error(dbErr.message)
       setHeldForReview(isFlagged)
 
-      // Award 50 points and increment uploads_count — withheld until a moderator
-      // clears a held-for-review upload (awarded then, see Admin/ModeratorPanel verifyDoc)
+      // Points and uploads_count are awarded server-side (DB trigger) on insert —
+      // read the fresh total rather than computing it here.
       if (!isFlagged) {
-        const { data: prof } = await supabase.from('user_profiles').select('points, uploads_count').eq('id', user.id).single()
-        const newPoints = (prof?.points || 0) + 50
-        await Promise.all([
-          supabase.from('user_profiles').update({
-            points: newPoints,
-            uploads_count: (prof?.uploads_count || 0) + 1,
-          }).eq('id', user.id),
-          supabase.from('points_log').insert({
-            user_id: user.id, points: 50, reason: 'Upload de document', document_id: docData?.id,
-          }),
-        ])
-        setEarnedPoints(newPoints)
+        const { data: prof } = await supabase.from('user_profiles').select('points').eq('id', user.id).single()
+        setEarnedPoints(prof?.points ?? profile?.points ?? 0)
       } else {
         setEarnedPoints(profile?.points || 0)
       }

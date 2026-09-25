@@ -313,7 +313,7 @@ export default function SenpaiZone() {
     const newViews = (post.views || 0) + 1
     setViewPost(vp => vp ? { ...vp, views: newViews } : vp)
     setPosts(ps => ps.map(p => p.id === post.id ? { ...p, views: newViews } : p))
-    supabase.from('senpai_posts').update({ views: newViews }).eq('id', post.id).then()
+    supabase.rpc('increment_post_views', { p_post_id: post.id }).then()
   }
 
   const sendReply = async () => {

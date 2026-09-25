@@ -1,0 +1,7 @@
+insert into universities (id,name,city,type) values (1,'Université Mohammed V de Rabat','Rabat','public'),(2,'École Marocaine des Sciences de l''Ingénieur (EMSI)','Casablanca','private');
+insert into faculties (id,university_id,name,type) values (1,1,'Faculté des Sciences de Rabat','Faculté'),(2,2,'__root__','Autre');
+insert into filieres (id,faculty_id,name,abbreviation,total_semesters) values (1,1,'SMI - Sciences Mathématiques et Informatique',null,6),(2,2,'Génie Informatique','GI',10),(3,2,'Génie Industriel (GI)',null,10);
+insert into modules (id,filiere_id,semester,name) values (1,1,'S3','Analyse Numérique'),(2,2,'S5','Réseaux Informatiques'),(3,2,'S6','Administration des Réseaux'),(4,3,'S5','Gestion de Production'),(5,1,'S4','Probabilités et Statistiques'),(6,2,'S5','Bases de Données');
+select setval('universities_id_seq',10); select setval('faculties_id_seq',10); select setval('filieres_id_seq',10); select setval('modules_id_seq',10);
+insert into auth.users(id,email) values ('00000000-0000-0000-0000-00000000000a','admin@x'),('00000000-0000-0000-0000-00000000000b','bob@x'),('00000000-0000-0000-0000-00000000000c','carl@x'),('00000000-0000-0000-0000-00000000000d','mod@x');
+insert into user_profiles (id,name,is_admin,is_moderator,university_id) values ('00000000-0000-0000-0000-00000000000a','Admin',true,false,2),('00000000-0000-0000-0000-00000000000b','Bob',false,false,2),('00000000-0000-0000-0000-00000000000c','Carl',false,false,1),('00000000-0000-0000-0000-00000000000d','Mod',false,true,1);

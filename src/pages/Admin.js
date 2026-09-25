@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import ConfirmModal from '../components/ConfirmModal'
 import PanelLayout from '../components/PanelLayout'
 import { Button, Input, Select, Badge, Chip, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, ProgressBar, Icon } from '../design-system/ui'
+import { notify } from '../design-system/toast'
 
 const css = `
   .ad-announce { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6); }
@@ -270,7 +271,8 @@ export default function Admin() {
       confirmText: 'Supprimer', confirmColor: '#F87171',
       onConfirm: async () => {
         setModal(null)
-        await supabase.from('senpai_posts').delete().eq('id', post.id)
+        const { error } = await supabase.rpc('staff_moderate_post', { p_post_id: post.id, p_action: 'delete' })
+        if (error) { notify.error(error.message); return }
         setFlaggedPosts(ps => ps.filter(p => p.id !== post.id))
       },
     })
@@ -285,18 +287,9 @@ export default function Admin() {
 
   // Actions
   const verifyDoc = async (id) => {
-    // Points/uploads_count were withheld at upload time for held-for-review
-    // documents — award them now that a human has cleared it.
-    const { data: doc } = await supabase.from('documents').select('is_flagged, uploader_id').eq('id', id).single()
-    await supabase.from('documents').update({ is_verified: true, is_flagged: false }).eq('id', id)
-    if (doc?.is_flagged && doc.uploader_id) {
-      const { data: prof } = await supabase.from('user_profiles').select('points, uploads_count').eq('id', doc.uploader_id).single()
-      await supabase.from('user_profiles').update({
-        points: (prof?.points || 0) + 50,
-        uploads_count: (prof?.uploads_count || 0) + 1,
-      }).eq('id', doc.uploader_id)
-      await supabase.from('points_log').insert({ user_id: doc.uploader_id, points: 50, reason: 'Upload approuvé après modération', document_id: id })
-    }
+    // Verification and the points it awards are now handled server-side.
+    const { error } = await supabase.rpc('moderate_document', { p_document_id: id, p_action: 'verify' })
+    if (error) { notify.error(error.message); return }
     setPendingDocs(d => d.filter(x => x.id !== id))
   }
 
@@ -313,24 +306,16 @@ export default function Admin() {
             if (path) await supabase.storage.from('documents').remove([path])
           }
         }
-        await supabase.from('document_reactions').delete().eq('document_id', doc.id)
-        await supabase.from('downloads_log').delete().eq('document_id', doc.id)
-        const { data: prof } = await supabase.from('user_profiles').select('uploads_count, points').eq('id', doc.uploader_id).single()
-        if (prof) {
-          await supabase.from('user_profiles').update({
-            uploads_count: Math.max(0, (prof.uploads_count || 1) - 1),
-            points: Math.max(0, (prof.points || 50) - 50),
-          }).eq('id', doc.uploader_id)
-        }
-        await supabase.from('documents').delete().eq('id', doc.id)
+        const { error } = await supabase.rpc('moderate_document', { p_document_id: doc.id, p_action: 'delete' })
+        if (error) { notify.error(error.message); return }
         setPendingDocs(d => d.filter(x => x.id !== doc.id))
       },
     })
   }
 
   const handleIgnoreReports = async (docId) => {
-    await supabase.from('documents').update({ report_count: 0 }).eq('id', docId)
-    await supabase.from('document_reactions').delete().eq('document_id', docId).eq('reaction_type', 'report')
+    const { error } = await supabase.rpc('moderate_document', { p_document_id: docId, p_action: 'reset_reports' })
+    if (error) { notify.error(error.message); return }
     setPendingDocs(d => d.map(x => x.id === docId ? { ...x, report_count: 0 } : x))
   }
 
@@ -345,8 +330,9 @@ export default function Admin() {
 
   const moveDoc = async (docId, moduleId) => {
     setMoveBusy(true)
-    await supabase.from('documents').update({ module_id: moduleId }).eq('id', docId)
+    const { error } = await supabase.rpc('moderate_document', { p_document_id: docId, p_action: 'move', p_module_id: moduleId })
     setMoveBusy(false)
+    if (error) { notify.error(error.message); return }
     setMovingDocId(null)
     setMoveSearch('')
     setMoveResults([])
@@ -456,14 +442,14 @@ export default function Admin() {
       confirmColor: currentMod ? '#F87171' : '#4F8EF7',
       onConfirm: async () => {
         setModal(null)
-        const { error } = await supabase.from('user_profiles').update({ is_moderator: !currentMod }).eq('id', id)
-        if (error) { console.error('toggleModerator error:', error); showAlert('Erreur : ' + error.message); return }
+        const { error } = await supabase.rpc('admin_set_moderator', { p_user: id, p_value: !currentMod })
+        if (error) { notify.error(error.message); return }
         setUsers(u => u.map(x => x.id === id ? { ...x, is_moderator: !currentMod } : x))
         const notifContent = !currentMod
           ? "Tu as été nommé modérateur de 9rawZid9ra. Bienvenue dans l'équipe !"
           : 'Ton rôle de modérateur a été retiré.'
         const notifType = !currentMod ? 'moderator_assigned' : 'moderator_removed'
-        supabase.from('notifications').insert({ user_id: id, type: notifType, content: notifContent, read: false }).then()
+        await supabase.rpc('staff_notify', { p_user: id, p_type: notifType, p_content: notifContent })
       },
     })
   }
@@ -510,11 +496,10 @@ export default function Admin() {
       content,
     }).select().single()
     if (newMsg) setMsgThread(prev => [...prev, newMsg])
-    await supabase.from('notifications').insert({
-      user_id: selectedMsgUser.id,
-      type:    'message_reply',
-      content: `Saad GENIUS vous a répondu : ${content.slice(0, 80)}`,
-      read:    false,
+    await supabase.rpc('staff_notify', {
+      p_user: selectedMsgUser.id,
+      p_type: 'message_reply',
+      p_content: `Saad GENIUS vous a répondu : ${content.slice(0, 80)}`,
     })
     setReplySending(false)
   }
@@ -592,12 +577,9 @@ export default function Admin() {
   const sendAnnouncement = async () => {
     if (!annText.trim() || annSending) return
     setAnnSending(true)
-    const { data: allUsers } = await supabase.from('user_profiles').select('id').neq('id', user.id)
-    if (allUsers && allUsers.length > 0) {
-      const inserts = allUsers.map(u => ({ user_id: u.id, type: 'announcement', content: `Saad GENIUS : ${annText.trim()}`, read: false }))
-      await supabase.from('notifications').insert(inserts)
-    }
-    setAnnResult(`Annonce envoyée à ${allUsers?.length || 0} utilisateurs`)
+    const { data: count, error } = await supabase.rpc('admin_broadcast', { p_content: `Annonce : ${annText.trim()}` })
+    if (error) { notify.error(error.message); setAnnSending(false); return }
+    setAnnResult(`Annonce envoyée à ${count || 0} utilisateurs`)
     setAnnText('')
     setAnnSending(false)
     setTimeout(() => setAnnResult(null), 5000)
@@ -608,12 +590,13 @@ export default function Admin() {
     const durations = { '24h': 1, '7d': 7, '30d': 30, 'perm': null }
     const days = durations[banDuration]
     const bannedUntil = days ? new Date(Date.now() + days * 86400000).toISOString() : null
-    const { error } = await supabase.from('user_profiles').update({
-      is_banned: true,
-      banned_until: bannedUntil,
-      ban_reason: banReason.trim() || null,
-    }).eq('id', u.id)
-    if (error) { console.error('confirmBan error:', error); showAlert('Erreur : ' + error.message); setBanBusy(false); return }
+    const { data: ok, error } = await supabase.rpc('mod_ban_user', {
+      p_target_id: u.id,
+      p_is_banned: true,
+      p_banned_until: bannedUntil,
+      p_ban_reason: banReason.trim() || null,
+    })
+    if (error || !ok) { notify.error(error?.message || 'Erreur lors du bannissement.'); setBanBusy(false); return }
     setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_banned: true, banned_until: bannedUntil, ban_reason: banReason.trim() || null } : x))
     setBanningId(null)
     setBanReason('')
@@ -621,8 +604,8 @@ export default function Admin() {
   }
 
   const unbanUser = async (id) => {
-    const { error } = await supabase.from('user_profiles').update({ is_banned: false, banned_until: null, ban_reason: null }).eq('id', id)
-    if (error) { console.error('unbanUser error:', error); showAlert('Erreur : ' + error.message); return }
+    const { data: ok, error } = await supabase.rpc('mod_ban_user', { p_target_id: id, p_is_banned: false, p_banned_until: null, p_ban_reason: null })
+    if (error || !ok) { notify.error(error?.message || 'Erreur lors du débannissement.'); return }
     setUsers(prev => prev.map(x => x.id === id ? { ...x, is_banned: false, banned_until: null, ban_reason: null } : x))
   }
 

@@ -260,15 +260,9 @@ export default function Profile() {
     }
     await Promise.all([
       supabase.from('document_reactions').delete().eq('document_id', doc.id),
-      supabase.from('downloads_log').delete().eq('document_id', doc.id),
       supabase.from('documents').delete().eq('id', doc.id),
     ])
-    await supabase.from('user_profiles').update({
-      uploads_count: Math.max(0, (profile?.uploads_count || 1) - 1),
-      points: Math.max(0, (profile?.points || 50) - 50),
-    }).eq('id', currentUser.id)
     setUploads(u => u.filter(d => d.id !== doc.id))
-    setProfile(p => ({ ...p, uploads_count: Math.max(0, (p?.uploads_count || 1) - 1), points: Math.max(0, (p?.points || 50) - 50) }))
     setDeleteDocBusy(false)
     setConfirmDeleteDoc(null)
   }
@@ -306,10 +300,10 @@ export default function Profile() {
     const stripHtml = (s) => s.replace(/<[^>]*>/g, '').trim()
     const cleanBio = stripHtml(editBio).slice(0, 300)
     const cleanName = stripHtml(editName).slice(0, 60)
-    const { error } = await supabase.from('user_profiles').upsert({
-      id: currentUser.id, email: currentUser.email, name: cleanName, bio: cleanBio,
+    const { error } = await supabase.from('user_profiles').update({
+      name: cleanName, bio: cleanBio,
       university_id: editUni ? parseInt(editUni) : null,
-    }, { onConflict: 'id' })
+    }).eq('id', currentUser.id)
     if (!error) await supabase.auth.updateUser({ data: { name: editName.trim() } })
     setSaving(false)
     if (error) {
