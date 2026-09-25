@@ -219,14 +219,16 @@ Applied 2026-09-25, migrations `20260926000100`–`500` (the assistant *database
 - `get_my_reputation(...)` **replaces the phase-2 version** — adds `faculty_rank`.
 - `award_top_university_contributors(...)` **updated 2026-09-26 (migration 510, Prompt 26)** — the `badge` notification it inserts now links to `/classement?scope=university` instead of the bare `/classement`, so it lands the recipient on their school's ranking. Frontend: `src/lib/reputation.js` exports `LEVEL_TONES`/`BADGE_TIER_TONES`/`RANKING_SCOPES`/`rankLabel`; `levelFor()` now also returns `icon`/`tone`. New shared components `LevelBadge`/`LevelProgress`/`BadgeChip` in `src/design-system/ui.js` replace the per-page inline `LEVEL_TONES` + `Badge`/`ProgressBar` duplication (Browse, Profile, Home, Classement, Upload, ModulePage). Classement gained a Facultés tab (`get_faculty_leaderboard`) and a Global/Mon école/Ma faculté scope pill for Étudiants (driving `get_leaderboard`'s `p_university_id`/`p_faculty_id`); Profile gained a "Réputation" card with 3 ranks (`get_my_reputation`); ModulePage's document rows now show "Partagé par X" + a level badge; Upload's stale hardcoded `RANKS` (0–99/100–299/300–599/600+, unrelated to the real levels) was replaced with `levelFor()` and a new "Ce que tu vas gagner" card.
 
-### Assistant / recommendations (migration 500, schema only)
+### Assistant / recommendations (migration 500)
 
 - `assistant_quota()` / `assistant_consume(p_tokens)` → authenticated. Daily limit 15 (free) / 200 (premium), counted in the existing `ai_usage` table (`feature = 'assistant'`).
-- `get_module_overview(p_module_id)` → jsonb (by doc type, missing types, professors, open requests). anon+authenticated.
-- `get_related_modules(p_module_id, p_limit)` → same filière / same subject elsewhere / "also downloaded". anon+authenticated.
-- `recommend_for_me(p_limit)` → authenticated only; documents for the caller's filière/semester/bookmarked modules they haven't downloaded.
-- `get_missing_resources(p_filiere_id, p_semester, p_limit)` → anon+authenticated; modules missing doc types + open request counts.
-- **Not deployed**: the `supabase/functions/assistant` edge function and its UI — these RPCs and tables exist but nothing calls them yet.
+- `get_module_overview(p_module_id)` → jsonb (by doc type, missing types, professors, open requests). anon+authenticated. **Consumed 2026-09-26 (Prompt 28)**: ModulePage reads `missing_types` for the "Ce qui manque" strip (with "Demander"/"Je l'ai, je partage" actions) and `professors` for the byline chips under the module title.
+- `get_related_modules(p_module_id, p_limit)` → same filière / same subject elsewhere / "also downloaded". anon+authenticated. **Consumed (Prompt 28)**: ModulePage's "Modules liés" section (grouped by `relation`), replacing the old same-filière-only sidebar query.
+- `recommend_for_me(p_limit)` → authenticated only; documents for the caller's filière/semester/bookmarked modules they haven't downloaded. **Consumed (Prompt 28)**: Home's "Recommandé pour toi" row (new `DocumentCard` component in `ui.js`), eyebrow = `reason`.
+- `get_missing_resources(p_filiere_id, p_semester, p_limit)` → anon+authenticated; modules missing doc types + open request counts. **Consumed (Prompt 28)**: Home's "Ce qui manque dans ta filière" (filtered to `docs_count > 0` — modules with zero documents stay in the older `get_home_feed().missing` "Sois le premier" section so the two don't duplicate).
+- `src/lib/rpcCache.js` (new, Prompt 28): a tiny session-lived `Map` cache (`cachedRpc(supabase, name, args, ttlMs=300000)`) keyed by RPC name + args, used by Home and ModulePage for these four calls so they don't refire on every tab switch/revisit.
+- Upload.js now reads `?module=<id>&type=<doc_type>` (Prompt 28) and resolves the module's full université→faculté→filière→semestre chain to prefill the wizard and jump to step 2.
+- **Not deployed**: the `supabase/functions/assistant` edge function and its UI (Prompt 27) — `assistant_quota`/`assistant_consume` and the `assistant_conversations`/`assistant_messages` tables exist but nothing calls them yet, per explicit instruction to skip the assistant.
 
 ## Known follow-ups
 

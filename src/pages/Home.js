@@ -5,11 +5,13 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import {
-  Badge, Chip, StatStrip, DocumentRow, ModuleCard, SchoolCard, Skeleton, Card, Button, Banner, Icon, Avatar,
-  LevelBadge, LevelProgress,
+  Badge, Chip, StatStrip, DocumentRow, DocumentCard, ModuleCard, SchoolCard, Skeleton, Card, Button, Banner, Icon, Avatar,
+  LevelBadge, LevelProgress, DocType, EmptyState,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
 import { levelFor } from '../lib/reputation'
+import { displayStatus } from '../lib/quality'
+import { cachedRpc } from '../lib/rpcCache'
 import SearchAutocomplete from '../components/SearchAutocomplete'
 
 const css = `
@@ -66,6 +68,9 @@ const css = `
   .ph-section { margin-bottom: var(--space-10); }
   .ph-section__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-4); }
   .ph-modules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); }
+  .ph-reco-grid { display: flex; gap: var(--space-3); overflow-x: auto; padding-bottom: var(--space-1); }
+  .ph-reco-grid > * { min-width: 220px; flex: 0 0 auto; }
+  @media (min-width: 720px) { .ph-reco-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); overflow: visible; } .ph-reco-grid > * { min-width: 0; } }
   .ph-missing-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); }
   .ph-request-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
   .ph-request-row + .ph-request-row { border-top: 1px solid var(--border); }
@@ -450,13 +455,21 @@ function PersonalizedHome() {
   const { profile } = useAuth()
   const [feed, setFeed] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [recommended, setRecommended] = useState(null)
+  const [missingResources, setMissingResources] = useState(null)
   const searchInputRef = useRef(null)
 
   const load = () => {
     supabase.rpc('get_home_feed').then(({ data, error }) => {
       if (!error) setFeed(data)
       setLoading(false)
+      const filId = data?.profile?.filiere_id
+      if (!filId) { setMissingResources([]); return }
+      cachedRpc(supabase, 'get_missing_resources', { p_filiere_id: filId, p_semester: data.profile.semester, p_limit: 5 })
+        .then(({ data: rows, error: err2 }) => setMissingResources(err2 ? [] : (rows || []).filter(m => m.docs_count > 0)))
     })
+    cachedRpc(supabase, 'recommend_for_me', { p_limit: 6 })
+      .then(({ data, error }) => setRecommended(error ? [] : (data || [])))
   }
 
   useEffect(() => {
@@ -529,6 +542,33 @@ function PersonalizedHome() {
                 </section>
               )}
 
+              {recommended === null || recommended.length > 0 ? (
+                <section className="ph-section">
+                  <div className="ph-section__head"><h2 className="t-h2">Recommandé pour toi</h2></div>
+                  {recommended === null ? (
+                    <div className="ph-reco-grid">
+                      {[...Array(3)].map((_, i) => <Card key={i}><Skeleton height={90} /></Card>)}
+                    </div>
+                  ) : (
+                    <div className="ph-reco-grid">
+                      {recommended.map(d => (
+                        <DocumentCard key={d.document_id} linkAs={Link} href={`/module/${d.module_slug || d.module_id}`}
+                          eyebrow={d.reason} type={d.doc_type} title={d.title || d.module_name}
+                          meta={[d.module_name, d.semester].filter(Boolean).join(' · ')}
+                          status={displayStatus(d)} />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              ) : (
+                <section className="ph-section">
+                  <div className="ph-section__head"><h2 className="t-h2">Recommandé pour toi</h2></div>
+                  <EmptyState icon="star" title="Pas encore de recommandations">
+                    Suis des modules ou complète ta filière pour recevoir des recommandations.
+                  </EmptyState>
+                </section>
+              )}
+
               {feed.recent_documents?.length > 0 && (
                 <section className="ph-section">
                   <div className="ph-section__head"><h2 className="t-h2">Nouveau dans ta filière</h2></div>
@@ -554,6 +594,27 @@ function PersonalizedHome() {
                       </Card>
                     ))}
                   </div>
+                </section>
+              )}
+
+              {missingResources?.length > 0 && (
+                <section className="ph-section">
+                  <div className="ph-section__head"><h2 className="t-h2">Ce qui manque dans ta filière</h2></div>
+                  <p className="t-caption qz-subtle" style={{ marginBottom: 'var(--space-3)' }}>Partage un document manquant : +10 points, +40 s'il est validé.</p>
+                  <Card style={{ padding: 0 }}>
+                    {missingResources.map(m => (
+                      <div className="ph-request-row" key={m.module_id}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p className="t-label">{m.name}</p>
+                          <div className="qz-meta" style={{ marginTop: 4 }}>
+                            {m.missing_types.slice(0, 4).map(t => <DocType key={t} type={t} muted />)}
+                            {m.open_requests > 0 && <Badge tone="neutral">{m.open_requests} demande{m.open_requests > 1 ? 's' : ''}</Badge>}
+                          </div>
+                        </div>
+                        <Button variant="secondary" size="sm" as={Link} to={`/upload?module=${m.module_id}&type=${m.missing_types[0]}`}>Partager</Button>
+                      </div>
+                    ))}
+                  </Card>
                 </section>
               )}
 

@@ -157,7 +157,7 @@ import { trapFocus, focusFirst } from './focusTrap';
   };
   function DocType(props) {
     var t = TYPES[props.type] || ['', props.type, props.type];
-    return h('span', { className: cx('qz-type', t[0] && 'qz-type--' + t[0], props.size === 'lg' && 'qz-type--lg'), title: t[2] }, props.size === 'lg' ? t[1].replace('Corr. ', 'C.') : t[1]);
+    return h('span', { className: cx('qz-type', props.muted ? 'qz-type--muted' : (t[0] && 'qz-type--' + t[0]), props.size === 'lg' && 'qz-type--lg'), title: t[2] }, props.size === 'lg' ? t[1].replace('Corr. ', 'C.') : t[1]);
   }
 
   /* ---- Card ---- */
@@ -206,6 +206,20 @@ import { trapFocus, focusFirst } from './focusTrap';
       props.hideActions ? null : h('div', { className: 'qz-row__actions' },
         h(Button, { variant: 'ghost', size: 'sm', icon: 'eye', iconOnly: true, 'aria-label': 'Aperçu', onClick: props.onPreview }),
         h(Button, { variant: 'secondary', size: 'sm', icon: 'download', onClick: props.onDownload }, 'Télécharger')));
+  }
+
+  /* ---- DocumentCard (compact, for recommendation grids) ---- */
+  function DocumentCard(props) {
+    return h(Card, { href: props.href || '#', linkAs: props.linkAs, className: 'qz-doc-card' },
+      props.eyebrow ? h('span', { className: 't-eyebrow qz-subtle' }, props.eyebrow) : null,
+      h('div', { className: 'qz-doc-card__head' },
+        h(DocType, { type: props.type, size: 'lg' }),
+        h('div', { style: { minWidth: 0, flex: 1 } },
+          h('p', { className: 'qz-doc-card__title' }, props.title),
+          props.meta ? h('p', { className: 't-caption qz-subtle' }, props.meta) : null)),
+      (props.status || props.quality) ? h('div', { className: 'qz-doc-card__foot' },
+        props.status ? h(StatusBadge, props.status) : null,
+        props.quality ? h(QualityBadge, props.quality) : null) : null);
   }
 
   /* ---- SchoolCard ---- */
@@ -637,4 +651,4 @@ import { trapFocus, focusFirst } from './focusTrap';
           h('button', { type: 'button', className: 'qz-btn qz-btn--danger', disabled: !reason, onClick: function () { if (props.onSubmit) props.onSubmit(reason, details); } }, 'Signaler'))));
   }
 
-  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, StatusBadge, LevelBadge, LevelProgress, BadgeChip };
+  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, DocumentCard, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, StatusBadge, LevelBadge, LevelProgress, BadgeChip };

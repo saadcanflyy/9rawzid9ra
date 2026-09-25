@@ -7,11 +7,12 @@ import { useAuth } from '../context/AuthContext'
 import {
   Breadcrumb, Button, Badge, DocType, Tabs, Chip, EmptyState, Card, Icon, Avatar,
   ProgressBar, Sheet, Skeleton, Select, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, Toast, StatusBadge,
-  LevelBadge,
+  LevelBadge, ModuleCard, Banner,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
 import { qualityLevel, qualityChecklist, isUnrated, REPORT_REASONS, displayStatus } from '../lib/quality'
 import { levelFor } from '../lib/reputation'
+import { cachedRpc } from '../lib/rpcCache'
 
 const css = `
   .mp-hero { padding: var(--space-8) var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface); }
@@ -38,8 +39,10 @@ const css = `
   .mp-type-row:last-child { margin-bottom: 0; }
   .mp-type-row__bar { flex: 1; }
   .mp-type-row__label { width: 110px; flex-shrink: 0; }
-  .mp-related-row { display: block; padding: 8px var(--space-2); border-radius: var(--radius-sm); text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--space-2); }
-  .mp-related-row:hover { background: var(--surface-2); }
+  .mp-related-section { max-width: 1300px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-12); }
+  .mp-related-group { margin-bottom: var(--space-6); }
+  .mp-related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-4); margin-top: var(--space-3); }
+  .mp-missing-strip { max-width: 1000px; margin: 0 0 var(--space-4); }
   .mp-senpai-list { display: flex; flex-direction: column; gap: var(--space-2); }
   .mp-senpai-card { display: block; padding: var(--space-3); text-decoration: none; color: inherit; cursor: pointer; }
   .mp-senpai-card__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
@@ -82,7 +85,8 @@ export default function ModulePage() {
 
   const [mod, setMod] = useState(null)
   const [docs, setDocs] = useState([])
-  const [related, setRelated] = useState([])
+  const [relatedModules, setRelatedModules] = useState(null)
+  const [moduleOverview, setModuleOverview] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
   const [verifiedOnly, setVerifiedOnly] = useState(false)
@@ -133,6 +137,11 @@ export default function ModulePage() {
             const parts = [m.name, 'Examens, TD, TP et cours', filName, uniName].filter(Boolean)
             metaDesc.setAttribute('content', parts.join(' — ') + ' — 9rawZid9ra')
           }
+          // Run in parallel, never block the rest of the page.
+          cachedRpc(supabase, 'get_module_overview', { p_module_id: parseInt(id) })
+            .then(({ data, error }) => { if (!error) setModuleOverview(data) })
+          cachedRpc(supabase, 'get_related_modules', { p_module_id: parseInt(id), p_limit: 6 })
+            .then(({ data, error }) => setRelatedModules(error ? [] : (data || [])))
         }
 
         // Visible: published/verified to everyone, plus your own regardless of status
@@ -192,16 +201,6 @@ export default function ModulePage() {
         })
         setRequests(reqMap)
         setUserRequested(userReqMap)
-
-        if (m) {
-          const { data: rel } = await supabase
-            .from('modules')
-            .select('id, name, semester')
-            .eq('filiere_id', m.filiere_id)
-            .neq('id', parseInt(id))
-            .limit(6)
-          setRelated(rel || [])
-        }
 
         supabase.from('senpai_posts')
           .select('*, user_profiles(name, universities(name)), senpai_votes(user_id)')
@@ -440,6 +439,16 @@ export default function ModulePage() {
             <div>
               <span className="t-eyebrow qz-subtle">S{mod.semester}{filName ? ` · ${filName}` : ''}{facName ? ` · ${facName}` : ''}</span>
               <h1 className="t-h1" style={{ marginTop: 4 }}>{mod.name}</h1>
+              {moduleOverview?.professors?.length > 0 && (
+                <div className="qz-meta" style={{ marginTop: 6 }}>
+                  <span>Enseigné par</span>
+                  {moduleOverview.professors.map((p, i) => (
+                    <span key={p.id}>
+                      <Link to={`/professeur/${p.id}`}>{p.name}</Link>{i < moduleOverview.professors.length - 1 ? ' ·' : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           {docs.length > 0 && (
@@ -470,6 +479,22 @@ export default function ModulePage() {
               <Chip selected={verifiedOnly} onClick={() => setVerifiedOnly(true)}>Validés</Chip>
             </div>
           </div>
+
+          {moduleOverview?.missing_types?.length > 0 && (
+            <div className="mp-missing-strip">
+              <Banner action={
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Button variant="secondary" size="sm" disabled={userRequested[moduleOverview.missing_types[0]]}
+                    onClick={() => handleRequest(moduleOverview.missing_types[0])}>
+                    {userRequested[moduleOverview.missing_types[0]] ? 'Demande envoyée' : 'Demander'}
+                  </Button>
+                  <Button variant="ghost" size="sm" as={Link} to={`/upload?module=${mod.id}&type=${moduleOverview.missing_types[0]}`}>Je l'ai, je partage</Button>
+                </div>
+              }>
+                Pas encore de : {moduleOverview.missing_types.map(t => TYPE_LABELS[t] || t).join(' · ')}
+              </Banner>
+            </div>
+          )}
 
           {tabDocs.length === 0 ? (
             activeTab !== 'all' ? (
@@ -679,20 +704,6 @@ export default function ModulePage() {
             </div>
           </Card>
 
-          {related.length > 0 && (
-            <Card>
-              <span className="t-eyebrow qz-subtle">Modules liés</span>
-              <div style={{ marginTop: 'var(--space-2)' }}>
-                {related.map(r => (
-                  <Link key={r.id} className="mp-related-row" to={`/module/${r.id}`}>
-                    <span className="t-mono qz-subtle" style={{ flexShrink: 0 }}>S{r.semester}</span>
-                    <span className="t-body-sm" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
-                  </Link>
-                ))}
-              </div>
-            </Card>
-          )}
-
           <Card>
             <span className="t-eyebrow qz-subtle">Soutenir le projet</span>
             <p className="t-body-sm qz-muted" style={{ margin: 'var(--space-2) 0 var(--space-3)' }}>9rawZid9ra est 100% gratuit. Un pourboire nous aide à grandir.</p>
@@ -700,6 +711,27 @@ export default function ModulePage() {
           </Card>
         </aside>
       </div>
+
+      {relatedModules?.length > 0 && (
+        <section className="mp-related-section">
+          <h2 className="t-h2" style={{ marginBottom: 'var(--space-2)' }}>Modules liés</h2>
+          {['Même filière', 'Même matière, autre école', 'Aussi téléchargé'].map(rel => {
+            const items = relatedModules.filter(r => r.relation === rel)
+            if (items.length === 0) return null
+            return (
+              <div key={rel} className="mp-related-group">
+                <span className="t-eyebrow qz-subtle">{rel}</span>
+                <div className="mp-related-grid">
+                  {items.map(m => (
+                    <ModuleCard key={m.module_id} linkAs={Link} href={`/module/${m.slug || m.module_id}`}
+                      name={m.name} semester={m.semester} filiere={`${m.filiere} · ${m.university}`} docs={m.docs_count} />
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+        </section>
+      )}
 
       {showAuthGate && (
         <div className="qz-scrim" onClick={() => setShowAuthGate(false)}>

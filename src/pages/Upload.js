@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import ConfirmModal from '../components/ConfirmModal'
@@ -167,7 +167,12 @@ const isAllowed = f => f.type.startsWith('image/') || ALLOWED_TYPES.has(f.type) 
 
 export default function Upload() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const prefetchedForUniRef = useRef(null)
+  // Set once a ?module=<id> query param resolves; consumed by the selUni/selFac cascade
+  // effects below to auto-select the right faculty/filière/semester/module instead of
+  // resetting them, the way prefetchedForUniRef already does for the school-request flow.
+  const modulePrefillRef = useRef(null)
   const isSubmittingRef = useRef(false)
   const isSubmittingFacRef = useRef(false)
   const fileFlagsRef = useRef({})
@@ -284,6 +289,23 @@ export default function Upload() {
       .then(({ data }) => setUnis(data || []))
   }, [])
 
+  // ?module=<id>&type=<doc_type> (from Home, ModulePage "missing" prompts, etc.):
+  // resolve the module's full location and prefill the wizard, skipping to step 2.
+  useEffect(() => {
+    const moduleId = searchParams.get('module')
+    if (!moduleId) return
+    const typeParam = searchParams.get('type')
+    supabase.from('modules').select('*, filieres(id, faculty_id, faculties(id, university_id))')
+      .eq('id', parseInt(moduleId)).single().then(({ data: m }) => {
+        if (!m) return
+        modulePrefillRef.current = {
+          facultyId: m.filieres?.faculty_id, filiereId: m.filieres?.id, semester: m.semester, module: m,
+        }
+        if (typeParam) setDocType(typeParam)
+        setSelUni(String(m.filieres?.faculties?.university_id))
+      })
+  }, []) // eslint-disable-line
+
   useEffect(() => {
     if (!selUni) { setFacs([]); setSelFac(''); setFacsFetched(false); setUniMode(''); setShowAddFacForm(false); setAddFacName(''); setAddFacType('Faculté'); return }
     if (prefetchedForUniRef.current === selUni) {
@@ -296,6 +318,10 @@ export default function Upload() {
       .then(({ data }) => {
         setFacs(data || [])
         setFacsFetched(true)
+        const target = modulePrefillRef.current
+        if (target && (data || []).some(f => String(f.id) === String(target.facultyId))) {
+          setSelFac(String(target.facultyId))
+        }
       })
     setSelFac(''); setSelFil(''); setSelSem(''); setSelMod(null)
   }, [selUni]) // eslint-disable-line
@@ -303,7 +329,17 @@ export default function Upload() {
   useEffect(() => {
     if (!selFac) { setFils([]); setSelFil(''); return }
     supabase.from('filieres').select('*').eq('faculty_id', selFac).order('name')
-      .then(({ data }) => setFils(data || []))
+      .then(({ data }) => {
+        setFils(data || [])
+        const target = modulePrefillRef.current
+        if (target && String(target.facultyId) === String(selFac) && (data || []).some(f => String(f.id) === String(target.filiereId))) {
+          setSelFil(String(target.filiereId))
+          setSelSem(target.semester)
+          setSelMod(target.module)
+          setStep(2)
+          modulePrefillRef.current = null
+        }
+      })
     setSelFil(''); setSelSem(''); setSelMod(null)
   }, [selFac])
 
