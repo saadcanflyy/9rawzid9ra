@@ -368,6 +368,12 @@ button.qz-badge:hover { filter: brightness(1.15); }
 .qz-quality-card__score { display: flex; align-items: center; gap: var(--space-3); }
 .qz-quality-card__rows { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-1); }
 .qz-quality-card__row { display: flex; align-items: center; gap: var(--space-2); }
+.qz-quality-explain { display: flex; flex-direction: column; gap: var(--space-3); }
+.qz-quality-explain__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding-bottom: var(--space-2); border-bottom: 1px solid var(--border); }
+.qz-quality-explain__row:last-child { border-bottom: 0; padding-bottom: 0; }
+
+/* ---------- Status badge ---------- */
+.qz-status-badge { display: inline-flex; }
 
 /* ---------- Feedback prompt ---------- */
 .qz-feedback-prompt { display: flex; flex-direction: column; gap: var(--space-3); }

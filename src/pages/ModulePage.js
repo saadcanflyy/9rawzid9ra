@@ -5,11 +5,11 @@ import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
 import {
-  Breadcrumb, Button, Badge, DocType, Tabs, EmptyState, Card, Icon, Avatar,
-  ProgressBar, Sheet, Skeleton, Select, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, Toast,
+  Breadcrumb, Button, Badge, DocType, Tabs, Chip, EmptyState, Card, Icon, Avatar,
+  ProgressBar, Sheet, Skeleton, Select, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, Toast, StatusBadge,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
-import { qualityLevel, qualityChecklist, isUnrated, REPORT_REASONS } from '../lib/quality'
+import { qualityLevel, qualityChecklist, isUnrated, REPORT_REASONS, displayStatus } from '../lib/quality'
 
 const css = `
   .mp-hero { padding: var(--space-8) var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface); }
@@ -71,23 +71,7 @@ const fmtAgo = d => {
   return `il y a ${Math.floor(s / 86400)} j`
 }
 
-// documents.status: falls back to the old is_verified boolean until the quality migration is applied.
-const docStatus = (doc) => doc.status || (doc.is_verified ? 'published' : 'pending_review')
-
-function StatusBadge({ doc }) {
-  const status = docStatus(doc)
-  if (status === 'verified') {
-    return (
-      <span title={doc.verification_source === 'community' ? 'Vérifié par la communauté' : 'Vérifié par la modération'}>
-        <Badge tone="success" icon="check">Vérifié</Badge>
-      </span>
-    )
-  }
-  if (status === 'pending_review') return <Badge tone="warning">En vérification</Badge>
-  if (status === 'needs_review') return <Badge tone="warning">À revoir</Badge>
-  if (status === 'rejected') return <Badge tone="danger">Refusé</Badge>
-  return null
-}
+const STATUS_RANK = { verified: 0, community_approved: 1, pending: 2, rejected: 3 }
 
 export default function ModulePage() {
   const navigate = useNavigate()
@@ -99,6 +83,7 @@ export default function ModulePage() {
   const [related, setRelated] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('all')
+  const [verifiedOnly, setVerifiedOnly] = useState(false)
   const [senpaiPosts, setSenpaiPosts] = useState([])
   const { user } = useAuth()
   const [userReactions, setUserReactions] = useState({})
@@ -261,10 +246,13 @@ export default function ModulePage() {
   }, [id])
 
   const tabDocs = docs.filter(d => matchesTab(d, activeTab))
+    .filter(d => !verifiedOnly || ['verified', 'community_approved'].includes(displayStatus(d)?.key))
   const grouped = GROUP_ORDER.reduce((acc, type) => {
     const group = tabDocs.filter(d => d.doc_type === type)
     if (group.length > 0) {
       acc[type] = [...group].sort((a, b) => {
+        const r = (STATUS_RANK[displayStatus(a)?.key] ?? 2) - (STATUS_RANK[displayStatus(b)?.key] ?? 2)
+        if (r !== 0) return r
         const q = (b.quality_score || 0) - (a.quality_score || 0)
         if (q !== 0) return q
         return (b.academic_year || '').localeCompare(a.academic_year || '')
@@ -475,6 +463,10 @@ export default function ModulePage() {
               <Tabs label="Types de documents" value={activeTab} onChange={setActiveTab}
                 items={TABS.map(t => ({ id: t.k, label: t.l, count: t.k === 'all' ? undefined : (tabCount(t.k) || undefined) }))} />
             </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 'var(--space-2)' }}>
+              <Chip selected={!verifiedOnly} onClick={() => setVerifiedOnly(false)}>Tous</Chip>
+              <Chip selected={verifiedOnly} onClick={() => setVerifiedOnly(true)}>Validés</Chip>
+            </div>
           </div>
 
           {tabDocs.length === 0 ? (
@@ -508,13 +500,13 @@ export default function ModulePage() {
                     </div>
                   )}
                   {groupDocs.map(doc => {
-                    const status = docStatus(doc)
+                    const isRejected = doc.status === 'rejected'
                     const isOwn = user && doc.uploader_id === user.id
                     const level = qualityLevel(doc)
                     return (
-                    <div key={doc.id} id={`doc-${doc.id}`} className="mp-doc-card" style={status === 'rejected' ? { opacity: 0.55 } : undefined}>
-                      <div className="qz-row" style={{ cursor: doc.files?.length === 1 && status !== 'rejected' ? 'pointer' : 'default' }}
-                        onClick={() => { if (doc.files?.length === 1 && status !== 'rejected') handleDownload(doc) }}>
+                    <div key={doc.id} id={`doc-${doc.id}`} className="mp-doc-card" style={isRejected ? { opacity: 0.55 } : undefined}>
+                      <div className="qz-row" style={{ cursor: doc.files?.length === 1 && !isRejected ? 'pointer' : 'default' }}
+                        onClick={() => { if (doc.files?.length === 1 && !isRejected) handleDownload(doc) }}>
                         <DocType type={doc.doc_type} size="lg" />
                         <div className="qz-row__main">
                           <p className="qz-row__title">{doc.doc_number || TYPE_LABELS[doc.doc_type] || doc.doc_type}</p>
@@ -529,10 +521,10 @@ export default function ModulePage() {
                               {doc.user_profiles?.name || 'Anonyme'}
                             </button>
                             {doc.user_profiles?.is_fondateur && <Badge tone="founder" icon="star">Fondateur</Badge>}
-                            <StatusBadge doc={doc} />
+                            <StatusBadge {...displayStatus(doc)} />
                             {level && <QualityBadge score={doc.quality_score ?? 0} label={level.label} tone={level.tone} />}
                           </div>
-                          {isOwn && status === 'rejected' && doc.flag_reason && (
+                          {isOwn && isRejected && doc.flag_reason && (
                             <p className="t-caption" style={{ color: 'var(--danger)', marginTop: 4 }}>Raison : {doc.flag_reason}</p>
                           )}
                         </div>
@@ -747,6 +739,10 @@ export default function ModulePage() {
         <Sheet wide title={previewDoc.doc_number || TYPE_LABELS[previewDoc.doc_type] || previewDoc.doc_type} onClose={() => { setPreviewDoc(null); setFocusFeedback(false) }}>
           <div className="mp-preview-layout">
             <div className="mp-preview-main">
+              <div style={{ display: 'flex', gap: 8, marginBottom: 'var(--space-2)' }}>
+                <StatusBadge {...displayStatus(previewDoc)} />
+                {level && <QualityBadge score={previewDoc.quality_score ?? 0} label={level.label} tone={level.tone} />}
+              </div>
               <iframe
                 style={{ flex: 1, width: '100%', border: 0, minHeight: '60vh' }}
                 src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDoc?.files?.[0] || '')}&embedded=true`}
@@ -774,6 +770,7 @@ export default function ModulePage() {
               {canGiveFeedback && (
                 <FeedbackPrompt
                   correctModule={docFeedback[previewDoc.id]?.correct_module ?? null}
+                  correctUniversity={docFeedback[previewDoc.id]?.correct_university ?? null}
                   readable={docFeedback[previewDoc.id]?.readable ?? null}
                   complete={docFeedback[previewDoc.id]?.complete ?? null}
                   onAnswer={(key, value) => handleFeedbackAnswer(previewDoc, key, value)}

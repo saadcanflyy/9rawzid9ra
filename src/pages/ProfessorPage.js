@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
-import { Avatar, Badge, Card, StatStrip, Chip, Skeleton, EmptyState, Button, DocType, QualityBadge, Select } from '../design-system/ui'
+import { Avatar, Badge, Card, StatStrip, Chip, Skeleton, EmptyState, Button, DocType, QualityBadge, StatusBadge, Select } from '../design-system/ui'
 import { notify } from '../design-system/toast'
 import { displayStatus, qualityLevel } from '../lib/quality'
 import { DOC_TYPE_LABELS } from '../lib/searchParser'
@@ -157,7 +157,15 @@ export default function ProfessorPage() {
   }
 
   const docTypes = [...new Set(prof.documents.map(d => d.doc_type))]
-  const filteredDocs = docFilter === 'all' ? prof.documents : prof.documents.filter(d => d.doc_type === docFilter)
+  const STATUS_RANK = { verified: 0, community_approved: 1, pending: 2, rejected: 3 }
+  const sortedDocs = [...prof.documents].sort((a, b) => {
+    const r = (STATUS_RANK[displayStatus(a)?.key] ?? 2) - (STATUS_RANK[displayStatus(b)?.key] ?? 2)
+    if (r !== 0) return r
+    const q = (b.quality_score || 0) - (a.quality_score || 0)
+    if (q !== 0) return q
+    return (b.academic_year || '').localeCompare(a.academic_year || '')
+  })
+  const filteredDocs = docFilter === 'all' ? sortedDocs : sortedDocs.filter(d => d.doc_type === docFilter)
   const examTotal = prof.feedback.exam_style ? Object.values(prof.feedback.exam_style).reduce((a, b) => a + b, 0) : 0
 
   return (
@@ -255,7 +263,7 @@ export default function ProfessorPage() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      {s && <Badge tone={s.tone} icon={s.icon}>{s.label}</Badge>}
+                      <StatusBadge {...s} />
                       {level && <QualityBadge score={doc.quality_score ?? 0} label={level.label} tone={level.tone} />}
                     </div>
                   </Link>

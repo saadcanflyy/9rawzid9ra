@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import ConfirmModal from '../components/ConfirmModal'
 import PanelLayout from '../components/PanelLayout'
-import { Button, Input, Select, Badge, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, Banner, QualityBadge, Chip } from '../design-system/ui'
+import { Button, Input, Select, Badge, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, Banner, QualityBadge, Chip, Icon, StatusBadge } from '../design-system/ui'
 import { notify } from '../design-system/toast'
-import { STATUS, qualityLevel, REPORT_REASONS } from '../lib/quality'
+import { qualityLevel, qualityChecklist, displayStatus, REPORT_REASONS } from '../lib/quality'
 import { professorNameParts } from '../lib/professorName'
 
 const css = `
@@ -178,8 +178,9 @@ export default function ModeratorPanel() {
       const extraMap = Object.fromEntries((extra || []).map(e => [e.id, e]))
       setFlaggedDocs(data.map(d => ({
         id: d.document_id, doc_type: d.doc_type, module_name: d.module_name, uploader_name: d.uploader_name,
-        created_at: d.created_at, status: d.status, flag_reason: d.flag_reason, report_count: d.report_count,
-        quality_score: d.quality_score, reasons: d.reasons,
+        created_at: d.created_at, status: d.status, display_status: d.display_status, verification_source: d.verification_source,
+        flag_reason: d.flag_reason, report_count: d.report_count,
+        quality_score: d.quality_score, quality_signals: d.quality_signals, reasons: d.reasons,
         ...extraMap[d.document_id],
       })))
     } else {
@@ -582,7 +583,10 @@ export default function ModeratorPanel() {
                   <thead><tr><th>Document</th><th>Module</th><th>Uploadé par</th><th>Signalements</th><th>Actions</th></tr></thead>
                   <tbody>
                     {flaggedDocs.map(d => {
-                      const level = d.quality_score != null ? qualityLevel({ status: d.status, quality_score: d.quality_score }) : null
+                      const level = d.quality_score != null ? qualityLevel(d) : null
+                      const checklist = d.quality_signals ? qualityChecklist(d) : []
+                      const CHECK_ICON = { yes: 'check', no: 'x' }
+                      const CHECK_COLOR = { yes: 'var(--success)', no: 'var(--danger)', unknown: 'var(--text-subtle)' }
                       return (
                       <tr key={d.id}>
                         <td>
@@ -591,7 +595,16 @@ export default function ModeratorPanel() {
                             <div>
                               <div className="qz-table-name">{d.academic_year}</div>
                               <div className="qz-table-mono">{d.pages_count} page{d.pages_count > 1 ? 's' : ''} · {d.file_type}</div>
-                              {d.status && <div style={{ marginTop: 4 }}><Badge tone={STATUS[d.status]?.tone || 'neutral'}>{STATUS[d.status]?.label || d.status}</Badge></div>}
+                              {d.status && <div style={{ marginTop: 4 }}><StatusBadge {...displayStatus(d)} /></div>}
+                              {checklist.length > 0 && (
+                                <div style={{ display: 'flex', gap: 6, marginTop: 6 }} title={checklist.map(c => c.label).join(' · ')}>
+                                  {checklist.map(c => (
+                                    <span key={c.key} style={{ color: CHECK_COLOR[c.state], display: 'inline-flex' }}>
+                                      {CHECK_ICON[c.state] ? <Icon name={CHECK_ICON[c.state]} size={14} /> : <span className="qz-dot" style={{ background: CHECK_COLOR.unknown }} />}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -617,7 +630,7 @@ export default function ModeratorPanel() {
                         <td>
                           <div className="qz-table-actions">
                             {d.files?.[0] && <Button as="a" href={d.files[0]} target="_blank" rel="noreferrer" variant="secondary" size="sm" icon="eye">Voir</Button>}
-                            <Button variant="secondary" size="sm" icon="check" onClick={() => verifyDoc(d.id)}>Vérifier</Button>
+                            <Button variant="secondary" size="sm" icon="check" onClick={() => verifyDoc(d.id)}>{d.display_status === 'community_approved' ? 'Confirmer (Vérifié)' : 'Vérifier'}</Button>
                             <Button variant="ghost" size="sm" onClick={() => { const open = modActionDocId === d.id && modAction === 'review'; setModActionDocId(open ? null : d.id); setModAction('review'); setModNote(d.flag_reason || '') }}>À revoir</Button>
                             <Button variant="danger-ghost" size="sm" onClick={() => { const open = modActionDocId === d.id && modAction === 'reject'; setModActionDocId(open ? null : d.id); setModAction('reject'); setModNote('') }}>Refuser</Button>
                             <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => deleteDoc(d)}>Supprimer</Button>

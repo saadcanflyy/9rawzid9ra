@@ -797,7 +797,7 @@ export default function Upload() {
                 <p className="t-body qz-muted" style={{ margin: 'var(--space-3) auto var(--space-6)', maxWidth: 440 }}>
                   {uploadStatus === 'pending_review'
                     ? <>Ton document est en vérification (contenu ou doublon possible). Tu gagneras tes points dès qu'il sera publié.</>
-                    : <>Ton document est en ligne. <b style={{ color: 'var(--success)' }}>+10 points</b>. Il passera Vérifié (+40) après 5 avis positifs ou une vérification de l'équipe.</>}
+                    : <>Ton document est en ligne (En attente). <b style={{ color: 'var(--success)' }}>+10 points</b>. Il passe « Approuvé par la communauté » après 5 avis positifs, ou « Vérifié » si l'équipe le contrôle. +40 points à ce moment-là.</>}
                 </p>
 
                 {earnedPoints !== null && (() => {

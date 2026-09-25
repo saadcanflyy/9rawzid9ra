@@ -6,14 +6,12 @@ import ConfirmModal from '../components/ConfirmModal'
 import ProfessorPicker from '../components/ProfessorPicker'
 import {
   Avatar, Badge, Button, Input, Select, Tabs, StatStrip, EmptyState, Card, Sheet,
-  Dropdown, Icon, ThemeToggle, Skeleton, DocType, QualityBadge, ProgressBar,
+  Dropdown, Icon, ThemeToggle, Skeleton, DocType, QualityBadge, ProgressBar, StatusBadge,
 } from '../design-system/ui'
 import { useTheme } from '../design-system/theme'
 import { notify } from '../design-system/toast'
-import { STATUS, qualityLevel } from '../lib/quality'
+import { qualityLevel, displayStatus } from '../lib/quality'
 import { levelFor, formatPoints, POINT_RULES, LEVELS } from '../lib/reputation'
-
-const docStatus = (doc) => doc.status || (doc.is_verified ? 'published' : 'pending_review')
 
 const css = `
   .pf-layout { max-width: 960px; margin: 0 auto; padding: var(--space-8) var(--space-6); }
@@ -53,6 +51,14 @@ const PT_LABEL = {
 
 const LEVEL_TONES = { 1: 'neutral', 2: 'accent', 3: 'brand', 4: 'warning', 5: 'founder' }
 const BADGE_TIER_TONES = { bronze: 'neutral', silver: 'accent', gold: 'warning', special: 'founder' }
+const DOC_STATUS_RANK = { verified: 0, community_approved: 1, pending: 2, rejected: 3 }
+const sortDocs = (list) => [...list].sort((a, b) => {
+  const r = (DOC_STATUS_RANK[displayStatus(a)?.key] ?? 2) - (DOC_STATUS_RANK[displayStatus(b)?.key] ?? 2)
+  if (r !== 0) return r
+  const q = (b.quality_score || 0) - (a.quality_score || 0)
+  if (q !== 0) return q
+  return (b.academic_year || '').localeCompare(a.academic_year || '')
+})
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -598,10 +604,9 @@ export default function Profile() {
             </EmptyState>
           ) : (
             <div className="pf-list">
-              {uploads.map(doc => {
+              {sortDocs(uploads).map(doc => {
                 const isEditing = editingDocId === doc.id
                 const isMoving = moveReqDocId === doc.id
-                const status = docStatus(doc)
                 const level = qualityLevel(doc)
                 return (
                   <div key={doc.id} className="pf-doc-card">
@@ -618,13 +623,13 @@ export default function Profile() {
                             <Link to={`/professeur/${doc.professor_id}`} onClick={e => e.stopPropagation()}>Prof. {doc.professor}</Link>
                           ) : <span>Prof. {doc.professor}</span>)}
                           <span>{doc.downloads || 0} ↓</span>
-                          <Badge tone={STATUS[status]?.tone || 'neutral'}>{STATUS[status]?.label || status}</Badge>
+                          <StatusBadge {...displayStatus(doc)} />
                           {level && <QualityBadge score={doc.quality_score ?? 0} label={level.label} tone={level.tone} />}
                         </div>
-                        {status === 'rejected' && doc.flag_reason && (
+                        {doc.status === 'rejected' && doc.flag_reason && (
                           <p className="t-caption" style={{ color: 'var(--danger-text, var(--danger))', marginTop: 4 }}>{doc.flag_reason}</p>
                         )}
-                        {status === 'needs_review' && doc.flag_reason && (
+                        {doc.status === 'needs_review' && doc.flag_reason && (
                           <p className="t-caption qz-muted" style={{ marginTop: 4 }}>{doc.flag_reason}</p>
                         )}
                       </div>

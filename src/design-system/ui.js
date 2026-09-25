@@ -501,16 +501,48 @@ import { trapFocus, focusFirst } from './focusTrap';
       h('span', { className: 't-mono' }, props.score), h('span', null, props.label));
   }
 
+  /* ---- StatusBadge ---- */
+  function StatusBadge(props) {
+    if (!props.label) return null;
+    return h('span', { className: 'qz-status-badge', title: props.hint },
+      h(Badge, { tone: props.tone, icon: props.icon }, props.label));
+  }
+
+  var QUALITY_WEIGHTS = [
+    ['Validation', 'Vérifié 25 · Approuvé par la communauté 22 · Publié 10'],
+    ['Note moyenne', 'jusqu’à 20 pts'],
+    ['Bon module', '15 pts'],
+    ['Bonne école', '5 pts'],
+    ['Lisible', '15 pts'],
+    ['Complet', '15 pts'],
+    ['Marqué « utile »', 'jusqu’à 5 pts'],
+    ['Par signalement', '−8 pts (jusqu’à −40)'],
+  ];
+
+  function QualityExplainSheet(props) {
+    return h(Sheet, { title: 'Comment est calculé ce score ?', onClose: props.onClose },
+      h('div', { className: 'qz-quality-explain' }, QUALITY_WEIGHTS.map(function (row, i) {
+        return h('div', { key: i, className: 'qz-quality-explain__row' },
+          h('span', { className: 't-body-sm' }, row[0]), h('span', { className: 't-mono qz-subtle' }, row[1]));
+      })));
+  }
+
   /* ---- QualityCard ---- */
   function QualityCard(props) {
+    var st = useState(false); var showExplain = st[0]; var setShowExplain = st[1];
+    var explainLink = h('button', { type: 'button', className: 'qz-btn qz-btn--link t-caption', style: { fontWeight: 400 }, onClick: function () { setShowExplain(true); } }, 'Comment est calculé ce score ?');
+    var explainSheet = showExplain ? h(QualityExplainSheet, { onClose: function () { setShowExplain(false); } }) : null;
     if (props.unrated) {
-      return h('div', { className: 'qz-card qz-quality-card' },
-        h('span', { className: 't-eyebrow qz-subtle' }, 'Qualité du document'),
-        h('p', { className: 't-body-sm qz-muted', style: { marginTop: 'var(--space-2)' } }, 'Pas encore évalué — sois le premier à donner ton avis.'));
+      return h(React.Fragment, null,
+        h('div', { className: 'qz-card qz-quality-card' },
+          h('span', { className: 't-eyebrow qz-subtle' }, 'Qualité du document'),
+          h('p', { className: 't-body-sm qz-muted', style: { marginTop: 'var(--space-2)' } }, 'Pas encore évalué — sois le premier à donner ton avis.')),
+        explainSheet);
     }
     var STATE_ICON = { yes: 'check', no: 'x' };
     var STATE_COLOR = { yes: 'var(--success)', no: 'var(--danger)', unknown: 'var(--text-subtle)' };
-    return h('div', { className: 'qz-card qz-quality-card' },
+    return h(React.Fragment, null,
+      h('div', { className: 'qz-card qz-quality-card' },
       h('span', { className: 't-eyebrow qz-subtle' }, 'Qualité du document'),
       h('div', { className: 'qz-quality-card__score' },
         h('span', { className: 't-stat' }, (props.score != null ? props.score : '—') + '/100'),
@@ -524,7 +556,9 @@ import { trapFocus, focusFirst } from './focusTrap';
           h('span', { className: 't-body-sm' }, r.label));
       })),
       h('p', { className: 't-caption qz-subtle', style: { marginTop: 'var(--space-3)' } },
-        'Basé sur ' + (props.feedbackCount || 0) + ' avis et ' + (props.ratingCount || 0) + ' notes'));
+        'Basé sur ' + (props.feedbackCount || 0) + ' avis et ' + (props.ratingCount || 0) + ' notes'),
+      explainLink),
+      explainSheet);
   }
 
   /* ---- FeedbackPrompt ---- */
@@ -539,6 +573,7 @@ import { trapFocus, focusFirst } from './focusTrap';
     return h('div', { className: 'qz-card qz-feedback-prompt' },
       h('h3', { className: 't-h3' }, 'Ce document t’a aidé ?'),
       pair('Bon module ?', 'correct_module', props.correctModule),
+      pair('Bonne école ?', 'correct_university', props.correctUniversity),
       pair('Lisible ?', 'readable', props.readable),
       pair('Complet ?', 'complete', props.complete),
       h('div', { className: 'qz-feedback-prompt__row' },
@@ -581,4 +616,4 @@ import { trapFocus, focusFirst } from './focusTrap';
           h('button', { type: 'button', className: 'qz-btn qz-btn--danger', disabled: !reason, onClick: function () { if (props.onSubmit) props.onSubmit(reason, details); } }, 'Signaler'))));
   }
 
-  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, QualityBadge, QualityCard, FeedbackPrompt, ReportModal };
+  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, StatusBadge };

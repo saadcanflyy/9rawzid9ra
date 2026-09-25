@@ -60,7 +60,7 @@ All privileged writes go through `SECURITY DEFINER` functions (RPCs) that check 
 
 - `report_document(p_document_id, p_reason, p_details default null)` → void, authenticated. Upserts into `document_reactions` (reaction_type `'report'`), one per user per document; `p_reason` must be one of `wrong_module | bad_scan | incomplete | duplicate | wrong_info | inappropriate | other`.
 - `find_duplicate_documents(p_hashes text[])` → table of `(document_id, title, doc_type, academic_year, module_id, module_name, module_slug)`, authenticated. Used by Upload before submitting.
-- `get_moderation_queue(p_limit default 50)` → table of documents in `pending_review`/`needs_review`/reported, with a `reasons` jsonb map of report-reason → count, staff only.
+- `get_moderation_queue(p_limit default 50)` → table of documents in `pending_review`/`needs_review`/reported, with a `reasons` jsonb map of report-reason → count, staff only. Extended (2026-09-26, Prompt 24) to also return `display_status`, `verification_source` and `quality_signals` so the moderation queue can show the same StatusBadge + per-criterion checklist icons as everywhere else.
 
 ### Staff / Senpai (migration 100)
 
@@ -189,7 +189,7 @@ Applied 2026-09-25, migrations `20260926000100`–`500` (the assistant *database
 - `resolve_professor(p_raw, p_university_id, p_faculty_id, p_limit)` → ranked candidate profiles (score ≥ 0.9 = safe auto-link), staff+internal use.
 - `link_professor(...)` → internal only (no grants); links or creates a profile, called by the upload trigger and `propose_professor`.
 - `search_professors(p_query, p_university_id, p_limit)` → anon+authenticated, powers the upload picker.
-- `get_professor(p_id)` → jsonb profile page (affiliations, modules, teaching history, documents, feedback summary, aliases); follows `merged_into` redirects. anon+authenticated.
+- `get_professor(p_id)` → jsonb profile page (affiliations, modules, teaching history, documents, feedback summary, aliases); follows `merged_into` redirects. anon+authenticated. Extended (2026-09-26, Prompt 23/24) so each row in `documents` also carries `display_status`, `verification_source` and `quality_signals`, needed for the profile page's status/quality badges.
 - `propose_professor(p_name, p_university_id, p_faculty_id)` → authenticated; explicit "not in the list" add from the picker.
 - Staff: `get_professor_queue(p_limit)`, `verify_professor(...)`, `merge_professors(p_from, p_into)`, `reject_professor(p_id)`.
 - Trigger `trg_documents_link_professor` (before insert/update of `professor`/`professor_id`/`module_id`) keeps `documents.professor_id` in sync with whatever the browser sends (free text or a picked id).
