@@ -5,11 +5,12 @@ import Navbar from '../components/Navbar'
 import ConfirmModal from '../components/ConfirmModal'
 import {
   Avatar, Badge, Button, Input, Select, Tabs, StatStrip, EmptyState, Card, Sheet,
-  Dropdown, Icon, ThemeToggle, Skeleton, DocType, QualityBadge,
+  Dropdown, Icon, ThemeToggle, Skeleton, DocType, QualityBadge, ProgressBar,
 } from '../design-system/ui'
 import { useTheme } from '../design-system/theme'
 import { notify } from '../design-system/toast'
 import { STATUS, qualityLevel } from '../lib/quality'
+import { levelFor, formatPoints, POINT_RULES, LEVELS } from '../lib/reputation'
 
 const docStatus = (doc) => doc.status || (doc.is_verified ? 'published' : 'pending_review')
 
@@ -35,6 +36,11 @@ const css = `
   .pf-follow-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; width: 100%; text-align: left; background: none; border: 0; cursor: pointer; }
   .pf-theme-row { display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) 0; }
   .pf-settings-list { display: flex; flex-direction: column; gap: var(--space-4); }
+  .pf-badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: var(--space-3); margin-top: var(--space-3); }
+  .pf-badge-tile { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+  .pf-badge-tile--locked { opacity: 0.35; }
+  .pf-badge-tile__icon { width: 48px; height: 48px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pf-badge-tile__label { font: 500 11px/14px var(--font-sans); color: var(--text-muted); }
 `
 
 const PT_TONE = {
@@ -44,12 +50,8 @@ const PT_LABEL = {
   survival_guide: 'Guide de survie', cheat_code: 'Cheat Code', timeline: 'Timeline', red_flag: 'Red Flag', path_review: 'Bilan',
 }
 
-function getLevel(points) {
-  if (points >= 600) return { label: 'Légende', tone: 'founder' }
-  if (points >= 300) return { label: 'Senpai', tone: 'brand' }
-  if (points >= 100) return { label: 'Contributeur', tone: 'accent' }
-  return { label: 'Étudiant', tone: 'neutral' }
-}
+const LEVEL_TONES = { 1: 'neutral', 2: 'accent', 3: 'brand', 4: 'warning', 5: 'founder' }
+const BADGE_TIER_TONES = { bronze: 'neutral', silver: 'accent', gold: 'warning', special: 'founder' }
 
 function fmtDate(d) {
   if (!d) return '—'
@@ -82,6 +84,8 @@ export default function Profile() {
   const [ptsLog, setPtsLog] = useState([])
   const [senpaiPosts, setSenpaiPosts] = useState([])
   const [userReplies, setUserReplies] = useState([])
+  const [badgeCatalogue, setBadgeCatalogue] = useState([])
+  const [earnedBadges, setEarnedBadges] = useState({})
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('posts')
 
@@ -148,6 +152,8 @@ export default function Profile() {
         { data: docs },
         { data: posts },
         { data: uniData },
+        { data: badgeCatalogue },
+        { data: userBadgeRows },
       ] = await Promise.all([
         supabase.from('user_profiles').select('*, universities(name)').eq('id', uid).single(),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', uid),
@@ -166,6 +172,8 @@ export default function Profile() {
           .eq('is_approved', true)
           .order('helpful_count', { ascending: false }),
         supabase.from('universities').select('id, name').order('name'),
+        supabase.from('badges').select('code, name, description, icon, tier, sort_order').order('sort_order'),
+        supabase.from('user_badges').select('badge_code, awarded_at').eq('user_id', uid),
       ])
 
       setProfile(prof || {})
@@ -176,6 +184,8 @@ export default function Profile() {
       setEditFacId(prof?.faculty_id ? String(prof.faculty_id) : '')
       setEditFilId(prof?.filiere_id ? String(prof.filiere_id) : '')
       setEditSemester(prof?.current_semester || '')
+      setBadgeCatalogue(badgeCatalogue || [])
+      setEarnedBadges(Object.fromEntries((userBadgeRows || []).map(b => [b.badge_code, b.awarded_at])))
       setFollowersCount(frs || 0)
       setFollowingCount(fng || 0)
       setUploads(docs || [])
@@ -269,7 +279,7 @@ export default function Profile() {
   const isOwnProfile = !targetId || (currentUser && currentUser.id === targetId)
   const totalDLReceived = uploads.reduce((s, d) => s + (d.downloads || 0), 0)
   const points = profile?.points || 0
-  const level = getLevel(points)
+  const level = levelFor(points)
 
   const handleFollow = async () => {
     if (!currentUser || currentUser.id === targetId) return
@@ -500,19 +510,27 @@ export default function Profile() {
           <StatStrip items={[
             { value: uploads.length, label: 'Documents' },
             { value: totalDLReceived, label: 'Téléchargements' },
-            { value: points, label: 'Points' },
+            { value: formatPoints(points), label: 'Points' },
           ]} />
         </div>
 
-        <div style={{ marginTop: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-          <Badge tone={level.tone}>{level.label}</Badge>
-          <Button variant="ghost" size="sm" iconOnly icon="info" aria-label="Comment fonctionnent les points ?" onClick={() => setShowPointsInfo(true)} />
+        <div style={{ marginTop: 'var(--space-3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+            <Badge tone={LEVEL_TONES[level.level]}>{level.name}</Badge>
+            <Button variant="ghost" size="sm" iconOnly icon="info" aria-label="Comment fonctionnent les points ?" onClick={() => setShowPointsInfo(true)} />
+          </div>
+          {level.next != null && (
+            <div style={{ maxWidth: 280, marginTop: 8 }}>
+              <ProgressBar value={level.progress * 100} />
+              <p className="t-caption qz-subtle" style={{ marginTop: 4 }}>{formatPoints(level.toNext)} points avant {level.nextName}</p>
+            </div>
+          )}
         </div>
 
         {isOwnProfile && uploads.length === 0 && !uploadNudgeDismissed && (
           <div className="qz-banner" style={{ marginTop: 'var(--space-4)' }}>
             <Icon name="upload" />
-            <span>Partage ton premier document et gagne <b>50 points</b>.</span>
+            <span>Partage ton premier document et gagne <b>10 points</b> (+40 une fois vérifié).</span>
             <div style={{ display: 'flex', gap: 8 }}>
               <Button variant="primary" size="sm" as={Link} to="/upload">Partager</Button>
               <Button variant="ghost" size="sm" iconOnly icon="x" aria-label="Fermer" onClick={() => { setUploadNudgeDismissed(true); localStorage.setItem('9rz_upload_nudge', '1') }} />
@@ -533,6 +551,30 @@ export default function Profile() {
                   </span>
                 </div>
               ))}
+            </div>
+          </Card>
+        )}
+
+        {badgeCatalogue.length > 0 && (
+          <Card style={{ marginTop: 'var(--space-4)' }}>
+            <span className="t-eyebrow qz-subtle">Badges ({Object.keys(earnedBadges).length}/{badgeCatalogue.length})</span>
+            <div className="pf-badges-grid">
+              {badgeCatalogue.map(b => {
+                const earned = !!earnedBadges[b.code]
+                const tone = BADGE_TIER_TONES[b.tier] || 'neutral'
+                return (
+                  <div key={b.code} className={`pf-badge-tile${earned ? '' : ' pf-badge-tile--locked'}`}
+                    title={`${b.name} — ${b.description}${earned ? ` (obtenu le ${fmtShort(earnedBadges[b.code])})` : ' (à débloquer)'}`}>
+                    <span className="pf-badge-tile__icon" style={{
+                      background: tone === 'neutral' ? 'var(--surface-2)' : `var(--${tone}-soft)`,
+                      color: tone === 'neutral' ? 'var(--text-subtle)' : `var(--${tone})`,
+                    }}>
+                      <Icon name={b.icon} size={20} />
+                    </span>
+                    <span className="pf-badge-tile__label">{b.name}</span>
+                  </div>
+                )
+              })}
             </div>
           </Card>
         )}
@@ -768,23 +810,23 @@ export default function Profile() {
 
       {showPointsInfo && (
         <Sheet title="Système de points" onClose={() => setShowPointsInfo(false)}>
-          <div className="qz-card" style={{ marginBottom: 'var(--space-4)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="t-body-sm qz-muted">Partager un document</span>
-              <span className="t-mono" style={{ color: 'var(--success)' }}>+50 pts</span>
-            </div>
+          <span className="t-eyebrow qz-subtle">Comment gagner des points</span>
+          <div style={{ marginTop: 8, marginBottom: 'var(--space-5)' }}>
+            {POINT_RULES.filter(r => r.key !== 'admin_adjustment').map(r => (
+              <div key={r.key} className="pf-activity-row">
+                <span className="t-body-sm qz-muted">{r.label}</span>
+                <span className="t-mono" style={{ color: r.points > 0 ? 'var(--success)' : 'var(--danger)' }}>
+                  {r.points > 0 ? `+${r.points}` : r.points} pts
+                </span>
+              </div>
+            ))}
           </div>
           <span className="t-eyebrow qz-subtle">Niveaux</span>
           <div style={{ marginTop: 8 }}>
-            {[
-              { label: 'Étudiant', range: '0 – 99 pts', tone: 'neutral' },
-              { label: 'Contributeur', range: '100 – 299 pts', tone: 'accent' },
-              { label: 'Senpai', range: '300 – 599 pts', tone: 'brand' },
-              { label: 'Légende', range: '600+ pts', tone: 'founder' },
-            ].map(r => (
-              <div key={r.label} className="pf-activity-row">
-                <Badge tone={r.tone}>{r.label}</Badge>
-                <span className="t-caption qz-subtle">{r.range}</span>
+            {LEVELS.map(l => (
+              <div key={l.level} className="pf-activity-row">
+                <Badge tone={LEVEL_TONES[l.level]}>{l.name}</Badge>
+                <span className="t-caption qz-subtle">{formatPoints(l.min)}+ pts</span>
               </div>
             ))}
           </div>

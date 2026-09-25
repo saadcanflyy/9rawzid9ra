@@ -134,6 +134,12 @@ export default function Admin() {
   const [banReason,     setBanReason]     = useState('')
   const [banBusy,       setBanBusy]       = useState(false)
 
+  // Manual reputation adjustment
+  const [adjustingId, setAdjustingId] = useState(null)
+  const [adjustPoints, setAdjustPoints] = useState('')
+  const [adjustReason, setAdjustReason] = useState('')
+  const [adjustBusy, setAdjustBusy] = useState(false)
+
   const [modal, setModal] = useState(null)
   // Alert = single OK button (onCancel:null). Confirm = with cancel (onCancel omitted → render adds it).
   const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#4F8EF7', onCancel: null, onConfirm: () => setModal(null) })
@@ -684,6 +690,18 @@ export default function Admin() {
     setUsers(prev => prev.map(x => x.id === id ? { ...x, is_banned: false, banned_until: null, ban_reason: null } : x))
   }
 
+  const handleAdjustPoints = async (u) => {
+    const delta = parseInt(adjustPoints, 10)
+    if (!delta) { notify.error('Entre un nombre de points (positif ou négatif).'); return }
+    setAdjustBusy(true)
+    const { error } = await supabase.rpc('admin_adjust_reputation', { p_user: u.id, p_points: delta, p_reason: adjustReason.trim() || 'Ajustement manuel' })
+    setAdjustBusy(false)
+    if (error) { notify.error(error.message); return }
+    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, points: Math.max(0, (x.points || 0) + delta) } : x))
+    setAdjustingId(null); setAdjustPoints(''); setAdjustReason('')
+    notify.success('Points ajustés')
+  }
+
   const fmt = (d) => new Date(d).toLocaleDateString('fr-MA', { day:'2-digit', month:'short', year:'2-digit' })
 
   if (authLoading) {
@@ -1126,11 +1144,23 @@ export default function Admin() {
                           <div className="qz-table-actions">
                             <Button variant="ghost" size="sm" onClick={() => window.open('/user/' + u.id, '_blank')}>Voir profil</Button>
                             {!u.is_admin && <Button variant={u.is_moderator ? 'secondary' : 'ghost'} size="sm" onClick={() => toggleModerator(u.id, u.is_moderator)}>{u.is_moderator ? 'Retirer mod' : '+ Modérateur'}</Button>}
+                            <Button variant="ghost" size="sm" onClick={() => { setAdjustingId(adjustingId === u.id ? null : u.id); setAdjustPoints(''); setAdjustReason('') }}>Ajuster points</Button>
                             {!u.is_admin && u.is_banned && <Button variant="secondary" size="sm" onClick={() => unbanUser(u.id)}>Débannir</Button>}
                             {!u.is_admin && !u.is_banned && <Button variant="danger-ghost" size="sm" onClick={() => setBanningId(banningId === u.id ? null : u.id)}>Bannir</Button>}
                           </div>
                         </td>
                       </tr>
+                      {adjustingId === u.id && (
+                        <tr>
+                          <td colSpan={6} style={{ padding: 0, background: 'var(--surface-2)' }}>
+                            <div className="ad-ban-form" style={{ margin: 'var(--space-3) var(--space-5)' }}>
+                              <div style={{ width: 120 }}><Input type="number" placeholder="+10 / -20" value={adjustPoints} onChange={e => setAdjustPoints(e.target.value)} /></div>
+                              <div className="ad-ban-reason"><Input placeholder="Raison" value={adjustReason} onChange={e => setAdjustReason(e.target.value)} /></div>
+                              <Button variant="secondary" disabled={adjustBusy || !adjustPoints} onClick={() => handleAdjustPoints(u)}>{adjustBusy ? '...' : 'Confirmer'}</Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                       {banningId === u.id && (
                         <tr>
                           <td colSpan={6} style={{ padding: 0, background: 'var(--surface-2)' }}>

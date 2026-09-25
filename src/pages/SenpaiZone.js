@@ -377,6 +377,12 @@ export default function SenpaiZone() {
     })
   }
 
+  const handleMarkBest = async (reply) => {
+    const { error } = await supabase.rpc('mark_best_reply', { p_reply_id: reply.id })
+    if (error) { showAlert(error.message); return }
+    setReplies(prev => prev.map(r => r.id === reply.id ? { ...r, is_best: true } : (r.is_best ? { ...r, is_best: false } : r)))
+  }
+
   const handleEditReplySave = async (reply) => {
     const text = editReplyText.trim().slice(0, 500)
     if (text.length < 1) return
@@ -576,6 +582,7 @@ export default function SenpaiZone() {
             const rn = r.is_anonymous ? 'Anonyme' : (r.user_profiles?.name || 'Anonyme')
             const isReplyOwn = r.author_id === user?.id
             const canActOnReply = isReplyOwn || profile?.is_admin
+            const isPostAuthor = user && viewPost.author_id === user.id
 
             if (editingReply?.id === r.id) {
               return (
@@ -597,6 +604,10 @@ export default function SenpaiZone() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span className="t-label" style={{ cursor: r.is_anonymous ? 'default' : 'pointer' }} onClick={!r.is_anonymous ? () => { navigate(`/user/${r.author_id}`); setViewPost(null) } : undefined}>{rn}</span>
+                    {r.is_best && <Badge tone="success" icon="sparkle">Meilleure réponse</Badge>}
+                    {isPostAuthor && !isReplyOwn && !r.is_best && (
+                      <Button variant="ghost" size="sm" onClick={() => handleMarkBest(r)}>Marquer comme meilleure</Button>
+                    )}
                     <span className="t-caption qz-subtle" style={{ marginLeft: 'auto' }}>{fmtAgo(r.created_at)}</span>
                     {canActOnReply && (
                       <div className="qz-dropdown-anchor" data-reply-menu>

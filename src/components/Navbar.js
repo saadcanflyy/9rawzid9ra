@@ -25,6 +25,7 @@ const NOTIF_TEXT = {
 const NAV_LINKS = [
   { key: 'browse',     label: 'Explorer',    path: '/browse' },
   { key: 'senpai',     label: 'Senpai Zone', path: '/senpai' },
+  { key: 'classement', label: 'Classement',  path: '/classement' },
   { key: 'my-modules', label: 'Mes modules', path: '/my-modules' },
   { key: 'ai',         label: 'AI Coach',    path: '/ai' },
 ]
