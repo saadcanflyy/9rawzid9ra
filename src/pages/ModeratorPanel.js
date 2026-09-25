@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import ConfirmModal from '../components/ConfirmModal'
 import PanelLayout from '../components/PanelLayout'
-import { Button, Input, Select, Badge, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, Banner } from '../design-system/ui'
+import { Button, Input, Select, Badge, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, Banner, QualityBadge } from '../design-system/ui'
 import { notify } from '../design-system/toast'
+import { STATUS, qualityLevel, REPORT_REASONS } from '../lib/quality'
 
 const css = `
   .mp-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; margin-top: var(--space-4); }
@@ -27,6 +28,8 @@ const css = `
   .mp-msg-thread { flex: 1; overflow-y: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
   .mp-msg-compose { display: flex; gap: var(--space-2); padding: var(--space-3); border-top: 1px solid var(--border); flex-shrink: 0; }
   .mp-msg-compose .qz-field { flex: 1; }
+  .mp-mod-panel { margin-top: var(--space-2); padding: var(--space-3); background: var(--surface-2); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-2); max-width: 360px; }
+  .mp-history-row { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
   @media (max-width: 700px) {
     .mp-msg-layout { flex-direction: column; height: auto; }
     .mp-msg-left { width: 100%; max-height: 220px; border-bottom: 1px solid var(--border); }
@@ -67,6 +70,15 @@ export default function ModeratorPanel() {
 
   const [modal, setModal] = useState(null)
   const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#4F8EF7', onCancel: null, onConfirm: () => setModal(null) })
+
+  // Document moderation actions (reject / needs_review) + history
+  const [modActionDocId, setModActionDocId] = useState(null)
+  const [modAction, setModAction] = useState('reject')
+  const [modNote, setModNote] = useState('')
+  const [modBusy, setModBusy] = useState(false)
+  const [showModHistory, setShowModHistory] = useState(false)
+  const [modHistory, setModHistory] = useState([])
+  const [modHistoryLoading, setModHistoryLoading] = useState(false)
 
   // Ban state
   const [banningId,  setBanningId]  = useState(null)
@@ -137,14 +149,68 @@ export default function ModeratorPanel() {
 
   const loadFlaggedDocs = async () => {
     setLoading(true)
-    const { data } = await supabase.from('admin_documents')
-      .select('id, doc_type, module_name, uploader_name, created_at, files, academic_year, pages_count, file_type, report_count, fac_name')
-      .or('report_count.gt.0,is_flagged.eq.true')
-      .order('report_count', { ascending: false })
-      .limit(50)
-    setFlaggedDocs(data || [])
+    const { data, error } = await supabase.rpc('get_moderation_queue', { p_limit: 50 })
+    if (!error && data) {
+      const ids = data.map(d => d.document_id)
+      const { data: extra } = ids.length
+        ? await supabase.from('documents').select('id, files, academic_year, pages_count, file_type, doc_number, professor').in('id', ids)
+        : { data: [] }
+      const extraMap = Object.fromEntries((extra || []).map(e => [e.id, e]))
+      setFlaggedDocs(data.map(d => ({
+        id: d.document_id, doc_type: d.doc_type, module_name: d.module_name, uploader_name: d.uploader_name,
+        created_at: d.created_at, status: d.status, flag_reason: d.flag_reason, report_count: d.report_count,
+        quality_score: d.quality_score, reasons: d.reasons,
+        ...extraMap[d.document_id],
+      })))
+    } else {
+      const { data: fallback } = await supabase.from('admin_documents')
+        .select('id, doc_type, module_name, uploader_name, created_at, files, academic_year, pages_count, file_type, report_count, fac_name')
+        .or('report_count.gt.0,is_flagged.eq.true')
+        .order('report_count', { ascending: false })
+        .limit(50)
+      setFlaggedDocs(fallback || [])
+    }
     setLoading(false)
   }
+
+  const handleModAction = async (docId) => {
+    setModBusy(true)
+    const action = modAction === 'review' ? 'review' : 'reject'
+    const { error } = await supabase.rpc('moderate_document', { p_document_id: docId, p_action: action, p_note: modNote.trim() || null })
+    setModBusy(false)
+    if (error) { notify.error(error.message); return }
+    setModActionDocId(null); setModNote('')
+    if (action === 'reject') setFlaggedDocs(d => d.filter(x => x.id !== docId))
+    else setFlaggedDocs(d => d.map(x => x.id === docId ? { ...x, status: 'needs_review', flag_reason: modNote.trim() || x.flag_reason } : x))
+    notify.success(action === 'reject' ? 'Document refusé' : 'Document marqué à revoir')
+  }
+
+  const loadModHistory = async () => {
+    setModHistoryLoading(true)
+    const { data: logs } = await supabase.from('moderation_log')
+      .select('id, document_id, staff_id, action, note, created_at')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    if (!logs?.length) { setModHistory([]); setModHistoryLoading(false); return }
+    const docIds = [...new Set(logs.map(l => l.document_id).filter(Boolean))]
+    const staffIds = [...new Set(logs.map(l => l.staff_id).filter(Boolean))]
+    const [{ data: docs }, { data: staffs }] = await Promise.all([
+      docIds.length ? supabase.from('documents').select('id, title, doc_number, doc_type').in('id', docIds) : Promise.resolve({ data: [] }),
+      staffIds.length ? supabase.from('user_profiles').select('id, name').in('id', staffIds) : Promise.resolve({ data: [] }),
+    ])
+    const docMap = Object.fromEntries((docs || []).map(d => [d.id, d]))
+    const staffMap = Object.fromEntries((staffs || []).map(s => [s.id, s]))
+    setModHistory(logs.map(l => ({ ...l, doc: docMap[l.document_id], staffName: staffMap[l.staff_id]?.name })))
+    setModHistoryLoading(false)
+  }
+
+  const toggleModHistory = () => {
+    const next = !showModHistory
+    setShowModHistory(next)
+    if (next && modHistory.length === 0) loadModHistory()
+  }
+
+  const MOD_ACTION_LABEL = { verify: 'Vérifié', publish: 'Publié', review: 'Mis à revoir', hide: 'Mis à revoir', reject: 'Refusé', reset_reports: 'Signalements réinitialisés', move: 'Déplacé', delete: 'Supprimé' }
 
   const loadFlaggedPosts = async () => {
     setLoading(true)
@@ -405,48 +471,92 @@ export default function ModeratorPanel() {
         )}
 
         {activeTab === 'documents' && (
-          loading ? <Skeleton height={200} /> :
-          flaggedDocs.length === 0 ? <EmptyState icon="flag" title="Aucun document signalé" /> : (
-            <div className="qz-table-wrap">
-              <table className="qz-table">
-                <thead><tr><th>Document</th><th>Module</th><th>Uploadé par</th><th>Signalements</th><th>Actions</th></tr></thead>
-                <tbody>
-                  {flaggedDocs.map(d => (
-                    <tr key={d.id}>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-                          <DocType type={d.doc_type} size="lg" />
-                          <div>
-                            <div className="qz-table-name">{d.academic_year}</div>
-                            <div className="qz-table-mono">{d.pages_count} page{d.pages_count > 1 ? 's' : ''} · {d.file_type}</div>
+          <>
+            {loading ? <Skeleton height={200} /> :
+            flaggedDocs.length === 0 ? <EmptyState icon="flag" title="Aucun document signalé" /> : (
+              <div className="qz-table-wrap">
+                <table className="qz-table">
+                  <thead><tr><th>Document</th><th>Module</th><th>Uploadé par</th><th>Signalements</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {flaggedDocs.map(d => {
+                      const level = d.quality_score != null ? qualityLevel({ status: d.status, quality_score: d.quality_score }) : null
+                      return (
+                      <tr key={d.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                            <DocType type={d.doc_type} size="lg" />
+                            <div>
+                              <div className="qz-table-name">{d.academic_year}</div>
+                              <div className="qz-table-mono">{d.pages_count} page{d.pages_count > 1 ? 's' : ''} · {d.file_type}</div>
+                              {d.status && <div style={{ marginTop: 4 }}><Badge tone={STATUS[d.status]?.tone || 'neutral'}>{STATUS[d.status]?.label || d.status}</Badge></div>}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td>
-                        <div>{d.module_name}</div>
-                        <div className="qz-table-mono">{d.fac_name}</div>
-                      </td>
-                      <td className="qz-table-mono">{d.uploader_name || 'Anonyme'}</td>
-                      <td>
-                        {d.report_count > 0 ? (
-                          <Badge tone="danger" icon="flag">{d.report_count} signalement{d.report_count > 1 ? 's' : ''}</Badge>
-                        ) : d.flag_reason ? (
-                          <Badge tone="warning" icon="alert">{d.flag_reason}</Badge>
-                        ) : null}
-                      </td>
-                      <td>
-                        <div className="qz-table-actions">
-                          {d.files?.[0] && <Button as="a" href={d.files[0]} target="_blank" rel="noreferrer" variant="secondary" size="sm" icon="eye">Voir</Button>}
-                          <Button variant="secondary" size="sm" icon="check" onClick={() => verifyDoc(d.id)}>Vérifier</Button>
-                          <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => deleteDoc(d)}>Supprimer</Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        </td>
+                        <td>
+                          <div>{d.module_name}</div>
+                          <div className="qz-table-mono">{d.fac_name}</div>
+                        </td>
+                        <td className="qz-table-mono">{d.uploader_name || 'Anonyme'}</td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start' }}>
+                            {d.reasons && Object.keys(d.reasons).length > 0 ? (
+                              Object.entries(d.reasons).map(([reason, n]) => (
+                                <Badge key={reason} tone="danger" icon="flag">{REPORT_REASONS.find(r => r.id === reason)?.label || reason} · {n}</Badge>
+                              ))
+                            ) : d.report_count > 0 ? (
+                              <Badge tone="danger" icon="flag">{d.report_count} signalement{d.report_count > 1 ? 's' : ''}</Badge>
+                            ) : d.flag_reason ? (
+                              <Badge tone="warning" icon="alert">{d.flag_reason}</Badge>
+                            ) : null}
+                            {level && <QualityBadge score={d.quality_score} label={level.label} tone={level.tone} />}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="qz-table-actions">
+                            {d.files?.[0] && <Button as="a" href={d.files[0]} target="_blank" rel="noreferrer" variant="secondary" size="sm" icon="eye">Voir</Button>}
+                            <Button variant="secondary" size="sm" icon="check" onClick={() => verifyDoc(d.id)}>Vérifier</Button>
+                            <Button variant="ghost" size="sm" onClick={() => { const open = modActionDocId === d.id && modAction === 'review'; setModActionDocId(open ? null : d.id); setModAction('review'); setModNote(d.flag_reason || '') }}>À revoir</Button>
+                            <Button variant="danger-ghost" size="sm" onClick={() => { const open = modActionDocId === d.id && modAction === 'reject'; setModActionDocId(open ? null : d.id); setModAction('reject'); setModNote('') }}>Refuser</Button>
+                            <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => deleteDoc(d)}>Supprimer</Button>
+                          </div>
+                          {modActionDocId === d.id && (
+                            <div className="mp-mod-panel">
+                              <span className="t-eyebrow qz-subtle">{modAction === 'reject' ? "Raison du refus (envoyée à l'auteur)" : 'Raison de la mise à revoir (optionnel)'}</span>
+                              <Input value={modNote} onChange={e => setModNote(e.target.value)} placeholder="Ex : mauvais scan, module incorrect…" autoFocus />
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <Button variant={modAction === 'reject' ? 'danger-ghost' : 'secondary'} size="sm" disabled={modBusy || (modAction === 'reject' && !modNote.trim())} onClick={() => handleModAction(d.id)}>{modBusy ? '...' : 'Confirmer'}</Button>
+                                <Button variant="ghost" size="sm" onClick={() => setModActionDocId(null)}>Annuler</Button>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )})}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div style={{ marginTop: 'var(--space-6)' }}>
+              <Button variant="ghost" size="sm" icon={showModHistory ? 'up' : 'down'} onClick={toggleModHistory}>Historique des actions</Button>
+              {showModHistory && (
+                modHistoryLoading ? <Skeleton height={100} /> :
+                modHistory.length === 0 ? <p className="t-body-sm qz-muted" style={{ marginTop: 'var(--space-2)' }}>Aucune action enregistrée.</p> : (
+                  <div style={{ marginTop: 'var(--space-2)' }}>
+                    {modHistory.map(l => (
+                      <div key={l.id} className="mp-history-row">
+                        <span className="t-mono qz-subtle">{fmt(l.created_at)}</span>
+                        <span className="t-body-sm">{l.staffName || 'Staff'}</span>
+                        <Badge tone="neutral">{MOD_ACTION_LABEL[l.action] || l.action}</Badge>
+                        <span className="t-body-sm qz-muted">{l.doc ? (l.doc.title || l.doc.doc_number || `Doc #${l.document_id}`) : `Doc #${l.document_id} (supprimé)`}</span>
+                        {l.note && <span className="t-caption qz-subtle">— {l.note}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
             </div>
-          )
+          </>
         )}
 
         {activeTab === 'senpai' && (

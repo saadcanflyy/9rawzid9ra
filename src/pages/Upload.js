@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import ConfirmModal from '../components/ConfirmModal'
 import {
-  Card, Button, Input, Select, Chip, Dropzone, Badge, ProgressBar, Icon, Skeleton,
+  Card, Button, Input, Select, Chip, Dropzone, Badge, ProgressBar, Icon, Skeleton, Banner,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
+import { sha256Files } from '../lib/fileHash'
 
 // pdfjs-dist + pdf-lib are ~300KB gzipped combined — loaded on demand (dynamic
 // import) so every other page's bundle stays untouched. Only Upload pays for it.
@@ -168,8 +169,11 @@ export default function Upload() {
   const isSubmittingFacRef = useRef(false)
   const fileFlagsRef = useRef({})
   const pendingScansRef = useRef([])
+  const fileHashesRef = useRef({})
 
   const [user, setUser] = useState(null)
+  const [hashingKeys, setHashingKeys] = useState(() => new Set())
+  const [dupWarning, setDupWarning] = useState(null)
   const [authLoad, setAuthLoad] = useState(true)
   const [profile, setProfile] = useState(null)
   const [recentUploads, setRecentUploads] = useState([])
@@ -181,6 +185,7 @@ export default function Upload() {
   const [modal, setModal] = useState(null)
   const [success, setSuccess] = useState(false)
   const [heldForReview, setHeldForReview] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState('published')
   const [uploadedModuleId, setUploadedModuleId] = useState(null)
 
   // Cascading selects
@@ -377,6 +382,19 @@ export default function Upload() {
       const p = scanPdfForFlags(f).then(res => { fileFlagsRef.current[key] = res })
       pendingScansRef.current.push(p)
     })
+
+    // Fingerprint the newly added files and check for existing duplicates.
+    if (valid.length > 0) {
+      const keys = valid.map(fileKey)
+      setHashingKeys(prev => new Set([...prev, ...keys]))
+      sha256Files(valid).then(async (hashes) => {
+        valid.forEach((f, i) => { fileHashesRef.current[fileKey(f)] = hashes[i] })
+        setHashingKeys(prev => { const n = new Set(prev); keys.forEach(k => n.delete(k)); return n })
+        const results = await Promise.all(hashes.map(h => supabase.rpc('find_duplicate_documents', { p_hashes: [h] })))
+        const dupIndex = results.findIndex(r => r.data && r.data.length > 0)
+        if (dupIndex !== -1) setDupWarning({ key: keys[dupIndex], fileName: valid[dupIndex].name, match: results[dupIndex].data[0] })
+      })
+    }
 
     const combined = [...files, ...valid].slice(0, 20)
     setFiles(combined)
@@ -697,7 +715,9 @@ export default function Upload() {
       const flaggedResult = files.map(f => fileFlagsRef.current[fileKey(f)]).find(r => r?.flagged)
       const isFlagged = !!flaggedResult
 
-      const { error: dbErr } = await supabase.from('documents').insert({
+      const fileHashes = files.map(f => fileHashesRef.current[fileKey(f)]).filter(Boolean)
+
+      const { data: inserted, error: dbErr } = await supabase.from('documents').insert({
         module_id: moduleId,
         uploader_id: user.id,
         doc_type: docType,
@@ -711,15 +731,19 @@ export default function Upload() {
         is_flagged: isFlagged,
         flag_reason: flaggedResult?.reason || null,
         is_verified: !isFlagged,
+        file_hashes: fileHashes,
         downloads: 0,
         likes: 0,
-      }).select('id').single()
+      }).select('id, status').single()
       if (dbErr) throw new Error(dbErr.message)
-      setHeldForReview(isFlagged)
+      // status exists once the quality migration is applied; fall back to the content-scan flag otherwise.
+      const finalStatus = inserted?.status || (isFlagged ? 'pending_review' : 'published')
+      setUploadStatus(finalStatus)
+      setHeldForReview(finalStatus !== 'published' && finalStatus !== 'verified')
 
       // Points and uploads_count are awarded server-side (DB trigger) on insert —
       // read the fresh total rather than computing it here.
-      if (!isFlagged) {
+      if (finalStatus === 'published' || finalStatus === 'verified') {
         const { data: prof } = await supabase.from('user_profiles').select('points').eq('id', user.id).single()
         setEarnedPoints(prof?.points ?? profile?.points ?? 0)
       } else {
@@ -742,6 +766,7 @@ export default function Upload() {
     setProgress(0); setEarnedPoints(null); setHeldForReview(false)
     setModSearch(''); setError('')
     fileFlagsRef.current = {}; pendingScansRef.current = []; setDetected([])
+    fileHashesRef.current = {}; setHashingKeys(new Set()); setDupWarning(null); setUploadStatus('published')
     setShowSchoolForm(false); setSchoolSent(false); setSchoolCase('')
     setSchAName(''); setSchACity(''); setSchAType('public')
     setSchBParentUni(''); setSchBFaculties([{ name: '', type: 'Faculté' }])
@@ -782,9 +807,9 @@ export default function Upload() {
                 </span>
                 <h2 className="t-h2">{heldForReview ? 'Document reçu — en cours de vérification' : 'Document publié'}</h2>
                 <p className="t-body qz-muted" style={{ margin: 'var(--space-3) auto var(--space-6)', maxWidth: 440 }}>
-                  {heldForReview
-                    ? <>Notre analyse automatique a signalé ce document pour vérification manuelle. Un modérateur va l'examiner avant publication — tu seras notifié, et tes <b>+50 points</b> seront crédités à l'approbation.</>
-                    : <>Ton document est maintenant visible sur la plateforme. <b style={{ color: 'var(--success)' }}>+50 points</b> ajoutés à ton compte.</>}
+                  {uploadStatus === 'pending_review'
+                    ? <>Ton document est en vérification (contenu ou doublon possible). Tu gagneras tes points dès qu'il sera publié.</>
+                    : <>Ton document est en ligne. <b style={{ color: 'var(--success)' }}>+10 points</b>. Il passera Vérifié (+40) après 5 avis positifs ou une vérification de l'équipe.</>}
                 </p>
 
                 {earnedPoints !== null && (() => {
@@ -1117,7 +1142,9 @@ export default function Upload() {
                         name: f.name,
                         size: fmt(f.size),
                         preview: previews[i],
-                        note: f.type.startsWith('image/')
+                        note: hashingKeys.has(fileKey(f))
+                          ? ' · Analyse…'
+                          : f.type.startsWith('image/')
                           ? (f.size > 5 * 1024 * 1024 ? ' · compression agressive' : ' · compression auto')
                           : (f.size > 20 * 1024 * 1024 ? ' · fichier volumineux, upload direct' : ' · upload direct'),
                       }))}
@@ -1125,6 +1152,17 @@ export default function Upload() {
                     {detected.length > 0 && (
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                         {detected.map((d, i) => <Badge key={i} tone="brand" icon="check">Détecté et appliqué : {d.label}</Badge>)}
+                      </div>
+                    )}
+                    {dupWarning && (
+                      <div style={{ marginTop: 8 }}>
+                        <Banner tone="warning">
+                          Ce fichier existe déjà : {dupWarning.match.title || `${dupWarning.match.doc_type} ${dupWarning.match.academic_year || ''}`} dans <Link to={`/module/${dupWarning.match.module_slug || dupWarning.match.module_id}`} style={{ color: 'var(--brand-text)' }}>{dupWarning.match.module_name}</Link>
+                        </Banner>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}>
+                          <Button variant="ghost" size="sm" onClick={() => { const idx = files.findIndex(f => fileKey(f) === dupWarning.key); if (idx !== -1) removeFile(idx); setDupWarning(null) }}>Annuler ce fichier</Button>
+                          <Button variant="secondary" size="sm" onClick={() => setDupWarning(null)}>Continuer quand même</Button>
+                        </div>
                       </div>
                     )}
                     {files.length > 0 && <div className="t-caption qz-subtle" style={{ marginTop: 6, textAlign: 'center' }}>{files.length} fichier{files.length > 1 ? 's' : ''} sélectionné{files.length > 1 ? 's' : ''}</div>}

@@ -354,6 +354,30 @@ button.qz-badge:hover { filter: brightness(1.15); }
 /* ---------- Progress bar ---------- */
 .qz-progressbar { height: 6px; border-radius: var(--radius-full); background: var(--surface-3); overflow: hidden; }
 .qz-progressbar > span { display: block; height: 100%; background: var(--brand); border-radius: inherit; transition: width .2s ease; }
+.qz-progressbar--success > span { background: var(--success); }
+.qz-progressbar--warning > span { background: var(--warning); }
+.qz-progressbar--danger > span { background: var(--danger); }
+.qz-progressbar--neutral > span { background: var(--text-subtle); }
+
+/* ---------- Quality badge / card ---------- */
+.qz-quality-badge { gap: 6px; }
+.qz-quality-badge .t-mono { font-weight: 600; }
+.qz-quality-card { display: flex; flex-direction: column; gap: var(--space-3); }
+.qz-quality-card__score { display: flex; align-items: center; gap: var(--space-3); }
+.qz-quality-card__rows { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-1); }
+.qz-quality-card__row { display: flex; align-items: center; gap: var(--space-2); }
+
+/* ---------- Feedback prompt ---------- */
+.qz-feedback-prompt { display: flex; flex-direction: column; gap: var(--space-3); }
+.qz-feedback-prompt__row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.qz-feedback-prompt__pair { display: flex; gap: var(--space-2); }
+.qz-feedback-prompt__stars { display: flex; gap: 2px; }
+.qz-feedback-prompt__star { background: none; border: 0; padding: 2px; cursor: pointer; color: var(--border-strong); display: inline-flex; }
+.qz-feedback-prompt__star:hover { color: var(--warning); }
+
+/* ---------- Report modal ---------- */
+.qz-report-modal__reasons { display: flex; flex-direction: column; gap: var(--space-2); margin: var(--space-2) 0 var(--space-4); }
+.qz-report-modal__reason { display: flex; align-items: center; gap: var(--space-2); cursor: pointer; }
 
 /* ---------- Icon tile (generic) ---------- */
 .qz-icon-tile { width: 44px; height: 44px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }

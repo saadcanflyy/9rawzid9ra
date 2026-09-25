@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
 import {
   Breadcrumb, Button, Badge, DocType, Tabs, EmptyState, Card, Icon, Avatar,
-  ProgressBar, Sheet, Skeleton, Select,
+  ProgressBar, Sheet, Skeleton, Select, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, Toast,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
+import { qualityLevel, qualityChecklist, isUnrated, REPORT_REASONS } from '../lib/quality'
 
 const css = `
   .mp-hero { padding: var(--space-8) var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface); }
@@ -42,6 +44,10 @@ const css = `
   .mp-req-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
   .mp-req-row:last-child { border-bottom: 0; }
   .mp-req-form { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); }
+  .mp-preview-layout { display: flex; gap: var(--space-6); flex: 1; min-height: 0; }
+  .mp-preview-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .mp-preview-side { width: 300px; flex-shrink: 0; display: flex; flex-direction: column; gap: var(--space-4); overflow-y: auto; }
+  @media (max-width: 860px) { .mp-preview-layout { flex-direction: column; } .mp-preview-side { width: 100%; } }
 `
 
 const TYPE_LABELS = {
@@ -63,6 +69,24 @@ const fmtAgo = d => {
   if (s < 3600) return `il y a ${Math.floor(s / 60)} min`
   if (s < 86400) return `il y a ${Math.floor(s / 3600)} h`
   return `il y a ${Math.floor(s / 86400)} j`
+}
+
+// documents.status: falls back to the old is_verified boolean until the quality migration is applied.
+const docStatus = (doc) => doc.status || (doc.is_verified ? 'published' : 'pending_review')
+
+function StatusBadge({ doc }) {
+  const status = docStatus(doc)
+  if (status === 'verified') {
+    return (
+      <span title={doc.verification_source === 'community' ? 'Vérifié par la communauté' : 'Vérifié par la modération'}>
+        <Badge tone="success" icon="check">Vérifié</Badge>
+      </span>
+    )
+  }
+  if (status === 'pending_review') return <Badge tone="warning">En vérification</Badge>
+  if (status === 'needs_review') return <Badge tone="warning">À revoir</Badge>
+  if (status === 'rejected') return <Badge tone="danger">Refusé</Badge>
+  return null
 }
 
 export default function ModulePage() {
@@ -87,6 +111,20 @@ export default function ModulePage() {
   const [reportTarget, setReportTarget] = useState(null)
   const [showReqModal, setShowReqModal] = useState(false)
   const [reqModalType, setReqModalType] = useState('')
+  const [docFeedback, setDocFeedback] = useState({})
+  const [viewedDocs, setViewedDocs] = useState(() => {
+    try { return new Set(JSON.parse(sessionStorage.getItem('9rz_viewed_docs') || '[]')) } catch { return new Set() }
+  })
+  const [focusFeedback, setFocusFeedback] = useState(false)
+
+  const markViewed = (docId) => {
+    setViewedDocs(prev => {
+      if (prev.has(docId)) return prev
+      const next = new Set(prev); next.add(docId)
+      try { sessionStorage.setItem('9rz_viewed_docs', JSON.stringify([...next])) } catch {}
+      return next
+    })
+  }
 
   useEffect(() => {
     async function load() {
@@ -110,13 +148,19 @@ export default function ModulePage() {
           }
         }
 
+        // Visible: published/verified to everyone, plus your own regardless of status
+        // (pending_review/needs_review show with a badge; rejected shows greyed with the reason).
         const docSelect = user ? '*, user_profiles!uploader_id(name, is_fondateur)' : '*'
-        const { data: d } = await supabase
-          .from('documents')
-          .select(docSelect)
-          .eq('module_id', parseInt(id))
-          .eq('is_flagged', false)
-          .order('created_at', { ascending: false })
+        let docQuery = supabase.from('documents').select(docSelect).eq('module_id', parseInt(id))
+        docQuery = user
+          ? docQuery.or(`status.in.(published,verified),uploader_id.eq.${user.id}`)
+          : docQuery.in('status', ['published', 'verified'])
+        let { data: d, error: docErr } = await docQuery.order('created_at', { ascending: false })
+        if (docErr) {
+          // Migration not applied yet (no documents.status column) — fall back to the old visibility rule.
+          const fallback = await supabase.from('documents').select(docSelect).eq('module_id', parseInt(id)).eq('is_flagged', false).order('created_at', { ascending: false })
+          d = fallback.data
+        }
         setDocs(d || [])
         docsRef.current = d || []
 
@@ -143,6 +187,12 @@ export default function ModulePage() {
             })
           } catch {}
           setUserReactions(rxnMap)
+
+          const { data: fb } = await supabase.from('document_feedback')
+            .select('document_id, correct_module, readable, complete').eq('user_id', user.id).in('document_id', d.map(doc => doc.id))
+          const fbMap = {}
+          fb?.forEach(f => { fbMap[f.document_id] = { correct_module: f.correct_module, readable: f.readable, complete: f.complete } })
+          setDocFeedback(fbMap)
         }
 
         const { data: reqs } = await supabase.from('document_requests')
@@ -215,8 +265,9 @@ export default function ModulePage() {
     const group = tabDocs.filter(d => d.doc_type === type)
     if (group.length > 0) {
       acc[type] = [...group].sort((a, b) => {
-        if (['examen', 'cc', 'corrige_examen'].includes(type)) return (b.academic_year || '').localeCompare(a.academic_year || '')
-        return (a.doc_number || '').localeCompare(b.doc_number || '', undefined, { numeric: true })
+        const q = (b.quality_score || 0) - (a.quality_score || 0)
+        if (q !== 0) return q
+        return (b.academic_year || '').localeCompare(a.academic_year || '')
       })
     }
     return acc
@@ -231,6 +282,16 @@ export default function ModulePage() {
     if (doc.files && doc.files.length > 0) window.open(doc.files[0], '_blank')
     setDocs(p => p.map(d => d.id === doc.id ? { ...d, downloads: (d.downloads || 0) + 1 } : d))
     supabase.rpc('record_download', { p_document_id: doc.id }).then()
+    markViewed(doc.id)
+    if (doc.uploader_id !== user.id) {
+      toast.custom((t) => (
+        <div style={{ opacity: t.visible ? 1 : 0, transition: 'opacity .15s ease' }}>
+          <Toast tone="success" title="Téléchargé">
+            <Button variant="link" size="sm" onClick={() => { toast.dismiss(t.id); setPreviewDoc(doc); setFocusFeedback(true) }}>Donner mon avis</Button>
+          </Toast>
+        </div>
+      ), { duration: 6000 })
+    }
   }
 
   const handleHelpful = async (doc) => {
@@ -259,16 +320,28 @@ export default function ModulePage() {
     setDocs(p => p.map(d => d.id === doc.id ? { ...d, rating_sum: newSum, rating_count: newCount } : d))
   }
 
-  const handleReport = async (doc) => {
+  const handleReport = async (doc, reason, details) => {
     if (!user) { setShowAuthGate(true); return }
+    setReportTarget(null)
     if (userReactions[doc.id]?.reported) return
     setUserReactions(p => ({ ...p, [doc.id]: { ...p[doc.id], reported: true } }))
     try {
       const stored = JSON.parse(localStorage.getItem('signaled_docs') || '[]')
       if (!stored.includes(doc.id)) localStorage.setItem('signaled_docs', JSON.stringify([...stored, doc.id]))
     } catch {}
-    await supabase.from('document_reactions').insert({ user_id: user.id, document_id: doc.id, reaction_type: 'report' })
+    const { error } = await supabase.rpc('report_document', { p_document_id: doc.id, p_reason: reason, p_details: details || null })
+    if (error) { notify.error(error.message); return }
     notify.success('Document signalé', 'Notre équipe va vérifier.')
+  }
+
+  const handleFeedbackAnswer = async (doc, key, value) => {
+    if (!user) { setShowAuthGate(true); return }
+    if (doc.uploader_id === user.id) return // the database refuses self-reviews anyway
+    const payload = { document_id: doc.id, user_id: user.id, ...docFeedback[doc.id], [key]: value }
+    setDocFeedback(p => ({ ...p, [doc.id]: { ...p[doc.id], [key]: value } }))
+    const { error } = await supabase.from('document_feedback').upsert(payload, { onConflict: 'document_id,user_id' })
+    if (error) { notify.error(error.message); return }
+    notify.success('Merci ! +1 point')
   }
 
   const handleBookmark = async () => {
@@ -434,10 +507,14 @@ export default function ModulePage() {
                       <Badge tone="brand">{groupDocs.length}</Badge>
                     </div>
                   )}
-                  {groupDocs.map(doc => (
-                    <div key={doc.id} id={`doc-${doc.id}`} className="mp-doc-card">
-                      <div className="qz-row" style={{ cursor: doc.files?.length === 1 ? 'pointer' : 'default' }}
-                        onClick={() => { if (doc.files?.length === 1) handleDownload(doc) }}>
+                  {groupDocs.map(doc => {
+                    const status = docStatus(doc)
+                    const isOwn = user && doc.uploader_id === user.id
+                    const level = qualityLevel(doc)
+                    return (
+                    <div key={doc.id} id={`doc-${doc.id}`} className="mp-doc-card" style={status === 'rejected' ? { opacity: 0.55 } : undefined}>
+                      <div className="qz-row" style={{ cursor: doc.files?.length === 1 && status !== 'rejected' ? 'pointer' : 'default' }}
+                        onClick={() => { if (doc.files?.length === 1 && status !== 'rejected') handleDownload(doc) }}>
                         <DocType type={doc.doc_type} size="lg" />
                         <div className="qz-row__main">
                           <p className="qz-row__title">{doc.doc_number || TYPE_LABELS[doc.doc_type] || doc.doc_type}</p>
@@ -450,8 +527,12 @@ export default function ModulePage() {
                               {doc.user_profiles?.name || 'Anonyme'}
                             </button>
                             {doc.user_profiles?.is_fondateur && <Badge tone="founder" icon="star">Fondateur</Badge>}
-                            <Badge tone={doc.is_verified ? 'success' : 'warning'} icon={doc.is_verified ? 'check' : undefined}>{doc.is_verified ? 'Vérifié' : 'En attente'}</Badge>
+                            <StatusBadge doc={doc} />
+                            {level && <QualityBadge score={doc.quality_score ?? 0} label={level.label} tone={level.tone} />}
                           </div>
+                          {isOwn && status === 'rejected' && doc.flag_reason && (
+                            <p className="t-caption" style={{ color: 'var(--danger)', marginTop: 4 }}>Raison : {doc.flag_reason}</p>
+                          )}
                         </div>
                         {doc.files?.length > 1 ? (
                           <div className="mp-multi-files" onClick={e => e.stopPropagation()}>
@@ -472,6 +553,7 @@ export default function ModulePage() {
                           <div className="qz-row__actions" onClick={e => e.stopPropagation()}>
                             <Button variant="ghost" size="sm" iconOnly icon="eye" aria-label="Aperçu" onClick={() => {
                               if (!user) { setShowAuthGate(true); return }
+                              markViewed(doc.id)
                               if (window.innerWidth <= 768) window.open(doc.files[0], '_blank')
                               else setPreviewDoc(doc)
                             }} />
@@ -499,7 +581,7 @@ export default function ModulePage() {
                         )}
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
               )
             })
@@ -634,16 +716,11 @@ export default function ModulePage() {
       )}
 
       {reportTarget && (
-        <div className="qz-scrim" onClick={() => setReportTarget(null)}>
-          <div className="qz-modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
-            <h2 className="qz-modal__title">Signaler ce document ?</h2>
-            <p className="qz-modal__body">Notre équipe de modération va vérifier ce document.</p>
-            <div className="qz-modal__actions">
-              <Button variant="secondary" onClick={() => setReportTarget(null)}>Annuler</Button>
-              <Button variant="danger" onClick={() => { handleReport(reportTarget); setReportTarget(null) }}>Signaler</Button>
-            </div>
-          </div>
-        </div>
+        <ReportModal
+          reasons={REPORT_REASONS}
+          onClose={() => setReportTarget(null)}
+          onSubmit={(reason, details) => handleReport(reportTarget, reason, details)}
+        />
       )}
 
       {showReqModal && (
@@ -661,20 +738,53 @@ export default function ModulePage() {
         </div>
       )}
 
-      {previewDoc && (
-        <Sheet wide title={previewDoc.doc_number || TYPE_LABELS[previewDoc.doc_type] || previewDoc.doc_type} onClose={() => setPreviewDoc(null)}>
-          <iframe
-            style={{ flex: 1, width: '100%', border: 0, minHeight: '60vh' }}
-            src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDoc?.files?.[0] || '')}&embedded=true`}
-            title="Aperçu du document"
-            allow="fullscreen"
-          />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 'var(--space-3)' }}>
-            <Button variant="secondary" as="a" href={previewDoc?.files?.[0]} target="_blank" rel="noreferrer">Ouvrir dans un onglet</Button>
-            <Button variant="primary" icon="download" onClick={() => handleDownload(previewDoc)}>Télécharger</Button>
+      {previewDoc && (() => {
+        const level = qualityLevel(previewDoc)
+        const canGiveFeedback = user && previewDoc.uploader_id !== user.id && viewedDocs.has(previewDoc.id)
+        return (
+        <Sheet wide title={previewDoc.doc_number || TYPE_LABELS[previewDoc.doc_type] || previewDoc.doc_type} onClose={() => { setPreviewDoc(null); setFocusFeedback(false) }}>
+          <div className="mp-preview-layout">
+            <div className="mp-preview-main">
+              <iframe
+                style={{ flex: 1, width: '100%', border: 0, minHeight: '60vh' }}
+                src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDoc?.files?.[0] || '')}&embedded=true`}
+                title="Aperçu du document"
+                allow="fullscreen"
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 'var(--space-3)', flexWrap: 'wrap' }}>
+                <Button variant="danger-ghost" size="sm" icon="flag" onClick={() => setReportTarget(previewDoc)}>Signaler</Button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Button variant="secondary" as="a" href={previewDoc?.files?.[0]} target="_blank" rel="noreferrer">Ouvrir dans un onglet</Button>
+                  <Button variant="primary" icon="download" onClick={() => handleDownload(previewDoc)}>Télécharger</Button>
+                </div>
+              </div>
+            </div>
+            <div className="mp-preview-side">
+              <QualityCard
+                unrated={isUnrated(previewDoc)}
+                score={previewDoc.quality_score}
+                label={level?.label}
+                tone={level?.tone}
+                rows={qualityChecklist(previewDoc)}
+                feedbackCount={previewDoc.quality_signals?.feedback_count}
+                ratingCount={previewDoc.rating_count}
+              />
+              {canGiveFeedback && (
+                <FeedbackPrompt
+                  correctModule={docFeedback[previewDoc.id]?.correct_module ?? null}
+                  readable={docFeedback[previewDoc.id]?.readable ?? null}
+                  complete={docFeedback[previewDoc.id]?.complete ?? null}
+                  onAnswer={(key, value) => handleFeedbackAnswer(previewDoc, key, value)}
+                  rating={userReactions[previewDoc.id]?.rating || 0}
+                  onRate={(star) => handleRating(previewDoc, star)}
+                  helpful={!!userReactions[previewDoc.id]?.helpful}
+                  onHelpful={() => handleHelpful(previewDoc)}
+                />
+              )}
+            </div>
           </div>
         </Sheet>
-      )}
+      )})()}
     </div>
   )
 }

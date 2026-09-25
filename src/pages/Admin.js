@@ -2,8 +2,9 @@ import { useState, useEffect, useRef, Fragment } from 'react'
 import { supabase } from '../supabase'
 import ConfirmModal from '../components/ConfirmModal'
 import PanelLayout from '../components/PanelLayout'
-import { Button, Input, Select, Badge, Chip, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, ProgressBar, Icon } from '../design-system/ui'
+import { Button, Input, Select, Badge, Chip, DocType, Card, EmptyState, Skeleton, StatStrip, Avatar, ProgressBar, Icon, QualityBadge } from '../design-system/ui'
 import { notify } from '../design-system/toast'
+import { STATUS, qualityLevel, REPORT_REASONS } from '../lib/quality'
 
 const css = `
   .ad-announce { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6); }
@@ -16,6 +17,7 @@ const css = `
   .ad-feed-main { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ad-filters { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap; }
   .ad-move-panel { margin-top: var(--space-2); padding: var(--space-3); background: var(--surface-2); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: var(--space-2); }
+  .ad-history-row { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
   .ad-move-result { padding: var(--space-2) var(--space-3); border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; }
   .ad-ban-form { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-top: var(--space-3); padding: var(--space-3); background: var(--surface-2); border-radius: var(--radius-md); }
   .ad-ban-reason { flex: 1; min-width: 160px; }
@@ -87,6 +89,15 @@ export default function Admin() {
 
   // Doc filter
   const [docFilter, setDocFilter] = useState('all')
+
+  // Document moderation actions (reject / needs_review / publish) + history
+  const [modActionDocId, setModActionDocId] = useState(null)
+  const [modAction, setModAction] = useState('reject')
+  const [modNote, setModNote] = useState('')
+  const [modBusy, setModBusy] = useState(false)
+  const [showModHistory, setShowModHistory] = useState(false)
+  const [modHistory, setModHistory] = useState([])
+  const [modHistoryLoading, setModHistoryLoading] = useState(false)
 
   // Move document state
   const [movingDocId,   setMovingDocId]   = useState(null)
@@ -212,6 +223,24 @@ export default function Admin() {
   const loadDocs = async (filter) => {
     setLoading(true)
     const f = filter ?? docFilter
+    if (f === 'reported') {
+      const { data, error } = await supabase.rpc('get_moderation_queue', { p_limit: 100 })
+      if (!error && data) {
+        const ids = data.map(d => d.document_id)
+        const { data: extra } = ids.length
+          ? await supabase.from('documents').select('id, files, academic_year, pages_count, file_type, doc_number, professor').in('id', ids)
+          : { data: [] }
+        const extraMap = Object.fromEntries((extra || []).map(e => [e.id, e]))
+        setPendingDocs(data.map(d => ({
+          id: d.document_id, doc_type: d.doc_type, module_name: d.module_name, uploader_name: d.uploader_name,
+          created_at: d.created_at, status: d.status, flag_reason: d.flag_reason, report_count: d.report_count,
+          quality_score: d.quality_score, reasons: d.reasons,
+          ...extraMap[d.document_id],
+        })))
+        setLoading(false)
+        return
+      }
+    }
     let q = supabase.from('admin_documents').select('*')
     if (f === 'reported') q = q.gt('report_count', 0).order('report_count', { ascending: false })
     else if (f === 'recent') q = q.order('created_at', { ascending: false })
@@ -318,6 +347,52 @@ export default function Admin() {
     if (error) { notify.error(error.message); return }
     setPendingDocs(d => d.map(x => x.id === docId ? { ...x, report_count: 0 } : x))
   }
+
+  const handlePublish = async (docId) => {
+    const { error } = await supabase.rpc('moderate_document', { p_document_id: docId, p_action: 'publish' })
+    if (error) { notify.error(error.message); return }
+    setPendingDocs(d => d.map(x => x.id === docId ? { ...x, status: 'published', flag_reason: null } : x))
+    notify.success('Document publié')
+  }
+
+  const handleModAction = async (docId) => {
+    setModBusy(true)
+    const action = modAction === 'review' ? 'review' : 'reject'
+    const { error } = await supabase.rpc('moderate_document', { p_document_id: docId, p_action: action, p_note: modNote.trim() || null })
+    setModBusy(false)
+    if (error) { notify.error(error.message); return }
+    setModActionDocId(null); setModNote('')
+    if (action === 'reject') setPendingDocs(d => d.filter(x => x.id !== docId))
+    else setPendingDocs(d => d.map(x => x.id === docId ? { ...x, status: 'needs_review', flag_reason: modNote.trim() || x.flag_reason } : x))
+    notify.success(action === 'reject' ? 'Document refusé' : 'Document marqué à revoir')
+  }
+
+  const loadModHistory = async () => {
+    setModHistoryLoading(true)
+    const { data: logs } = await supabase.from('moderation_log')
+      .select('id, document_id, staff_id, action, note, created_at')
+      .order('created_at', { ascending: false })
+      .limit(20)
+    if (!logs?.length) { setModHistory([]); setModHistoryLoading(false); return }
+    const docIds = [...new Set(logs.map(l => l.document_id).filter(Boolean))]
+    const staffIds = [...new Set(logs.map(l => l.staff_id).filter(Boolean))]
+    const [{ data: docs }, { data: staffs }] = await Promise.all([
+      docIds.length ? supabase.from('documents').select('id, title, doc_number, doc_type').in('id', docIds) : Promise.resolve({ data: [] }),
+      staffIds.length ? supabase.from('user_profiles').select('id, name').in('id', staffIds) : Promise.resolve({ data: [] }),
+    ])
+    const docMap = Object.fromEntries((docs || []).map(d => [d.id, d]))
+    const staffMap = Object.fromEntries((staffs || []).map(s => [s.id, s]))
+    setModHistory(logs.map(l => ({ ...l, doc: docMap[l.document_id], staffName: staffMap[l.staff_id]?.name })))
+    setModHistoryLoading(false)
+  }
+
+  const toggleModHistory = () => {
+    const next = !showModHistory
+    setShowModHistory(next)
+    if (next && modHistory.length === 0) loadModHistory()
+  }
+
+  const MOD_ACTION_LABEL = { verify: 'Vérifié', publish: 'Publié', review: 'Mis à revoir', hide: 'Mis à revoir', reject: 'Refusé', reset_reports: 'Signalements réinitialisés', move: 'Déplacé', delete: 'Supprimé' }
 
   const searchModules = async (q) => {
     if (q.length < 2) { setMoveResults([]); return }
@@ -789,7 +864,9 @@ export default function Admin() {
                 <table className="qz-table">
                   <thead><tr><th>Document</th><th>Module</th><th>Uploadé par</th><th>Date</th><th>Actions</th></tr></thead>
                   <tbody>
-                    {pendingDocs.map(d => (
+                    {pendingDocs.map(d => {
+                      const level = d.quality_score != null ? qualityLevel({ status: d.status, quality_score: d.quality_score }) : null
+                      return (
                       <tr key={d.id}>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-3)' }}>
@@ -797,9 +874,18 @@ export default function Admin() {
                             <div>
                               <div className="qz-table-name">{d.academic_year}</div>
                               <div className="qz-table-mono">{d.pages_count} page{d.pages_count > 1 ? 's' : ''} · {d.file_type}</div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-                                {d.report_count > 0 && <Badge tone="danger" icon="flag">{d.report_count} signalement{d.report_count > 1 ? 's' : ''}</Badge>}
-                                {d.is_flagged && d.flag_reason && <Badge tone="warning" icon="alert">{d.flag_reason}</Badge>}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4, alignItems: 'flex-start' }}>
+                                {d.status && <Badge tone={STATUS[d.status]?.tone || 'neutral'}>{STATUS[d.status]?.label || d.status}</Badge>}
+                                {d.reasons && Object.keys(d.reasons).length > 0 ? (
+                                  Object.entries(d.reasons).map(([reason, n]) => (
+                                    <Badge key={reason} tone="danger" icon="flag">{REPORT_REASONS.find(r => r.id === reason)?.label || reason} · {n}</Badge>
+                                  ))
+                                ) : d.report_count > 0 ? (
+                                  <Badge tone="danger" icon="flag">{d.report_count} signalement{d.report_count > 1 ? 's' : ''}</Badge>
+                                ) : d.is_flagged && d.flag_reason ? (
+                                  <Badge tone="warning" icon="alert">{d.flag_reason}</Badge>
+                                ) : null}
+                                {level && <QualityBadge score={d.quality_score} label={level.label} tone={level.tone} />}
                               </div>
                             </div>
                           </div>
@@ -814,10 +900,23 @@ export default function Admin() {
                           <div className="qz-table-actions">
                             {d.files?.[0] && <Button as="a" href={d.files[0]} target="_blank" rel="noreferrer" variant="secondary" size="sm" icon="eye">Voir</Button>}
                             <Button variant="secondary" size="sm" icon="check" onClick={() => verifyDoc(d.id)}>Approuver</Button>
+                            {d.status === 'pending_review' && <Button variant="ghost" size="sm" onClick={() => handlePublish(d.id)}>Publier</Button>}
+                            <Button variant="ghost" size="sm" onClick={() => { const open = modActionDocId === d.id && modAction === 'review'; setModActionDocId(open ? null : d.id); setModAction('review'); setModNote(d.flag_reason || '') }}>À revoir</Button>
+                            <Button variant="danger-ghost" size="sm" onClick={() => { const open = modActionDocId === d.id && modAction === 'reject'; setModActionDocId(open ? null : d.id); setModAction('reject'); setModNote('') }}>Refuser</Button>
                             <Button variant="ghost" size="sm" onClick={() => { setMovingDocId(movingDocId === d.id ? null : d.id); setMoveSearch(''); setMoveResults([]); setMoveSelId(null) }}>Déplacer</Button>
                             <Button variant="danger-ghost" size="sm" icon="trash" onClick={() => handleDeleteDoc(d)}>Supprimer</Button>
                             {d.report_count > 0 && <Button variant="ghost" size="sm" onClick={() => handleIgnoreReports(d.id)}>Ignorer</Button>}
                           </div>
+                          {modActionDocId === d.id && (
+                            <div className="ad-move-panel">
+                              <span className="t-eyebrow qz-subtle">{modAction === 'reject' ? "Raison du refus (envoyée à l'auteur)" : 'Raison de la mise à revoir (optionnel)'}</span>
+                              <Input value={modNote} onChange={e => setModNote(e.target.value)} placeholder="Ex : mauvais scan, module incorrect…" autoFocus />
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <Button variant={modAction === 'reject' ? 'danger-ghost' : 'secondary'} size="sm" disabled={modBusy || (modAction === 'reject' && !modNote.trim())} onClick={() => handleModAction(d.id)}>{modBusy ? '...' : 'Confirmer'}</Button>
+                                <Button variant="ghost" size="sm" onClick={() => setModActionDocId(null)}>Annuler</Button>
+                              </div>
+                            </div>
+                          )}
                           {movingDocId === d.id && (
                             <div className="ad-move-panel">
                               <span className="t-eyebrow qz-subtle">Déplacer vers un autre module</span>
@@ -839,11 +938,31 @@ export default function Admin() {
                           )}
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>
             )}
+
+            <div style={{ marginTop: 'var(--space-6)' }}>
+              <Button variant="ghost" size="sm" icon={showModHistory ? 'up' : 'down'} onClick={toggleModHistory}>Historique des actions</Button>
+              {showModHistory && (
+                modHistoryLoading ? <Skeleton height={100} /> :
+                modHistory.length === 0 ? <p className="t-body-sm qz-muted" style={{ marginTop: 'var(--space-2)' }}>Aucune action enregistrée.</p> : (
+                  <div style={{ marginTop: 'var(--space-2)' }}>
+                    {modHistory.map(l => (
+                      <div key={l.id} className="ad-history-row">
+                        <span className="t-mono qz-subtle">{fmt(l.created_at)}</span>
+                        <span className="t-body-sm">{l.staffName || 'Staff'}</span>
+                        <Badge tone="neutral">{MOD_ACTION_LABEL[l.action] || l.action}</Badge>
+                        <span className="t-body-sm qz-muted">{l.doc ? (l.doc.title || l.doc.doc_number || `Doc #${l.document_id}`) : `Doc #${l.document_id} (supprimé)`}</span>
+                        {l.note && <span className="t-caption qz-subtle">— {l.note}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
           </>
         )}
 

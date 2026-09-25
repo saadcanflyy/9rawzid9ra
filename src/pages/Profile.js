@@ -5,10 +5,13 @@ import Navbar from '../components/Navbar'
 import ConfirmModal from '../components/ConfirmModal'
 import {
   Avatar, Badge, Button, Input, Select, Tabs, StatStrip, EmptyState, Card, Sheet,
-  Dropdown, Icon, ThemeToggle, Skeleton, DocType,
+  Dropdown, Icon, ThemeToggle, Skeleton, DocType, QualityBadge,
 } from '../design-system/ui'
 import { useTheme } from '../design-system/theme'
 import { notify } from '../design-system/toast'
+import { STATUS, qualityLevel } from '../lib/quality'
+
+const docStatus = (doc) => doc.status || (doc.is_verified ? 'published' : 'pending_review')
 
 const css = `
   .pf-layout { max-width: 960px; margin: 0 auto; padding: var(--space-8) var(--space-6); }
@@ -150,9 +153,13 @@ export default function Profile() {
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', uid),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', uid),
         supabase.from('documents')
-          .select('id, doc_type, doc_number, academic_year, professor, pages_count, downloads, is_verified, is_flagged, created_at, files, modules(id, name, semester)')
+          .select('id, doc_type, doc_number, academic_year, professor, pages_count, downloads, is_verified, is_flagged, created_at, files, status, quality_score, quality_signals, verification_source, flag_reason, modules(id, name, semester)')
           .eq('uploader_id', uid)
-          .order('created_at', { ascending: false }),
+          .order('created_at', { ascending: false })
+          .then(res => res.error ? supabase.from('documents')
+            .select('id, doc_type, doc_number, academic_year, professor, pages_count, downloads, is_verified, is_flagged, created_at, files, modules(id, name, semester)')
+            .eq('uploader_id', uid)
+            .order('created_at', { ascending: false }) : res),
         supabase.from('senpai_posts')
           .select('*, senpai_votes(user_id)')
           .eq('author_id', uid)
@@ -545,6 +552,8 @@ export default function Profile() {
               {uploads.map(doc => {
                 const isEditing = editingDocId === doc.id
                 const isMoving = moveReqDocId === doc.id
+                const status = docStatus(doc)
+                const level = qualityLevel(doc)
                 return (
                   <div key={doc.id} className="pf-doc-card">
                     <div className="qz-row" style={{ cursor: 'pointer' }} onClick={() => doc.modules?.id && navigate(`/module/${doc.modules.id}`)}>
@@ -558,8 +567,15 @@ export default function Profile() {
                           <span>{doc.pages_count} p.</span>
                           {doc.professor && <span>Prof. {doc.professor}</span>}
                           <span>{doc.downloads || 0} ↓</span>
-                          <Badge tone={doc.is_verified ? 'success' : 'warning'}>{doc.is_verified ? 'Vérifié' : 'En attente'}</Badge>
+                          <Badge tone={STATUS[status]?.tone || 'neutral'}>{STATUS[status]?.label || status}</Badge>
+                          {level && <QualityBadge score={doc.quality_score ?? 0} label={level.label} tone={level.tone} />}
                         </div>
+                        {status === 'rejected' && doc.flag_reason && (
+                          <p className="t-caption" style={{ color: 'var(--danger-text, var(--danger))', marginTop: 4 }}>{doc.flag_reason}</p>
+                        )}
+                        {status === 'needs_review' && doc.flag_reason && (
+                          <p className="t-caption qz-muted" style={{ marginTop: 4 }}>{doc.flag_reason}</p>
+                        )}
                       </div>
                       <span className="t-caption qz-subtle" style={{ flexShrink: 0 }}>{fmtShort(doc.created_at)}</span>
                       {isOwnProfile && (

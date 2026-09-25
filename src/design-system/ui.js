@@ -490,7 +490,95 @@ import { trapFocus, focusFirst } from './focusTrap';
   /* ---- ProgressBar ---- */
   function ProgressBar(props) {
     var pct = Math.max(0, Math.min(100, props.value || 0));
-    return h('div', { className: 'qz-progressbar', role: 'progressbar', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100 }, h('span', { style: { width: pct + '%' } }));
+    return h('div', { className: cx('qz-progressbar', props.tone && props.tone !== 'brand' && 'qz-progressbar--' + props.tone), role: 'progressbar', 'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100 }, h('span', { style: { width: pct + '%' } }));
   }
 
-  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar };
+  /* ---- QualityBadge ---- */
+  function QualityBadge(props) {
+    var tone = props.tone || 'neutral';
+    return h('span', { className: cx('qz-badge', 'qz-quality-badge', tone !== 'neutral' && 'qz-badge--' + tone),
+      'aria-label': 'Qualité ' + props.score + ' sur 100, ' + String(props.label || '').toLowerCase() },
+      h('span', { className: 't-mono' }, props.score), h('span', null, props.label));
+  }
+
+  /* ---- QualityCard ---- */
+  function QualityCard(props) {
+    if (props.unrated) {
+      return h('div', { className: 'qz-card qz-quality-card' },
+        h('span', { className: 't-eyebrow qz-subtle' }, 'Qualité du document'),
+        h('p', { className: 't-body-sm qz-muted', style: { marginTop: 'var(--space-2)' } }, 'Pas encore évalué — sois le premier à donner ton avis.'));
+    }
+    var STATE_ICON = { yes: 'check', no: 'x' };
+    var STATE_COLOR = { yes: 'var(--success)', no: 'var(--danger)', unknown: 'var(--text-subtle)' };
+    return h('div', { className: 'qz-card qz-quality-card' },
+      h('span', { className: 't-eyebrow qz-subtle' }, 'Qualité du document'),
+      h('div', { className: 'qz-quality-card__score' },
+        h('span', { className: 't-stat' }, (props.score != null ? props.score : '—') + '/100'),
+        h(Badge, { tone: props.tone }, props.label)),
+      h(ProgressBar, { value: props.score, tone: props.tone }),
+      h('div', { className: 'qz-quality-card__rows' }, (props.rows || []).map(function (r) {
+        var icon = STATE_ICON[r.state];
+        return h('div', { key: r.key, className: 'qz-quality-card__row' },
+          icon ? h('span', { style: { color: STATE_COLOR[r.state], display: 'inline-flex', flexShrink: 0 } }, h(Icon, { name: icon, size: 16 }))
+               : h('span', { className: 'qz-dot', style: { background: STATE_COLOR.unknown, flexShrink: 0 } }),
+          h('span', { className: 't-body-sm' }, r.label));
+      })),
+      h('p', { className: 't-caption qz-subtle', style: { marginTop: 'var(--space-3)' } },
+        'Basé sur ' + (props.feedbackCount || 0) + ' avis et ' + (props.ratingCount || 0) + ' notes'));
+  }
+
+  /* ---- FeedbackPrompt ---- */
+  function FeedbackPrompt(props) {
+    function pair(labelText, key, current) {
+      return h('div', { className: 'qz-feedback-prompt__row', key: key },
+        h('span', { className: 't-body-sm qz-muted' }, labelText),
+        h('div', { className: 'qz-feedback-prompt__pair' },
+          h(Chip, { selected: current === true, onClick: function () { if (props.onAnswer) props.onAnswer(key, true); } }, 'Oui'),
+          h(Chip, { selected: current === false, onClick: function () { if (props.onAnswer) props.onAnswer(key, false); } }, 'Non')));
+    }
+    return h('div', { className: 'qz-card qz-feedback-prompt' },
+      h('h3', { className: 't-h3' }, 'Ce document t’a aidé ?'),
+      pair('Bon module ?', 'correct_module', props.correctModule),
+      pair('Lisible ?', 'readable', props.readable),
+      pair('Complet ?', 'complete', props.complete),
+      h('div', { className: 'qz-feedback-prompt__row' },
+        h('span', { className: 't-body-sm qz-muted' }, 'Note'),
+        h('div', { className: 'qz-feedback-prompt__stars' }, [1, 2, 3, 4, 5].map(function (n) {
+          return h('button', {
+            key: n, type: 'button', className: 'qz-feedback-prompt__star', 'aria-pressed': n <= (props.rating || 0) ? 'true' : 'false',
+            'aria-label': n + ' étoile' + (n > 1 ? 's' : ''),
+            style: { color: n <= (props.rating || 0) ? 'var(--warning)' : 'var(--border-strong)' },
+            onClick: function () { if (props.onRate) props.onRate(n); },
+          }, h(Icon, { name: 'star', size: 18 }));
+        }))),
+      h(Button, { variant: props.helpful ? 'secondary' : 'ghost', size: 'sm', icon: 'check', onClick: props.onHelpful }, props.helpful ? 'Marqué utile' : 'Marquer utile'));
+  }
+
+  /* ---- ReportModal ---- */
+  function ReportModal(props) {
+    var modalRef = useRef(null);
+    var st = useState(null); var reason = st[0]; var setReason = st[1];
+    var st2 = useState(''); var details = st2[0]; var setDetails = st2[1];
+    useEffect(function () {
+      function onKey(e) { if (e.key === 'Escape' && props.onClose) props.onClose(); }
+      window.addEventListener('keydown', onKey);
+      var untrap = modalRef.current ? trapFocus(modalRef.current) : null;
+      var t = setTimeout(function () { if (modalRef.current) focusFirst(modalRef.current, modalRef.current); }, 0);
+      return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); };
+    }, []);
+    return h('div', { className: 'qz-scrim', onClick: props.onClose },
+      h('div', { className: 'qz-modal', ref: modalRef, tabIndex: -1, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'qz-report-t', onClick: function (e) { e.stopPropagation(); } },
+        h('h2', { className: 'qz-modal__title', id: 'qz-report-t' }, 'Signaler ce document'),
+        h('div', { className: 'qz-report-modal__reasons', role: 'radiogroup', 'aria-label': 'Raison du signalement' },
+          (props.reasons || []).map(function (r) {
+            return h('label', { key: r.id, className: 'qz-report-modal__reason' },
+              h('input', { type: 'radio', name: 'qz-report-reason', checked: reason === r.id, onChange: function () { setReason(r.id); } }),
+              h('span', { className: 't-body-sm' }, r.label));
+          })),
+        h(Input, { label: 'Détails', optional: true, multiline: true, maxLength: 500, counter: true, value: details, onChange: function (e) { setDetails(e.target.value); } }),
+        h('div', { className: 'qz-modal__actions' },
+          h('button', { type: 'button', className: 'qz-btn qz-btn--secondary', onClick: props.onClose }, 'Annuler'),
+          h('button', { type: 'button', className: 'qz-btn qz-btn--danger', disabled: !reason, onClick: function () { if (props.onSubmit) props.onSubmit(reason, details); } }, 'Signaler'))));
+  }
+
+  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, QualityBadge, QualityCard, FeedbackPrompt, ReportModal };
