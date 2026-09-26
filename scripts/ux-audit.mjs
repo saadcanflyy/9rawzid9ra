@@ -31,6 +31,8 @@ const PUBLIC = [
 const AUTHED = [
   ['upload', '/upload'], ['profile', '/profile'], ['my-modules', '/my-modules'],
   ['module', '/module/technologies-big-data-ii-855'],
+  ['user-profile', '/user/3bbe0bb8-705d-4b56-a6fc-a31b1dc3299c'],
+  ['professeur', '/professeur/5'],
 ]
 const routes = storageState ? [...PUBLIC, ...AUTHED] : PUBLIC
 const WIDTHS = [390, 1280]
@@ -73,6 +75,7 @@ for (const [name, route] of routes) {
           // wide tables): overflowing its container is the intended pattern.
           const inScroller = (() => { let a = el.parentElement; while (a && a !== document.body) { const s = getComputedStyle(a); if ((s.overflowX === 'auto' || s.overflowX === 'scroll') && a.scrollWidth > a.clientWidth + 1) return true; a = a.parentElement } return false })()
           if (!inScroller && (r.right > vw + 1 || r.left < -1)) { if (!seen.has('w'+tag)) { seen.add('w'+tag); out.wide.push(`${tag} [${Math.round(r.left)}..${Math.round(r.right)}]`) } }
+          if (r.width <= 2 && r.height <= 2) continue   // visually-hidden input; the label is the target
           const interactive = el.matches('a,button,input,select,textarea,[role="button"],[tabindex]:not([tabindex="-1"])')
           if (interactive && vw < 500 && (r.width < 44 || r.height < 44)) {
             if (!seen.has('s'+tag)) { seen.add('s'+tag); out.small.push(`${tag} ${Math.round(r.width)}x${Math.round(r.height)}`) }

@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
+import { isPdf } from '../lib/files'
 import {
   Breadcrumb, Button, Badge, DocType, Tabs, Chip, EmptyState, Card, Icon, Avatar,
   ProgressBar, Sheet, Skeleton, Select, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, Toast, StatusBadge,
@@ -14,6 +15,9 @@ import { qualityLevel, qualityChecklist, isUnrated, REPORT_REASONS, displayStatu
 import { levelFor } from '../lib/reputation'
 import { cachedRpc } from '../lib/rpcCache'
 import { contactSenpai, senpaiContactErrorMessage } from '../lib/senpai'
+
+// react-pdf + pdfjs are ~300KB; only the preview sheet pays for them.
+const PdfViewer = lazy(() => import('../components/PdfViewer'))
 
 const css = `
   .mp-hero { padding: var(--space-8) var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface); }
@@ -109,6 +113,7 @@ export default function ModulePage() {
   const docsRef = useRef([])
   const [requests, setRequests] = useState({})
   const [userRequested, setUserRequested] = useState({})
+  const [previewFile, setPreviewFile] = useState(null)
   const [previewDoc, setPreviewDoc] = useState(null)
   const [showAuthGate, setShowAuthGate] = useState(false)
   const [reportTarget, setReportTarget] = useState(null)
@@ -592,7 +597,13 @@ export default function ModulePage() {
                             {doc.files.map((fileUrl, i) => (
                               <Button key={i} variant="secondary" size="sm" onClick={() => {
                                 if (!user) { setShowAuthGate(true); return }
-                                window.open(fileUrl, '_blank')
+                                if (isPdf(fileUrl)) {
+                                  markViewed(doc.id)
+                                  setPreviewFile(fileUrl)
+                                  setPreviewDoc(doc)
+                                } else {
+                                  window.open(fileUrl, '_blank')
+                                }
                                 if (i === 0) {
                                   setDocs(p => p.map(d => d.id === doc.id ? { ...d, downloads: (d.downloads || 0) + 1 } : d))
                                   supabase.rpc('record_download', { p_document_id: doc.id }).then()
@@ -607,8 +618,8 @@ export default function ModulePage() {
                             <Button variant="ghost" size="sm" iconOnly icon="eye" aria-label="Aperçu" onClick={() => {
                               if (!user) { setShowAuthGate(true); return }
                               markViewed(doc.id)
-                              if (window.innerWidth <= 768) window.open(doc.files[0], '_blank')
-                              else setPreviewDoc(doc)
+                              setPreviewFile(doc.files[0])
+                              setPreviewDoc(doc)
                             }} />
                             <Button variant="secondary" size="sm" icon="download" onClick={() => handleDownload(doc)}>Télécharger</Button>
                           </div>
@@ -802,25 +813,30 @@ export default function ModulePage() {
         const level = qualityLevel(previewDoc)
         const canGiveFeedback = user && previewDoc.uploader_id !== user.id && viewedDocs.has(previewDoc.id)
         return (
-        <Sheet wide title={previewDoc.doc_number || TYPE_LABELS[previewDoc.doc_type] || previewDoc.doc_type} onClose={() => setPreviewDoc(null)}>
+        <Sheet wide title={previewDoc.doc_number || TYPE_LABELS[previewDoc.doc_type] || previewDoc.doc_type} onClose={() => { setPreviewDoc(null); setPreviewFile(null) }}>
           <div className="mp-preview-layout">
             <div className="mp-preview-main">
               <div style={{ display: 'flex', gap: 8, marginBottom: 'var(--space-2)' }}>
                 <StatusBadge {...displayStatus(previewDoc)} />
                 {level && <QualityBadge score={previewDoc.quality_score ?? 0} label={level.label} tone={level.tone} />}
               </div>
-              <iframe
-                style={{ flex: 1, width: '100%', border: 0, minHeight: '60vh' }}
-                src={`https://docs.google.com/viewer?url=${encodeURIComponent(previewDoc?.files?.[0] || '')}&embedded=true`}
-                title="Aperçu du document"
-                allow="fullscreen"
-              />
+              {isPdf(previewFile || previewDoc?.files?.[0]) ? (
+                <Suspense fallback={<div style={{ padding: 'var(--space-4)' }}><Skeleton height={420} /></div>}>
+                  <PdfViewer url={previewFile || previewDoc.files[0]} onDownload={() => handleDownload(previewDoc)} />
+                </Suspense>
+              ) : (
+                /* react-pdf only renders PDFs. Anything else (images, PPT, DOCX)
+                   used to go through the Google viewer; be honest instead of
+                   showing a box that cannot work. */
+                <EmptyState icon="file" title="Aperçu non disponible pour ce format" action={
+                  <Button variant="secondary" as="a" href={(previewFile || previewDoc?.files?.[0])} target="_blank" rel="noreferrer">Ouvrir dans un onglet</Button>
+                }>
+                  <p className="t-body qz-muted">Télécharge le fichier pour le consulter.</p>
+                </EmptyState>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 'var(--space-3)', flexWrap: 'wrap' }}>
                 <Button variant="danger-ghost" size="sm" icon="flag" onClick={() => setReportTarget(previewDoc)}>Signaler</Button>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <Button variant="secondary" as="a" href={previewDoc?.files?.[0]} target="_blank" rel="noreferrer">Ouvrir dans un onglet</Button>
-                  <Button variant="primary" icon="download" onClick={() => handleDownload(previewDoc)}>Télécharger</Button>
-                </div>
+                <Button variant="secondary" size="sm" as="a" href={(previewFile || previewDoc?.files?.[0])} target="_blank" rel="noreferrer">Ouvrir dans un onglet</Button>
               </div>
             </div>
             <div className="mp-preview-side">

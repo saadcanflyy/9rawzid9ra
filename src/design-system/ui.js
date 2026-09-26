@@ -41,6 +41,7 @@ import { trapFocus, focusFirst } from './focusTrap';
     star: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
     sparkle: 'M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 17l.8 2.2L22 20l-2.2.8L19 23l-.8-2.2L16 20l2.2-.8z',
     inbox: 'M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z',
+    minus: 'M5 12h14',
     plus: 'M12 5v14M5 12h14',
     trash: 'M3 6h18M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2',
     sun: 'M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42',
@@ -328,7 +329,7 @@ import { trapFocus, focusFirst } from './focusTrap';
       window.addEventListener('keydown', onKey);
       var untrap = modalRef.current ? trapFocus(modalRef.current) : null;
       var t = setTimeout(function () { if (cancelRef.current) cancelRef.current.focus(); }, 0);
-      return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); };
+      return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); document.body.classList.remove('qz-dialog-open'); };
       // Mount-only: the trap is installed once per open dialog.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -529,7 +530,8 @@ import { trapFocus, focusFirst } from './focusTrap';
       window.addEventListener('keydown', onKey);
       var untrap = sheetRef.current ? trapFocus(sheetRef.current) : null;
       var t = setTimeout(function () { if (sheetRef.current) focusFirst(sheetRef.current, sheetRef.current); }, 0);
-      return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); };
+      document.body.classList.add('qz-dialog-open');
+      return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); document.body.classList.remove('qz-dialog-open'); };
       // Mount-only: the trap is installed once per open dialog.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -694,7 +696,7 @@ import { trapFocus, focusFirst } from './focusTrap';
       window.addEventListener('keydown', onKey);
       var untrap = modalRef.current ? trapFocus(modalRef.current) : null;
       var t = setTimeout(function () { if (modalRef.current) focusFirst(modalRef.current, modalRef.current); }, 0);
-      return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); };
+      return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); document.body.classList.remove('qz-dialog-open'); };
       // Mount-only: the trap is installed once per open dialog.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

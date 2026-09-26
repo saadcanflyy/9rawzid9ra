@@ -242,7 +242,12 @@ button.qz-badge:hover { filter: brightness(1.15); }
 .qz-empty__body { margin: 0; max-width: 420px; color: var(--text-muted); font-size: 14px; line-height: 22px; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
 
 /* ---------- Modal ---------- */
-.qz-scrim { position: absolute; inset: 0; background: var(--overlay); display: flex; align-items: center; justify-content: center; padding: var(--space-4); }
+/* fixed, not absolute: an absolute scrim resolves against the initial
+   containing block, so on a scrolled page it centres the dialog in the
+   DOCUMENT rather than the viewport. z-index clears the messenger launcher
+   (45), which otherwise floated over the dialog and, on /module at 390px, sat
+   directly on top of the Telecharger button. */
+.qz-scrim { position: fixed; inset: 0; z-index: 60; background: var(--overlay); display: flex; align-items: center; justify-content: center; padding: var(--space-4); overflow-y: auto; }
 .qz-modal { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg); padding: var(--space-6); }
 .qz-modal__title { font: 600 17px/24px var(--font-sans); margin: 0 0 var(--space-2); color: var(--text); }
 .qz-modal__body { margin: 0; color: var(--text-muted); font-size: 14px; line-height: 22px; }
@@ -567,6 +572,11 @@ button.qz-badge:hover { filter: brightness(1.15); }
 /* ---- "Sharing is caring" slogan -------------------------------------------
    Deliberately English in both languages: it's the slogan, not UI copy. */
 .qz-slogan { color: var(--text-subtle); white-space: nowrap; font-family: var(--font-sans); font-size: 12px; line-height: 16px; }
+/* The visible caption measured 90px and pushed .qz-navbar__end off the right
+   edge at 1280px. Only show it where there is genuinely room; the tooltip
+   covers every narrower desktop. */
+.qz-slogan--wide { display: none; }
+@media (min-width: 1400px) { .qz-slogan--wide { display: inline; } }
 
 /* Utility: the mirror of qz-navbar__desktop-only, for the Upload header slogan
    that replaces the nav one on small screens. */
@@ -587,7 +597,7 @@ button.qz-badge:hover { filter: brightness(1.15); }
   .qz-btn--sm { --h: 44px; }
   /* Link-style buttons stay visually inline; only the hit area grows. */
   .qz-btn--link { height: auto; min-height: 44px; }
-  .qz-chip { height: 44px; }
+  .qz-chip { height: 44px; min-width: 44px; justify-content: center; }
   .qz-tab { min-height: 44px; }
   .qz-iconbtn { width: 44px; height: 44px; }
   .qz-dropdown__item { min-height: 44px; }
@@ -598,6 +608,8 @@ button.qz-badge:hover { filter: brightness(1.15); }
   .qz-avatarbtn { min-width: 44px; min-height: 44px; }
   /* Vote arrows are 32x28 by design on desktop; too small for a thumb. */
   .qz-vote button { width: 44px; height: 44px; }
+  /* The inbox row name is itself a button (opens the thread); 20px tall. */
+  .qz-inbox-row__name { min-height: 44px; display: inline-flex; align-items: center; }
   /* A narrow tab label is still a 44px-wide target. */
   .qz-tab { min-width: 44px; justify-content: center; }
   /* The search input sits inside .qz-search padding; make the inner control
@@ -610,3 +622,42 @@ button.qz-badge:hover { filter: brightness(1.15); }
 @supports (padding: max(0px)) {
   .qz-footer__bottom { padding-bottom: max(var(--space-4), env(safe-area-inset-bottom)); }
 }
+
+/* ---- PDF viewer -----------------------------------------------------------
+   Replaces a docs.google.com iframe that our own CSP blocked, so the preview
+   was an empty box in production. Scale 1 == container width, so the page
+   never scrolls sideways until the reader zooms in deliberately. */
+.qz-pdf { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.qz-pdf__stage {
+  flex: 1; min-height: 0; overflow: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  display: flex; justify-content: center; align-items: flex-start;
+  -webkit-overflow-scrolling: touch;
+}
+.qz-pdf__stage canvas { max-width: none; height: auto !important; display: block; box-shadow: var(--shadow-md); }
+.qz-pdf__loading { width: 100%; padding: var(--space-4); }
+
+.qz-pdf__bar {
+  position: sticky; bottom: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3); flex-wrap: wrap;
+  padding: var(--space-3) 0 0;
+  background: var(--surface);
+}
+.qz-pdf__group { display: flex; align-items: center; gap: var(--space-1); }
+.qz-pdf__count { color: var(--text-muted); font-size: 12px; min-width: 52px; text-align: center; }
+
+@media (max-width: 860px) {
+  /* Thumb reach: controls go full width and the primary action sits last,
+     clear of the home indicator. */
+  .qz-pdf__bar { padding-bottom: max(var(--space-2), env(safe-area-inset-bottom)); }
+  .qz-pdf__bar > .qz-btn { flex: 1 1 100%; order: 3; }
+  .qz-pdf__group { flex: 1; justify-content: center; }
+}
+
+/* While a dialog is open: lock the page behind it and take the floating
+   launcher out of the way entirely. */
+body.qz-dialog-open { overflow: hidden; }
+body.qz-dialog-open .qz-messenger-launcher { display: none; }

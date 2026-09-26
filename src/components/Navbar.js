@@ -270,6 +270,7 @@ export default function Navbar({ activePage = '' }) {
                     90px and pushed .qz-navbar__end past the right edge at 1280px.
                     Hidden under 860px with the button; the Upload page header
                     carries the slogan there. */}
+                <span className="qz-slogan qz-slogan--wide">Sharing is caring</span>
                 <Tooltip label="Sharing is caring">
                   <Button variant="primary" size="sm" iconRight="upload" as={Link} to="/upload">Partager</Button>
                 </Tooltip>
