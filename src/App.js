@@ -31,11 +31,6 @@ import MessengerWidget from './components/MessengerWidget'
 import Footer from './components/Footer'
 import DesignPreview from './pages/DesignPreview'
 
-// TEMPORARY — /sentry-test verifies Sentry is receiving events from production.
-// Remove this component and its <Route> once the issue shows up in Sentry.
-function SentryTest() {
-  throw new Error('Sentry test 9rawZid9ra')
-}
 
 function BanScreen({ banInfo }) {
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-MA', { day:'2-digit', month:'long', year:'numeric' }) : 'Permanent'
@@ -123,7 +118,6 @@ function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/about" element={<About />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/sentry-test" element={<SentryTest />} />
         {process.env.NODE_ENV !== 'production' && <Route path="/__design" element={<DesignPreview />} />}
         <Route path="*" element={<NotFound />} />
       </Routes>
