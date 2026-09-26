@@ -35,14 +35,15 @@ function walk(dir, out = []) {
 }
 
 // from('table') ... .select('cols')  — the select must be within a short window
-// so we don't pair a table with some unrelated later select.
-const PAIR = /\.from\(\s*'([a-z_]+)'\s*\)[\s\S]{0,400}?\.select\(\s*'([^']*)'/g
+// Never cross another .from(): a call like .from(x).delete() has no select of
+// its own, and a naive window would pair x with the NEXT query's select.
+const PAIR = /\.from\(\s*'([a-z_]+)'\s*\)((?:(?!\.from\()[\s\S]){0,400}?)\.select\(\s*'([^']*)'/g
 
 const seen = new Map()
 for (const file of walk('src')) {
   const src = readFileSync(file, 'utf8')
   for (const m of src.matchAll(PAIR)) {
-    const [, table, cols] = m
+    const [, table, , cols] = m
     if (!cols.includes('(')) continue          // no embed: nothing to disambiguate
     const key = table + '|' + cols
     if (!seen.has(key)) {

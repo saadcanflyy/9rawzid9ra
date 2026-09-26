@@ -6,6 +6,7 @@ import { Button, Input, Select, Badge, DocType, Card, EmptyState, Skeleton, Stat
 import { notify } from '../design-system/toast'
 import { qualityLevel, qualityChecklist, displayStatus, REPORT_REASONS } from '../lib/quality'
 import { professorNameParts } from '../lib/professorName'
+import { attachUserNames } from '../lib/userNames'
 
 const css = `
   .ad-section-title { margin-bottom: var(--space-4); }
@@ -263,12 +264,12 @@ export default function ModeratorPanel() {
     setLoading(true)
     const [{ data }, { data: aliases }, { data: unis }] = await Promise.all([
       supabase.from('school_requests')
-        .select('*, user_profiles(name), universities!school_requests_parent_university_id_fkey(name)')
+        .select('*, universities!school_requests_parent_university_id_fkey(name)')
         .order('created_at', { ascending: false }),
       supabase.from('institution_aliases').select('*, universities(name), faculties(name)').order('id', { ascending: false }),
       aliasUniOptions.length ? Promise.resolve({ data: aliasUniOptions }) : supabase.from('universities').select('id, name').order('name'),
     ])
-    setSchoolReqs(data || [])
+    setSchoolReqs(await attachUserNames(supabase, data, 'requested_by'))
     setAliasList(aliases || [])
     if (!aliasUniOptions.length) setAliasUniOptions(unis || [])
     setLoading(false)
@@ -307,9 +308,9 @@ export default function ModeratorPanel() {
   const loadFilieres = async () => {
     setLoading(true)
     const { data } = await supabase.from('filiere_suggestions')
-      .select('*, user_profiles(name), faculties(name, universities(name))')
+      .select('*, faculties(name, universities(name))')
       .order('created_at', { ascending: false })
-    setFiliereReqs(data || [])
+    setFiliereReqs(await attachUserNames(supabase, data, 'suggested_by'))
     setLoading(false)
   }
 

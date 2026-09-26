@@ -1,0 +1,726 @@
+[
+  {
+    "name": "home",
+    "route": "/",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "home",
+    "route": "/",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "home",
+    "route": "/",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "home",
+    "route": "/",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "browse",
+    "route": "/browse",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "browse",
+    "route": "/browse",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "browse",
+    "route": "/browse",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "browse",
+    "route": "/browse",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "login",
+    "route": "/login",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 101x16"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "login",
+    "route": "/login",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 101x16"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "login",
+    "route": "/login",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "login",
+    "route": "/login",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "register",
+    "route": "/register",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 61x15"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "register",
+    "route": "/register",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 61x15"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "register",
+    "route": "/register",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "register",
+    "route": "/register",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "forgot-password",
+    "route": "/forgot-password",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "forgot-password",
+    "route": "/forgot-password",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "forgot-password",
+    "route": "/forgot-password",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "forgot-password",
+    "route": "/forgot-password",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "senpai",
+    "route": "/senpai",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [
+      "Failed to load resource: the server responded with a status of 401 ()",
+      "Failed to load resource: the server responded with a status of 401 ()"
+    ],
+    "rest": [
+      "42501 senpai_posts?select=created_at&parent_id=is.null&is_approved=eq.true&created_at=",
+      "42501 senpai_posts?select=*,user_profiles(name,is_fondateur),senpai_votes(user_id),mod"
+    ],
+    "rest401": 0
+  },
+  {
+    "name": "senpai",
+    "route": "/senpai",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [
+      "Failed to load resource: the server responded with a status of 401 ()",
+      "Failed to load resource: the server responded with a status of 401 ()"
+    ],
+    "rest": [
+      "42501 senpai_posts?select=created_at&parent_id=is.null&is_approved=eq.true&created_at=",
+      "42501 senpai_posts?select=*,user_profiles(name,is_fondateur),senpai_votes(user_id),mod"
+    ],
+    "rest401": 0
+  },
+  {
+    "name": "senpai",
+    "route": "/senpai",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [
+      "Failed to load resource: the server responded with a status of 401 ()",
+      "Failed to load resource: the server responded with a status of 401 ()"
+    ],
+    "rest": [
+      "42501 senpai_posts?select=created_at&parent_id=is.null&is_approved=eq.true&created_at=",
+      "42501 senpai_posts?select=*,user_profiles(name,is_fondateur),senpai_votes(user_id),mod"
+    ],
+    "rest401": 0
+  },
+  {
+    "name": "senpai",
+    "route": "/senpai",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [
+      "Failed to load resource: the server responded with a status of 401 ()",
+      "Failed to load resource: the server responded with a status of 401 ()"
+    ],
+    "rest": [
+      "42501 senpai_posts?select=created_at&parent_id=is.null&is_approved=eq.true&created_at=",
+      "42501 senpai_posts?select=*,user_profiles(name,is_fondateur),senpai_votes(user_id),mod"
+    ],
+    "rest401": 0
+  },
+  {
+    "name": "classement",
+    "route": "/classement",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "classement",
+    "route": "/classement",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "classement",
+    "route": "/classement",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "classement",
+    "route": "/classement",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "about",
+    "route": "/about",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 182x20"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "about",
+    "route": "/about",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 182x20"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "about",
+    "route": "/about",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "about",
+    "route": "/about",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "contact",
+    "route": "/contact",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 163x18"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "contact",
+    "route": "/contact",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 163x18"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "contact",
+    "route": "/contact",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "contact",
+    "route": "/contact",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "privacy-policy",
+    "route": "/privacy-policy",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 174x20"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "privacy-policy",
+    "route": "/privacy-policy",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 174x20"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "privacy-policy",
+    "route": "/privacy-policy",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "privacy-policy",
+    "route": "/privacy-policy",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "terms",
+    "route": "/terms",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 182x20"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "terms",
+    "route": "/terms",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [
+      "a 182x20"
+    ],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "terms",
+    "route": "/terms",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "terms",
+    "route": "/terms",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "ai",
+    "route": "/ai",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "ai",
+    "route": "/ai",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "ai",
+    "route": "/ai",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "ai",
+    "route": "/ai",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "notfound",
+    "route": "/nope-404",
+    "width": 390,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "notfound",
+    "route": "/nope-404",
+    "width": 390,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "notfound",
+    "route": "/nope-404",
+    "width": 1280,
+    "theme": "dark",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  },
+  {
+    "name": "notfound",
+    "route": "/nope-404",
+    "width": 1280,
+    "theme": "light",
+    "overflowX": false,
+    "wide": [],
+    "small": [],
+    "tiny": [],
+    "errs": [],
+    "rest": [],
+    "rest401": 0
+  }
+]

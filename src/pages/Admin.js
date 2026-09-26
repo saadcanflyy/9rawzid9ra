@@ -8,6 +8,7 @@ import { STATUS, qualityLevel, qualityChecklist, displayStatus, REPORT_REASONS }
 import { formatPoints } from '../lib/reputation'
 import { professorNameParts } from '../lib/professorName'
 import { contextToFilters } from '../lib/searchParser'
+import { attachUserNames } from '../lib/userNames'
 
 const css = `
   .ad-announce { display: flex; flex-direction: column; gap: var(--space-3); margin-bottom: var(--space-6); }
@@ -235,8 +236,8 @@ export default function Admin() {
       supabase.from('senpai_posts').select('*', { count:'exact', head:true }).eq('is_approved', false),
       supabase.from('filiere_suggestions').select('*', { count:'exact', head:true }).eq('status', 'pending'),
       supabase.from('admin_documents').select('id, doc_type, module_name, uploader_name, created_at, academic_year').order('created_at', { ascending: false }).limit(8),
-      supabase.from('school_requests').select('id, school_name, created_at, user_profiles(name)').order('created_at', { ascending: false }).limit(6),
-      supabase.from('filiere_suggestions').select('id, filiere_name, created_at, user_profiles(name)').order('created_at', { ascending: false }).limit(6),
+      supabase.from('school_requests').select('id, school_name, created_at, requested_by').order('created_at', { ascending: false }).limit(6),
+      supabase.from('filiere_suggestions').select('id, filiere_name, created_at, suggested_by').order('created_at', { ascending: false }).limit(6),
       supabase.from('modules').select('id, name, created_at').eq('verified', false).order('created_at', { ascending: false }).limit(6),
       supabase.from('professors').select('*', { count:'exact', head:true }).eq('status', 'pending'),
       supabase.from('senpai_profiles').select('*', { count:'exact', head:true }).eq('status', 'pending'),
@@ -256,10 +257,17 @@ export default function Admin() {
     })
     setTopUsers(top10.data || [])
 
+    // These two cannot embed user_profiles (see src/lib/userNames.js), so the
+    // author names are resolved in a second lookup.
+    const [feedSchoolRows, feedFilRows] = await Promise.all([
+      attachUserNames(supabase, feedSchools.data, 'requested_by'),
+      attachUserNames(supabase, feedFils.data, 'suggested_by'),
+    ])
+
     const combined = [
       ...(feedDocs.data || []).map(d => ({ type:'document', label: d.module_name || 'Doc', sub: `${d.doc_type?.toUpperCase() || ''}${d.academic_year ? ' · '+d.academic_year : ''} · par ${d.uploader_name || 'Anonyme'}`, created_at: d.created_at })),
-      ...(feedSchools.data || []).map(s => ({ type:'school', label: s.school_name || 'École', sub: `par ${s.user_profiles?.name || 'Anonyme'}`, created_at: s.created_at })),
-      ...(feedFils.data || []).map(f => ({ type:'filiere', label: f.filiere_name || 'Filière', sub: `par ${f.user_profiles?.name || 'Anonyme'}`, created_at: f.created_at })),
+      ...feedSchoolRows.map(s => ({ type:'school', label: s.school_name || 'École', sub: `par ${s.user_profiles?.name || 'Anonyme'}`, created_at: s.created_at })),
+      ...feedFilRows.map(f => ({ type:'filiere', label: f.filiere_name || 'Filière', sub: `par ${f.user_profiles?.name || 'Anonyme'}`, created_at: f.created_at })),
       ...(feedModSugs.data || []).map(m => ({ type:'module', label: m.name || 'Module', sub: 'En attente de vérif', created_at: m.created_at })),
     ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 20)
     setActivityFeed(combined)
