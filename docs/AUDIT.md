@@ -3,7 +3,7 @@
 **Date**: 2026-09-27 · **Scope**: Supabase `egqjyzuinoljadzxiwpb` (eu-west-3, Postgres 17.6, ACTIVE_HEALTHY), React CRA on Vercel, edge function `notify-email`.
 **Phase 1 — audit only. Nothing was changed.** Every write test below ran inside a transaction that was deliberately aborted, so no data was modified.
 
-> ## Phase 2 status — 2026-09-26
+> ## Phase 2 status — 2026-09-26 (final sweep re-run 2026-09-26)
 >
 > | # | Finding | Status | Commit |
 > |---|---|---|---|
@@ -13,7 +13,7 @@
 > | H3 | No security headers | **Fixed** | `dae5c0d` |
 > | H4 | `react-router-dom` advisory | **Fixed on branch** `chore/react-router-upgrade` — awaiting preview click-through | `pending merge` |
 > | H5 | No error boundary | **Fixed** | `dae5c0d` |
-> | H6 | No error monitoring | **Fixed (code)** — needs a DSN | `dae5c0d` |
+> | H6 | No error monitoring | **Live** — DSN set; `/sentry-test` pending your check | `dae5c0d`, `a0fcabf` |
 > | H7 | ESLint disabled in prod builds | **Fixed** | `dae5c0d` |
 > | M1 | Analytics RPCs public | **Fixed** | `2ef9c73` |
 > | M2 | `refresh_module_stats` callable by anon | **Fixed** | `2ef9c73` |
@@ -27,7 +27,7 @@
 > | M10 | Realtime channel per tab | **Partly fixed** — navbar channel removed | `159fe73` |
 > | M11 | 56 unindexed FKs | **Fixed** (12 hot ones; 44 cold left) | `4d3c894` |
 > | M13 | Upload size inconsistent (20 vs 50 MB) | **Fixed** — 20 MB everywhere | `7ebf3d5` |
-> | — | Captcha on auth (Turnstile) | **Fixed (code)** — inert until site key set | `c798631` |
+> | — | Captcha on auth (Turnstile) | **Live** — site key set; resets on every attempt | `c798631`, `a0fcabf` |
 > | — | Senpai contact wired to Messenger + stats | **Fixed** | `ff6ff3f` |
 > | L4 | `rls_auto_enable` executable by anon | **Fixed** | `2ef9c73` |
 > | — | Senpai email exposed to students | **Fixed** (new rule) | `4b3ea4e` |
