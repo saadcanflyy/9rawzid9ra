@@ -86,6 +86,7 @@ export default function Register() {
     } catch {
       setError('Erreur réseau. Vérifie ta connexion et réessaie.')
     } finally {
+      captchaRef.current?.reset(); setCaptchaToken(null)
       isSubmittingRef.current = false
       setLoading(false)
     }

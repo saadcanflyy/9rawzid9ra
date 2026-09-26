@@ -72,4 +72,4 @@ export default function Turnstile({ onToken, widgetRef }) {
   return <div ref={holder} style={{ marginBottom: 'var(--space-3)' }} />
 }
 
-export const CAPTCHA_ERROR = 'Vérification anti-robot échouée. Recharge la page et réessaie.'
+export const CAPTCHA_ERROR = 'Vérification anti-robot échouée, réessaie.'

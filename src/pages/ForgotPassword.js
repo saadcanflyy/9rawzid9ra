@@ -45,6 +45,7 @@ export default function ForgotPassword() {
     } catch {
       setError('Erreur réseau. Vérifie ta connexion et réessaie.')
     } finally {
+      captchaRef.current?.reset(); setCaptchaToken(null)
       isSendingRef.current = false
       setLoading(false)
     }

@@ -72,7 +72,6 @@ export default function Login() {
       if (err) {
         setFailCount(c => c + 1)
         setError('Email ou mot de passe incorrect.')
-        captchaRef.current?.reset(); setCaptchaToken(null)
         return
       }
       const { data: banRows } = await supabase.rpc('get_my_ban_status')
@@ -96,6 +95,7 @@ export default function Login() {
         setError('Erreur de connexion. Réessaie.')
       }
     } finally {
+      captchaRef.current?.reset(); setCaptchaToken(null)
       isSubmittingRef.current = false
       setLoading(false)
     }
