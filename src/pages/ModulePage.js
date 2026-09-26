@@ -93,7 +93,7 @@ export default function ModulePage() {
   const [activeTab, setActiveTab] = useState('all')
   const [verifiedOnly, setVerifiedOnly] = useState(false)
   const [senpaiPosts, setSenpaiPosts] = useState([])
-  const { user } = useAuth()
+  const { user, refreshProfile } = useAuth()
   const [userReactions, setUserReactions] = useState({})
   const [isBookmarked, setIsBookmarked] = useState(false)
   const docsRef = useRef([])
@@ -208,7 +208,7 @@ export default function ModulePage() {
         setUserRequested(userReqMap)
 
         supabase.from('senpai_posts')
-          .select('*, user_profiles(name, universities(name)), senpai_votes(user_id)')
+          .select('*, user_profiles(name, universities!user_profiles_university_id_fkey(name)), senpai_votes(user_id)')
           .eq('module_id', parseInt(id))
           .eq('is_approved', true)
           .order('helpful_count', { ascending: false })
@@ -347,6 +347,7 @@ export default function ModulePage() {
       await supabase.from('module_bookmarks').insert({ user_id: user.id, module_id: parseInt(id) })
       setIsBookmarked(true)
     }
+    refreshProfile()
   }
 
   const handleRequest = async (docType) => {

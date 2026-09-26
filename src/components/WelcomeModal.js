@@ -3,10 +3,12 @@ import { supabase } from '../supabase'
 import { Wordmark, Button, Input, Chip, Switch, Icon, ProgressBar, Sheet } from '../design-system/ui'
 import { notify } from '../design-system/toast'
 import SenpaiSection from './SenpaiSection'
+import { useAuth } from '../context/AuthContext'
 
 const TOTAL_STEPS = 5
 
 export default function WelcomeModal() {
+  const { refreshProfile } = useAuth()
   const [show, setShow] = useState(false)
   const [userId, setUserId] = useState(null)
   const [step, setStep] = useState(1)
@@ -145,6 +147,9 @@ export default function WelcomeModal() {
       p_follow_modules: followModules,
     })
     if (error) { notify.error(error.message); setCompleting(false); return }
+    // Pull the new filiere/semestre into the context straight away, so the home
+    // page behind the modal is already personalised when the last slide closes.
+    await refreshProfile()
     setFollowedCount(count || 0)
     if (selFil && semester) {
       const { data: mods } = await supabase.from('modules').select('id, name, docs_count')

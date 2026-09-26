@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
 import { ModuleCard, EmptyState, Button, Card, Skeleton, Toast } from '../design-system/ui'
+import { useAuth } from '../context/AuthContext'
 
 const css = `
   .mm-header { max-width: 960px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-4); }
@@ -12,6 +13,7 @@ const css = `
 
 export default function MyModules() {
   const navigate = useNavigate()
+  const { refreshProfile } = useAuth()
   const [userId, setUserId] = useState(null)
   const [bookmarks, setBookmarks] = useState([])
   const [loading, setLoading] = useState(true)
@@ -63,6 +65,7 @@ export default function MyModules() {
   const handleRemove = async (b) => {
     setBookmarks(prev => prev.filter(x => x.id !== b.id))
     await supabase.from('module_bookmarks').delete().eq('id', b.id).eq('user_id', userId)
+    refreshProfile()
 
     toast.custom((t) => (
       <div style={{ opacity: t.visible ? 1 : 0, transition: 'opacity .15s ease' }}>
@@ -73,6 +76,7 @@ export default function MyModules() {
               .from('module_bookmarks').insert({ user_id: userId, module_id: b.modules.id })
               .select('id, created_at').single()
             if (restored) setBookmarks(prev => [{ ...b, id: restored.id, created_at: restored.created_at }, ...prev])
+            refreshProfile()
           }}>Annuler</Button>
         </Toast>
       </div>

@@ -24,7 +24,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build && node scripts/sentry-sourcemaps.mjs",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "check:queries": "node scripts/check-postgrest-queries.mjs"
   },
   "eslintConfig": {
     "extends": [
@@ -53,6 +54,7 @@
     ]
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@sentry/cli": "^3.8.0"
   }
 }

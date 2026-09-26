@@ -12,3 +12,13 @@ export function cachedRpc(supabase, name, args, ttlMs = TTL_MS) {
   cache.set(key, { time: Date.now(), promise });
   return promise;
 }
+
+/**
+ * Drop everything. Every cached RPC here is scoped to the signed-in user, so
+ * this must run whenever the profile changes (onboarding, settings, follow) or
+ * on sign-out — otherwise a reload re-serves answers computed for the old
+ * filière, or worse, for the previous user.
+ */
+export function clearRpcCache() {
+  cache.clear();
+}

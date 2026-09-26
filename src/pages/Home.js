@@ -455,7 +455,7 @@ function VisitorHome() {
 
 function PersonalizedHome() {
   const navigate = useNavigate()
-  const { profile } = useAuth()
+  const { profile, profileVersion } = useAuth()
   const [feed, setFeed] = useState(null)
   const [loading, setLoading] = useState(true)
   const [recommended, setRecommended] = useState(null)
@@ -475,10 +475,13 @@ function PersonalizedHome() {
       .then(({ data, error }) => setRecommended(error ? [] : (data || [])))
   }
 
+  // profileVersion changes when onboarding or the settings page writes a new
+  // filiere/semestre, so the feed reloads in place instead of needing an F5.
   useEffect(() => {
     document.title = '9rawZid9ra — Ton espace'
+    setLoading(true)
     load()
-  }, []) // eslint-disable-line
+  }, [profileVersion]) // eslint-disable-line
 
   const onSearch = (value) => {
     navigate(`/browse${value && value.trim() ? `?q=${encodeURIComponent(value.trim())}` : ''}`)

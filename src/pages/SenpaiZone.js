@@ -65,7 +65,7 @@ export default function SenpaiZone() {
   const [sp, setSP] = useSearchParams()
   const modSearchDebounceRef = useRef(null)
 
-  const { user } = useAuth()
+  const { user, refreshProfile } = useAuth()
   const [profile, setProfile] = useState(null)
   const [modal, setModal] = useState(null)
   const showAlert = (message) => setModal({ message, confirmText: 'OK', confirmColor: '#4F8EF7', onCancel: null, onConfirm: () => setModal(null) })
@@ -210,7 +210,7 @@ export default function SenpaiZone() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'senpai_posts' }, async payload => {
         const { data } = await supabase
           .from('senpai_posts')
-          .select('*, user_profiles(name, is_fondateur, universities(name)), senpai_votes(user_id), modules(id, name)')
+          .select('*, user_profiles(name, is_fondateur, universities!user_profiles_university_id_fkey(name)), senpai_votes(user_id), modules(id, name)')
           .eq('id', payload.new.id)
           .single()
         if (data && data.is_approved) {
@@ -250,6 +250,7 @@ export default function SenpaiZone() {
     if (error) { notify.error(error.message); return }
     const { data } = await supabase.rpc('get_my_senpai_profile')
     setMyMentorProfile(data)
+    refreshProfile()
     notify.success(data?.status === 'active' ? 'Tu es maintenant senpai de ta filière !' : 'Candidature envoyée, elle sera vérifiée par l\'équipe.')
     setViewMode('mentors')
   }

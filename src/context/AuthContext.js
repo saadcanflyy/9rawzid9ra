@@ -1,7 +1,15 @@
-import { createContext, useContext, useState, useEffect, useRef } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../supabase'
+import { clearRpcCache } from '../lib/rpcCache'
 
 const AuthContext = createContext(null)
+
+// Every profile column the app reads from context. Kept in one place so a page
+// that needs a new field doesn't silently get `undefined`. Only columns granted
+// to `authenticated` by 20260927000500_user_profiles_private_columns.sql.
+const PROFILE_COLUMNS =
+  'id, name, bio, is_admin, is_moderator, is_fondateur, points, uploads_count, ' +
+  'university_id, faculty_id, filiere_id, current_semester, onboarded_at, wants_ai_notification'
 
 // Read cached session from localStorage synchronously — zero-flash first render
 function getInitialUser() {
@@ -20,16 +28,37 @@ export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(getInitialUser)
   const [profile, setProfile] = useState(null)
   const [onlineCount, setOnlineCount] = useState(1)
+  // Bumped whenever the profile is refetched. Pages with their own server data
+  // (Home's feed, My modules…) depend on it so they reload without an F5.
+  const [profileVersion, setProfileVersion] = useState(0)
   const userRef = useRef(user)
 
   const loadProfile = async (uid) => {
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('name, is_admin, is_moderator, is_fondateur, points, uploads_count, filiere_id, current_semester')
-      .eq('id', uid)
-      .single()
+    const { data } = await supabase.from('user_profiles').select(PROFILE_COLUMNS).eq('id', uid).single()
     setProfile(data || null)
+    return data || null
   }
+
+  /**
+   * Refetch the signed-in user's profile and tell the rest of the app to reload.
+   *
+   * Call this after anything that changes the profile server-side — onboarding,
+   * settings save, follow/unfollow, senpai apply. Without it the context keeps
+   * the values it read at sign-in and the UI only catches up on a manual
+   * refresh, which is exactly the bug this fixes.
+   *
+   * The RPC cache is user-scoped (recommend_for_me, get_missing_resources,
+   * get_home_feed's companions), so it has to be dropped at the same time or
+   * the reload just re-serves the pre-change answers.
+   */
+  const refreshProfile = useCallback(async () => {
+    const uid = userRef.current?.id
+    if (!uid) return null
+    clearRpcCache()
+    const data = await loadProfile(uid)
+    setProfileVersion(v => v + 1)
+    return data
+  }, [])
 
   useEffect(() => {
     // Validate cached session — only UPDATE user, never clear it here.
@@ -49,6 +78,7 @@ export function AuthProvider({ children }) {
         setUser(null)
         userRef.current = null
         setProfile(null)
+        clearRpcCache()
         return
       }
       if (session?.user) {
@@ -77,7 +107,10 @@ export function AuthProvider({ children }) {
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, profile, userRef, setUser, setProfile, onlineCount }}>
+    <AuthContext.Provider value={{
+      user, profile, userRef, setUser, setProfile, onlineCount,
+      refreshProfile, profileVersion,
+    }}>
       {children}
     </AuthContext.Provider>
   )

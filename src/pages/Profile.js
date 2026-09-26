@@ -10,6 +10,7 @@ import {
   LevelBadge, LevelProgress, BadgeChip, Chip, Switch,
 } from '../design-system/ui'
 import { useTheme } from '../design-system/theme'
+import { useAuth } from '../context/AuthContext'
 import { notify } from '../design-system/toast'
 import { qualityLevel, displayStatus } from '../lib/quality'
 import { levelFor, formatPoints, POINT_RULES, LEVELS, LEVEL_TONES, BADGE_TIER_TONES, PERIODS, rankLabel } from '../lib/reputation'
@@ -86,6 +87,7 @@ export default function Profile() {
   const params = useParams()
   const targetId = params.id || null // null = own profile
   const { mode: themeMode, cycle: cycleTheme } = useTheme()
+  const { refreshProfile } = useAuth()
 
   const [currentUser, setCurrentUser] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -98,6 +100,7 @@ export default function Profile() {
   const [badgeCatalogue, setBadgeCatalogue] = useState([])
   const [earnedBadges, setEarnedBadges] = useState({})
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(null)
   const [activeTab, setActiveTab] = useState('posts')
 
   const [followersCount, setFollowersCount] = useState(0)
@@ -169,7 +172,7 @@ export default function Profile() {
       if (!uid) { sessionStorage.setItem('redirectAfterLogin', '/profile'); navigate('/login', { state: { from: '/profile' } }); return }
 
       const [
-        { data: prof },
+        { data: prof, error: profErr },
         { count: frs },
         { count: fng },
         { data: docs },
@@ -178,7 +181,7 @@ export default function Profile() {
         { data: badgeCatalogue },
         { data: userBadgeRows },
       ] = await Promise.all([
-        supabase.from('user_profiles').select('id, name, bio, university_id, faculty_id, filiere_id, current_semester, points, uploads_count, total_downloads, followers_count, following_count, posts_count, is_fondateur, is_admin, is_moderator, is_banned, created_at, onboarded_at, wants_ai_notification, universities(name)').eq('id', uid).single(),
+        supabase.from('user_profiles').select('id, name, bio, university_id, faculty_id, filiere_id, current_semester, points, uploads_count, total_downloads, followers_count, following_count, posts_count, is_fondateur, is_admin, is_moderator, is_banned, created_at, onboarded_at, wants_ai_notification, universities!user_profiles_university_id_fkey(name)').eq('id', uid).single(),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', uid),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', uid),
         supabase.from('documents')
@@ -199,6 +202,11 @@ export default function Profile() {
         supabase.from('user_badges').select('badge_code, awarded_at, times_awarded').eq('user_id', uid),
       ])
 
+      if (profErr) {
+        // Don't pretend the profile is empty when the request actually failed.
+        setLoadError("Impossible de charger le profil. Vérifie ta connexion et réessaie.")
+        console.error('profile load failed', profErr)
+      }
       setProfile(prof || {})
       document.title = prof?.name ? `${prof.name} — 9rawZid9ra` : 'Profil — 9rawZid9ra'
       setEditName(prof?.name || '')
@@ -340,6 +348,7 @@ export default function Profile() {
     setSavingStudies(false)
     if (error) { notify.error(error.message); return }
     notify.success('Études mises à jour')
+    refreshProfile()
     setProfile(p => ({
       ...p,
       university_id: editUni ? parseInt(editUni) : null,
@@ -459,6 +468,7 @@ export default function Profile() {
       notify.error('Erreur lors de la sauvegarde.')
     } else {
       notify.success('Profil mis à jour')
+      refreshProfile()
       setProfile(p => ({ ...p, name: cleanName, bio: cleanBio }))
     }
   }
@@ -469,6 +479,7 @@ export default function Profile() {
     await supabase.from('user_profiles').update({ university_id: parseInt(uniModalSel) }).eq('id', currentUser.id)
     const uniObj = unis.find(u => String(u.id) === uniModalSel)
     setProfile(p => ({ ...p, university_id: parseInt(uniModalSel), universities: { name: uniObj?.name || '' } }))
+    refreshProfile()
     setUniModalSaving(false)
     setShowUniModal(false)
   }
@@ -478,7 +489,7 @@ export default function Profile() {
     const { data: follows } = await supabase.from('user_follows').select('follower_id').eq('following_id', profile.id)
     if (follows?.length) {
       const ids = follows.map(f => f.follower_id)
-      const { data: users } = await supabase.from('user_profiles').select('id, name, universities(name)').in('id', ids)
+      const { data: users } = await supabase.from('user_profiles').select('id, name, universities!user_profiles_university_id_fkey(name)').in('id', ids)
       setFollowersList(users || [])
     } else { setFollowersList([]) }
     setListLoading(false)
@@ -489,7 +500,7 @@ export default function Profile() {
     const { data: follows } = await supabase.from('user_follows').select('following_id').eq('follower_id', profile.id)
     if (follows?.length) {
       const ids = follows.map(f => f.following_id)
-      const { data: users } = await supabase.from('user_profiles').select('id, name, universities(name)').in('id', ids)
+      const { data: users } = await supabase.from('user_profiles').select('id, name, universities!user_profiles_university_id_fkey(name)').in('id', ids)
       setFollowingList(users || [])
     } else { setFollowingList([]) }
     setListLoading(false)
@@ -500,6 +511,20 @@ export default function Profile() {
     setShowFollowSheet(true)
     if (tab === 'followers') openFollowers(); else openFollowing()
   }
+
+  if (loadError) return (
+    <div><style>{css}</style><Navbar />
+      <div className="pf-layout">
+        <EmptyState
+          icon="alert"
+          title="Profil indisponible"
+          action={<Button variant="primary" onClick={() => window.location.reload()}>Réessayer</Button>}
+        >
+          <p className="t-body qz-muted">{loadError}</p>
+        </EmptyState>
+      </div>
+    </div>
+  )
 
   if (loading) return (
     <div><style>{css}</style><Navbar />
