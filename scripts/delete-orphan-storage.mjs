@@ -17,13 +17,13 @@
 import { createClient } from '@supabase/supabase-js'
 
 const URL = process.env.SUPABASE_URL || 'https://egqjyzuinoljadzxiwpb.supabase.co'
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const KEY = process.env.SB_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 const BUCKET = 'documents'
 const CONFIRM = process.argv.includes('--confirm')
 
 if (!KEY) {
-  console.error('SUPABASE_SERVICE_ROLE_KEY is not set.')
-  console.error('Supabase dashboard -> Settings -> API -> service_role key.')
+  console.error('No admin key: set SB_SECRET_KEY (preferred) or SUPABASE_SERVICE_ROLE_KEY.')
+  console.error('Supabase dashboard -> Settings -> API Keys.')
   process.exit(1)
 }
 

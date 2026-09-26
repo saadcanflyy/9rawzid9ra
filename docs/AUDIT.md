@@ -3,7 +3,11 @@
 **Date**: 2026-09-27 · **Scope**: Supabase `egqjyzuinoljadzxiwpb` (eu-west-3, Postgres 17.6, ACTIVE_HEALTHY), React CRA on Vercel, edge function `notify-email`.
 **Phase 1 — audit only. Nothing was changed.** Every write test below ran inside a transaction that was deliberately aborted, so no data was modified.
 
-> ## Phase 2 status — 2026-09-26 (final sweep re-run 2026-09-26)
+> ## Phase 2 status — CLOSED 2026-09-26
+>
+> Every Critical, every High and every actioned Medium is fixed and verified.
+> What remains is listed under "Still open" below — all of it either a dashboard
+> toggle only you can flip, or a deliberate accepted risk.
 >
 > | # | Finding | Status | Commit |
 > |---|---|---|---|
@@ -11,10 +15,10 @@
 > | H1 | Every signed-in user could read all emails | **Fixed** | `16c5024` |
 > | H2 | `reset_daily_ai_usage` callable by anon | **Fixed** | `2ef9c73` |
 > | H3 | No security headers | **Fixed** | `dae5c0d` |
-> | H4 | `react-router-dom` advisory | **Fixed on branch** `chore/react-router-upgrade` — awaiting preview click-through | `pending merge` |
+> | H4 | `react-router-dom` advisory | **Fixed** — 7.18.4 merged after preview click-through | `e6a8268` |
 > | H5 | No error boundary | **Fixed** | `dae5c0d` |
-> | H6 | No error monitoring | **Live** — DSN set; `/sentry-test` pending your check | `dae5c0d`, `a0fcabf` |
-> | H7 | ESLint disabled in prod builds | **Fixed** | `dae5c0d` |
+> | H6 | No error monitoring | **Fixed** — Sentry live, test error received, `/sentry-test` removed | `dae5c0d`, `fcac3bb` |
+> | H7 | ESLint disabled in prod builds | **Fixed** — and re-fixed: the `build` script was overriding `.env.production` | `dae5c0d`, `a2e50d9` |
 > | M1 | Analytics RPCs public | **Fixed** | `2ef9c73` |
 > | M2 | `refresh_module_stats` callable by anon | **Fixed** | `2ef9c73` |
 > | M3 | `check_download_limit` callable by anon | **Fixed** | `2ef9c73` |
@@ -31,7 +35,9 @@
 > | — | Senpai contact wired to Messenger + stats | **Fixed** | `ff6ff3f` |
 > | L4 | `rls_auto_enable` executable by anon | **Fixed** | `2ef9c73` |
 > | — | Senpai email exposed to students | **Fixed** (new rule) | `4b3ea4e` |
-> | M12 (leaked-password protection), L1–L3, L5–L7 | | Open — M12 is a dashboard toggle |
+> | — | Source maps served publicly (full unminified source) | **Fixed** — uploaded to Sentry, stripped from the deploy | `a2e50d9` |
+> | — | Maintenance functions never actually ran | **Fixed** — `pg_cron` was reported enabled but wasn't; now installed + scheduled | `a2e50d9` |
+> | **C2** | **`pause_inactive_senpais()` callable by anonymous users** — regression of C1 | **Fixed** + permanent event-trigger guard | `20260927001400` |
 >
 > Re-ran the Phase-1 probe battery after the fixes — every attack path blocked,
 > every legitimate path still working:
@@ -48,11 +54,52 @@
 >     student bypass ratelimit     -> blocked
 > ```
 >
-> **Orphaned storage files awaiting your go-ahead**: 26 files / 41 MB, all
-> uploaded 2026-06-08, owned by the admin and moderator accounts, mostly exact
-> duplicate pairs (same size, timestamps seconds apart) — they look like
-> failed-and-retried launch-day uploads rather than deleted documents. Listed
-> but **not deleted**; say the word and they go.
+> ### Still open
+>
+> | Item | Why it's still open |
+> |---|---|
+> | **M12** leaked-password protection | Dashboard toggle: Authentication → Policies. One click. |
+> | **Rotate the leaked `service_role` key** | Runbook written: [`KEY-ROTATION.md`](KEY-ROTATION.md). Not executed — yours to run. |
+> | **M10** realtime at 10× | Partly fixed. Structural; revisit when concurrency actually climbs. |
+> | **M11** 44 cold unindexed FKs | 12 hot ones indexed. The rest cost more to maintain than they'd save today. |
+> | **L1** 5 RLS-on/no-policy tables | Fail-closed, so safe. Needs a product decision: add policies or drop them. |
+> | **L2** `pg_trgm` in `public` | Accepted risk, documented. Moving it breaks fuzzy search. |
+> | **L3, L5, L6** | Low value; noted for when the numbers grow. |
+> | **L7** npm advisories | Build-time only. Real fix is migrating off CRA to Vite — a project, not a patch. |
+> | **Orphaned storage files** (26 files / 41 MB) | You confirmed deletion; the script output was never pasted back, so I can't record it as done. Re-run `node scripts/delete-orphan-storage.mjs` (dry run) to check. |
+>
+> ### Three things that were not what they looked like
+>
+> All three were believed done. None was. This is the most useful part of this
+> document:
+>
+> 0. **C1 came back, and worse.** The 000300 migration revoked PUBLIC execute and
+>    granted an allow-list. Every migration that ran after it created functions
+>    that silently picked up Postgres' default `EXECUTE TO PUBLIC` again — the
+>    `ALTER DEFAULT PRIVILEGES` did not hold for them. The result was an
+>    **unauthenticated denial of service**: `pause_inactive_senpais()` guards with
+>    `auth.uid() is not null and not is_staff()`, which is *false* for anon, so
+>    a POST to `/rest/v1/rpc/pause_inactive_senpais` from anyone on the internet
+>    would pause every senpai with a 30-day-unanswered request. Verified
+>    exploitable, then fixed three ways: re-revoke + allow-list, a guard that
+>    keys on PostgREST's `request.method` instead of on the absence of a JWT, and
+>    an **event trigger** (`trg_revoke_public_execute`) that strips the PUBLIC
+>    grant from every function created in `public` from now on. Post-fix: exactly
+>    28 anon-executable functions, matching the allow-list, and 0 without a
+>    pinned `search_path`.
+> 1. **`pg_cron` was not installed.** `installed_version` was `null` despite the
+>    toggle being reported as enabled, so `pause_inactive_senpais()` and
+>    `award_top_university_contributors()` were never going to fire. Installed
+>    and scheduled (`20260927001300_cron_jobs.sql`).
+> 2. **The ESLint gate was still off.** `.env.production` said
+>    `DISABLE_ESLINT_PLUGIN=false`, but `package.json`'s build script set
+>    `DISABLE_ESLINT_PLUGIN=true` inline, and an inline env var beats a dotenv
+>    file. H7 was only really fixed in `a2e50d9`.
+>
+> The lesson, and the reason the monthly checklist below is written as queries
+> rather than as reminders: **verify the state, don't trust the toggle** — and
+> don't trust a fix either. Two of the three above were things I had already
+> marked "Fixed" in this very table.
 
 ## How to read this
 
@@ -62,7 +109,7 @@ Each finding has **What / Where / Impact / Fix**. Severity is about *category an
 
 | Severity | Count |
 |---|---|
-| Critical | 1 |
+| Critical | 2 (C1 in Phase 1; C2 found 2026-09-26 as a regression of C1) |
 | High | 7 |
 | Medium | 13 |
 | Low | 7 |
@@ -89,6 +136,15 @@ Worth stating plainly, because the foundations are good and most of the fix list
 - **Impact**: **Verified** — calling it as `anon` succeeds. Anyone on the internet, with no account, can `POST /rest/v1/rpc/activate_senpai_profile {"p_id": N}` and flip any senpai application to `active`. That bypasses staff approval entirely, awards the `senpai_filiere` badge, and publishes that person (with their email, via `get_filiere_senpais`) to students. Iterating `p_id` 1..N activates every pending and rejected application.
 - **Root cause**: I wrote it as an internal helper for `apply_to_be_senpai()`/`approve_senpai()` and granted execute only to those paths — but never `REVOKE`d the Postgres default of `EXECUTE TO PUBLIC`. The older migrations did this correctly (`revoke all on function … from public, anon`); the new one didn't.
 - **Fix**: `revoke all on function public.activate_senpai_profile(integer) from public, anon, authenticated;` — it only needs to be reachable from the two `SECURITY DEFINER` callers, which don't need a grant. Add an `is_staff()` guard as defence in depth.
+
+---
+
+### C2 — `pause_inactive_senpais()` callable by anonymous users (found 2026-09-26, regression of C1)
+
+- **What**: every function created by a migration *after* the C1 fix picked up Postgres' default `EXECUTE ON FUNCTION TO PUBLIC` again. `pause_inactive_senpais()` was among them, and its guard — `if auth.uid() is not null and not is_staff()` — evaluates to false for an anonymous caller, because anon has no `auth.uid()`. The guard was written to let the scheduler through and accidentally let the entire internet through with it.
+- **Where**: `20260927000700_senpai_messaging.sql`; same guard shape in `award_top_university_contributors()`.
+- **Impact**: **Verified.** An unauthenticated `POST /rest/v1/rpc/pause_inactive_senpais` pauses every senpai carrying a 30-day-unanswered request. Repeatable, free, no account needed — a denial of service on the senpai feature that a moderator would have to undo by hand. Also left world-executable: `admin_list_users`, `admin_top_users`, `get_my_ban_status`, `get_my_senpai_requests`, and eleven `fn_*` functions (all internally guarded, so defence-in-depth rather than live holes).
+- **Fix**: `20260927001400_function_grants_regression.sql` — re-revoke and re-grant the allow-list; change both scheduler guards to key on PostgREST's `request.method` GUC (present on any API call, absent for pg_cron) rather than on the absence of a JWT; and install event trigger `trg_revoke_public_execute`, which strips the PUBLIC grant from every function created in `public` from now on. Verified after: anon blocked on all three, anon browsing unaffected, cron path works, staff path works, a newly created function comes out as `{postgres=X/postgres}`.
 
 ---
 
@@ -221,13 +277,15 @@ Bucket `documents` is `public: true` with a 50 MB per-file limit and 13 allowed 
 
 **Frontend resilience**: no error boundary (H5), no retry/backoff on Supabase calls, no offline detection, no global "something went wrong" state. Pages that fail to load mostly render empty states rather than errors, so a Supabase outage looks like "there are no documents" — actively misleading. Fix alongside H5/H6.
 
-## Monitoring (currently: none)
+## Monitoring — as of 2026-09-26
 
-Nothing is wired — no Sentry, no PostHog, no uptime check, no alerts. Minimum viable setup:
-- **Sentry** for frontend + edge function errors (H6), alert on error-rate spike.
-- **Uptime monitor** (UptimeRobot/BetterStack free) on `https://9rawzid9ra.space` and on a Supabase health endpoint, 5-minute interval — doubles as the anti-pause keep-alive.
-- **Supabase usage alerts**: Dashboard → Settings → Billing → set email alerts at 80% of egress/storage/DB size.
-- **A weekly glance** at the Admin → Analytiques tab you already built (zero-result searches, moderation queue depth).
+| | Status |
+|---|---|
+| **Sentry** | **Live.** `@sentry/react` v11, EU region, `tracesSampleRate 0.1`, `sendDefaultPii: false`. Test error received and confirmed. `ErrorBoundary` forwards through `window.Sentry`. Source maps upload at build time and are stripped from the deploy, so stack traces name real files. |
+| **Uptime monitor** | Still to do — UptimeRobot/BetterStack free, 5-min interval on `https://9rawzid9ra.space`. Doubles as the anti-pause keep-alive. |
+| **Supabase usage alerts** | Still to do — Settings → Billing → email alerts at 80% of egress/storage/DB size. |
+| **Scheduled maintenance** | **Live.** `pg_cron`: `senpai-pause-inactive` daily 02:00 UTC, `senpai-top-contributors` 03:00 UTC on the 1st. Check with `select * from cron.job_run_details order by start_time desc limit 20;` |
+| **Weekly glance** | Admin → Analytiques (zero-result searches, moderation queue depth). |
 
 ---
 
@@ -235,18 +293,25 @@ Nothing is wired — no Sentry, no PostHog, no uptime check, no alerts. Minimum 
 
 I will not touch any of these; several are irreversible or affect billing.
 
-1. **Supabase → Authentication → Providers/Policies**: turn on **leaked-password protection** (M12); confirm **email confirmation is required**; set **minimum password length ≥ 8** (12 recommended).
-2. **Supabase → Authentication → Rate limits**: review sign-up / sign-in / OTP limits (defaults are generous for an unprotected public signup).
-3. **Supabase → Authentication → Bot protection**: enable **CAPTCHA** (hCaptcha or Cloudflare Turnstile) on sign-up and sign-in — the single best defence against mass fake-account creation, which is what makes H1 (email harvesting) cheap.
-4. **Supabase → Authentication → URL Configuration**: lock the **redirect allow-list** to `https://9rawzid9ra.space/**` and your Vercel preview domain only.
-5. **Supabase → Settings → API**: the `20260925000600_notify_email_vault.sql` migration says the service_role key was exposed at some point and should be rolled. Git history is clean, but if that key was ever pasted into a chat, an email, or a deploy log, **roll it now** and update the `SUPABASE_SERVICE_ROLE_KEY` secret on the edge function.
-6. **Supabase → Settings → Billing**: set a **spend cap** so a traffic spike or abuse can't produce a surprise bill.
-7. **Vercel → Project → Firewall**: enable Attack Challenge Mode / rate limiting on `/` if you see scripted traffic.
-8. **Sentry + UptimeRobot accounts** (free) so the keys exist before I wire them in Phase 2.
+**Done** (reported by you, 2026-09-26): email confirmation required, minimum
+password length 8, redirect allow-list, Sentry project, Turnstile site key.
+Turnstile is live in production, so Supabase bot protection is now safe to
+enable if you haven't already.
+
+**Still outstanding:**
+
+1. **Authentication → Policies**: turn on **leaked-password protection** (M12). One toggle.
+2. **Authentication → Bot protection**: enable CAPTCHA now that Turnstile is live — this is the defence that makes mass fake-account creation expensive.
+3. **Authentication → Rate limits**: review sign-up / sign-in / OTP limits; the defaults are generous for a public signup.
+4. **Rotate the `service_role` key** — see [`KEY-ROTATION.md`](KEY-ROTATION.md). Take route A; route B takes the site down.
+5. **Settings → Billing**: set a **spend cap** so a spike or abuse can't produce a surprise bill.
+6. **Vercel → Firewall**: enable Attack Challenge Mode if you see scripted traffic.
+7. **Uptime monitor** (UptimeRobot/BetterStack free) — also keeps the free-tier project from pausing over a quiet summer.
+8. **Cloudflare Turnstile**: remove the temporary Vercel preview hostname from the widget's allowed domains.
 
 ---
 
-## Proposed Phase 2 order
+## Proposed Phase 2 order *(historical — this is what was planned; see the status table at the top for what happened)*
 
 Cheap, high-value, low-risk first. One commit per fix, each with a verification query.
 
@@ -317,14 +382,59 @@ select c.conrelid::regclass::text tbl, a.attname fk_col
                     where i.indrelid=c.conrelid and (i.indkey::int2[])[0]=k.attnum);
 ```
 
-## Appendix C — monthly security checklist
+## Appendix C — monthly checklist
 
-- [ ] Run `get_advisors` (security + performance); confirm no new WARN/ERROR.
-- [ ] Re-run the anon + normal-user probe batteries (Appendix B); all should stay blocked.
-- [ ] `npm audit` — triage anything new that ships to the browser (ignore build-only noise).
-- [ ] Check Supabase usage vs limits: DB size, storage, **egress**, realtime peak connections.
-- [ ] Confirm a backup exists from the last 24h; once a quarter, actually test a restore into a scratch project.
-- [ ] Skim Sentry for the top 5 unresolved errors.
-- [ ] Review the staff queues: professor queue, senpai applications, senpai reports, moderation queue.
-- [ ] Check `search_log` / `notifications` row counts; prune if growing unbounded.
-- [ ] Confirm no new `SECURITY DEFINER` function shipped without `revoke … from public` and a `search_path`.
+Ten minutes, once a month. Every item is a thing you *check*, not a thing you
+trust — twice during this audit something reported as enabled wasn't.
+
+**Database**
+
+- [ ] Run `get_advisors` (security **and** performance); no new WARN/ERROR.
+- [ ] No new function is world-executable or missing a pinned `search_path`:
+      ```sql
+      select p.oid::regprocedure::text from pg_proc p
+        join pg_namespace n on n.oid=p.pronamespace
+       where n.nspname='public'
+         and not exists (select 1 from pg_depend d where d.objid=p.oid and d.deptype='e')
+         and (has_function_privilege('anon', p.oid, 'execute') or p.proconfig is null);
+      ```
+      Expect **exactly 28** anon-executable and **0** without a `search_path`.
+      Anything else is either deliberate (check it against the allow-list in
+      `20260927001400_function_grants_regression.sql`) or a new bug — this
+      regressed once already and was exploitable.
+- [ ] The guard that prevents that regression is still installed:
+      ```sql
+      select evtname, evtenabled from pg_event_trigger where evtname='trg_revoke_public_execute';
+      ```
+      One row, `evtenabled = 'O'`. If it's gone, re-apply migration `…001400`.
+- [ ] No key ever lands back in a function body:
+      ```sql
+      select p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+       where n.nspname in ('public','extensions') and p.prosrc ~ 'eyJ[A-Za-z0-9_-]{10,}';
+      ```
+- [ ] Cron actually ran: `select jobname, status, start_time from cron.job_run_details order by start_time desc limit 10;`
+      Expect ~30 `senpai-pause-inactive` rows a month, all `succeeded`.
+- [ ] `search_log` and `notifications` row counts — prune if they're running away.
+
+**Access**
+
+- [ ] Re-run the impersonation probes (Appendix B): anon still blocked on the
+      privileged RPCs, a normal student still can't read emails, `ban_reason`,
+      or `admin_list_users`.
+- [ ] Glance at the admin/moderator list — nobody has quietly gained a role.
+
+**Frontend and deploy**
+
+- [ ] `npm audit` — triage only what ships to the browser; build-time noise is noise.
+- [ ] Confirm the deployed build has **no** `.map` files:
+      `curl -s -o /dev/null -w '%{http_code}' https://9rawzid9ra.space/static/js/main.<hash>.js.map` → expect `404`.
+- [ ] Skim Sentry: top 5 unresolved issues, and check the error rate hasn't stepped up since the last deploy.
+
+**Capacity**
+
+- [ ] Supabase usage vs limits — DB size, storage, **egress** (the one that bites first), realtime peak connections.
+- [ ] A backup exists from the last 24h. Once a quarter, actually restore one into a scratch project — an untested backup isn't a backup.
+
+**Product hygiene**
+
+- [ ] Work the staff queues: professor requests, senpai applications, senpai reports, moderation queue.

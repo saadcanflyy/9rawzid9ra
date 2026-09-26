@@ -3,7 +3,13 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const RESEND_API_KEY   = Deno.env.get("RESEND_API_KEY") ?? "";
 const SUPABASE_URL     = Deno.env.get("SUPABASE_URL") ?? "";
-const SUPABASE_SVC_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+// Prefer a new-style secret key (sb_secret_…) when one is set, else fall back
+// to the platform-injected legacy service_role JWT. Supabase reserves the
+// SUPABASE_ prefix for its own secrets, so a new key cannot reuse that name —
+// hence SB_SECRET_KEY. Reading both is what makes the rotation zero-downtime:
+// setting the secret cuts over, deleting it rolls back. See docs/KEY-ROTATION.md.
+const SUPABASE_SVC_KEY =
+  Deno.env.get("SB_SECRET_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const WEBHOOK_SECRET   = Deno.env.get("WEBHOOK_SECRET") ?? "";
 const ADMIN_ID         = "84c11086-6041-4118-8f4c-138a0664966f";
 const FROM             = "9rawZid9ra <support@mail.9rawzid9ra.space>";
