@@ -460,7 +460,7 @@ export default function ModulePage() {
                   Une question sur ce module ?{' '}
                   <button type="button" className="qz-btn qz-btn--link" style={{ fontSize: 13 }}
                     onClick={async () => {
-                      try { await contactSenpai(supabase, moduleSenpai, { filiereName: filName }) }
+                      try { await contactSenpai(supabase, moduleSenpai) }
                       catch (error) { notify.error(senpaiContactErrorMessage(error)) }
                     }}>
                     Demande à {moduleSenpai.name} (senpai {filName || ''})

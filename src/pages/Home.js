@@ -645,7 +645,7 @@ function PersonalizedHome() {
         <div className="ph-side">
           {p?.filiere_id && (
             <Card>
-              <SenpaiSection filiereId={p.filiere_id} filiereName={p.filiere_name} studentName={profile?.name}
+              <SenpaiSection filiereId={p.filiere_id}
                 recruitEligible={semesterAtLeast(p.semester, 3)} compact title="Senpai de ta filière" />
             </Card>
           )}

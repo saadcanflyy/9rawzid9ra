@@ -9,7 +9,7 @@ import { cachedRpc } from '../lib/rpcCache'
 
 // Card list of up to 3 senpais for one filière, with a recruiting fallback when
 // there are none. Used on Home, the Browse filière view and the onboarding reveal.
-export default function SenpaiSection({ filiereId, filiereName, studentName, compact, recruitEligible, title }) {
+export default function SenpaiSection({ filiereId, compact, recruitEligible, title }) {
   const [senpais, setSenpais] = useState(null)
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export default function SenpaiSection({ filiereId, filiereName, studentName, com
 
   const handleContact = async (s) => {
     try {
-      await contactSenpai(supabase, s, { studentName, filiereName })
+      await contactSenpai(supabase, s)
     } catch (error) {
       notify.error(senpaiContactErrorMessage(error))
     }

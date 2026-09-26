@@ -700,7 +700,7 @@ export default function Browse() {
 
           {selFil && (
             <div style={{ marginBottom: 'var(--space-4)' }}>
-              <SenpaiSection filiereId={parseInt(selFil)} filiereName={filName} studentName={profile?.name}
+              <SenpaiSection filiereId={parseInt(selFil)}
                 recruitEligible={user && semesterAtLeast(profile?.current_semester, 3)} />
             </div>
           )}

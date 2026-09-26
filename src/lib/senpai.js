@@ -1,7 +1,7 @@
 // 9rawZid9ra — Senpai de filière (volunteer student mentors, per filière).
-// Contact goes through a client-built mailto: link, never a static href and
-// never sent through our servers — see the migration for why (no edge
-// function, no email-sending API key, senpai's reply is never seen by us).
+// Contact goes through the in-app Messenger. No RPC returns a senpai's email
+// to a student (migration 20260927000400); the DM's `new_message` notification
+// is what reaches them by email, via the notify-email edge function.
 
 export const HELP_WITH_OPTIONS = [
   { id: 'exams',       label: 'Examens' },
@@ -44,14 +44,18 @@ export function senpaiContactErrorMessage(error) {
 
 /**
  * Logs the contact attempt (rate limits enforced server-side), then opens the
- * student's own mail client with the senpai's address pre-filled — built here,
- * at click time, rather than rendered as a static <a href="mailto:…">.
+ * in-app Messenger with the senpai.
+ *
+ * Contact deliberately does NOT use the senpai's email: no RPC returns it to a
+ * student any more (migration 20260927000400). The DM raises a `new_message`
+ * notification, which the notify-email edge function turns into an email in the
+ * senpai's inbox — so they're still reached by email, but neither side ever
+ * learns the other's address.
  */
-export async function contactSenpai(supabase, senpai, { studentName, filiereName } = {}) {
+export async function contactSenpai(supabase, senpai) {
   const { error } = await supabase.rpc('log_senpai_contact', { p_senpai_id: senpai.id });
   if (error) throw error;
-  const subject = `Question sur ${filiereName || 'ta filière'} — via 9rawZid9ra`;
-  const greeting = studentName ? `Salut ${senpai.name.split(' ')[0]},\n\nJe suis ${studentName}` : `Salut ${senpai.name.split(' ')[0]},\n\nJe suis un(e) étudiant(e)`;
-  const body = `${greeting}, de ${filiereName || 'ta filière'} sur 9rawZid9ra.\n\n[Ta question ici]\n\nMerci !`;
-  window.location.href = `mailto:${senpai.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.dispatchEvent(new CustomEvent('open-dm', {
+    detail: { userId: senpai.user_id, name: senpai.name || 'Senpai' },
+  }));
 }

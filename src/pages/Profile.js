@@ -557,7 +557,7 @@ export default function Profile() {
                 <Button variant={isFollowing ? 'secondary' : 'primary'} disabled={followBusy} onClick={handleFollow}>{isFollowing ? 'Suivi' : 'Suivre'}</Button>
                 {senpaiInfo && (
                   <Button variant="secondary" onClick={async () => {
-                    try { await contactSenpai(supabase, { ...senpaiInfo, name: profile?.name || 'Étudiant' }, { filiereName: senpaiInfo.filiere_name }) }
+                    try { await contactSenpai(supabase, { id: senpaiInfo.id, user_id: targetId, name: profile?.name || 'Étudiant' }) }
                     catch (error) { notify.error(senpaiContactErrorMessage(error)) }
                   }}>Lui écrire</Button>
                 )}

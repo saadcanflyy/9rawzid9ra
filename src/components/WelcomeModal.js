@@ -291,7 +291,7 @@ export default function WelcomeModal() {
               Un étudiant bénévole de {selFil?.name || 'ta filière'} qui répond aux questions sur les examens, les modules et l'orientation.
             </p>
             <div style={{ width: '100%' }}>
-              <SenpaiSection filiereId={selFil?.id} filiereName={selFil?.name} recruitEligible />
+              <SenpaiSection filiereId={selFil?.id} recruitEligible />
             </div>
             <div className="qz-wm__actions">
               <Button variant="primary" block onClick={() => setStep(5)}>Continuer</Button>

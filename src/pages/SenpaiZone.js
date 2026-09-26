@@ -770,7 +770,7 @@ export default function SenpaiZone() {
               ) : !profile?.filiere_id ? (
                 <EmptyState icon="message" title="Ajoute ta filière dans ton profil" />
               ) : (
-                <SenpaiSection filiereId={profile.filiere_id} studentName={profile.name}
+                <SenpaiSection filiereId={profile.filiere_id}
                   recruitEligible={semesterAtLeast(profile.current_semester, 3) || profile.is_admin} />
               )}
             </div>
