@@ -14,7 +14,7 @@ import { notify } from '../design-system/toast'
 import { qualityLevel, displayStatus } from '../lib/quality'
 import { levelFor, formatPoints, POINT_RULES, LEVELS, LEVEL_TONES, BADGE_TIER_TONES, PERIODS, rankLabel } from '../lib/reputation'
 import {
-  HELP_WITH_OPTIONS, RESPONSE_ESTIMATES, helpWithLabel, responseLabel, contactSenpai, senpaiContactErrorMessage,
+  HELP_WITH_OPTIONS, RESPONSE_ESTIMATES, contactSenpai, senpaiContactErrorMessage,
 } from '../lib/senpai'
 
 const css = `

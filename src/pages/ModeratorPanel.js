@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import ConfirmModal from '../components/ConfirmModal'
 import PanelLayout from '../components/PanelLayout'
@@ -47,7 +46,6 @@ const RT_TONE = { independent: 'brand', faculty: 'accent', university_with_facul
 const STATUS_TONE = { pending: 'warning', approved: 'success', rejected: 'danger' }
 
 export default function ModeratorPanel() {
-  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('overview')
   const [user, setUser]           = useState(null)
   const [profile, setProfile]     = useState(null)

@@ -283,6 +283,7 @@ export default function Upload() {
         }
       })
       .catch(() => { clearTimeout(timeout); loginRedirect() })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

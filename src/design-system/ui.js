@@ -329,6 +329,8 @@ import { trapFocus, focusFirst } from './focusTrap';
       var untrap = modalRef.current ? trapFocus(modalRef.current) : null;
       var t = setTimeout(function () { if (cancelRef.current) cancelRef.current.focus(); }, 0);
       return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); };
+      // Mount-only: the trap is installed once per open dialog.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     return h('div', { className: 'qz-scrim', onClick: props.onClose },
       h('div', { className: 'qz-modal', ref: modalRef, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'qz-modal-t', onClick: function (e) { e.stopPropagation(); } },
@@ -487,6 +489,8 @@ import { trapFocus, focusFirst } from './focusTrap';
       var untrap = sheetRef.current ? trapFocus(sheetRef.current) : null;
       var t = setTimeout(function () { if (sheetRef.current) focusFirst(sheetRef.current, sheetRef.current); }, 0);
       return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); };
+      // Mount-only: the trap is installed once per open dialog.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     return h('div', { className: 'qz-scrim', onClick: props.onClose },
       h('div', { className: cx('qz-sheet', props.side === 'right' && 'qz-sheet--right', props.wide && 'qz-sheet--wide'), ref: sheetRef, tabIndex: -1, role: 'dialog', 'aria-modal': 'true', 'aria-label': props.title, onClick: function (e) { e.stopPropagation(); } },
@@ -650,6 +654,8 @@ import { trapFocus, focusFirst } from './focusTrap';
       var untrap = modalRef.current ? trapFocus(modalRef.current) : null;
       var t = setTimeout(function () { if (modalRef.current) focusFirst(modalRef.current, modalRef.current); }, 0);
       return function () { window.removeEventListener('keydown', onKey); clearTimeout(t); if (untrap) untrap(); };
+      // Mount-only: the trap is installed once per open dialog.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
     return h('div', { className: 'qz-scrim', onClick: props.onClose },
       h('div', { className: 'qz-modal', ref: modalRef, tabIndex: -1, role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'qz-report-t', onClick: function (e) { e.stopPropagation(); } },

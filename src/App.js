@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { supabase } from './supabase'
 import { AuthProvider } from './context/AuthContext'
+import ErrorBoundary from './components/ErrorBoundary'
 import Home from './pages/Home'
 import Browse from './pages/Browse'
 import ModulePage from './pages/ModulePage'
@@ -34,7 +35,7 @@ function BanScreen({ banInfo }) {
   return (
     <div style={{ minHeight:'100vh', background:'#02040A', display:'flex', alignItems:'center', justifyContent:'center', padding:'2rem', fontFamily:'Outfit,sans-serif' }}>
       <div style={{ maxWidth:440, textAlign:'center' }}>
-        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568', letterSpacing:'2px', marginBottom:'1rem' }}>// compte suspendu</div>
+        <div style={{ fontFamily:'DM Mono,monospace', fontSize:'0.62rem', color:'#4A5568', letterSpacing:'2px', marginBottom:'1rem' }}>{'// compte suspendu'}</div>
         <div style={{ fontSize:'1.5rem', fontWeight:700, color:'#fff', marginBottom:'0.5rem' }}>Ton compte a été suspendu.</div>
         {banInfo.ban_reason && <div style={{ fontSize:'0.88rem', color:'#94A3B8', marginBottom:'0.5rem' }}>Raison : <span style={{color:'#E2E8F0'}}>{banInfo.ban_reason}</span></div>}
         <div style={{ fontSize:'0.85rem', color:'#94A3B8', marginBottom:'1.5rem' }}>Jusqu'au : <span style={{color:'#F87171'}}>{fmtDate(banInfo.banned_until)}</span></div>
@@ -91,6 +92,7 @@ function App() {
   if (bannedUser) return <BanScreen banInfo={bannedUser} />
 
   return (
+    <ErrorBoundary>
     <AuthProvider>
     <BrowserRouter>
       <Routes>
@@ -139,6 +141,7 @@ function App() {
       />
     </BrowserRouter>
     </AuthProvider>
+    </ErrorBoundary>
   )
 }
 

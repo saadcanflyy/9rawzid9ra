@@ -21,7 +21,6 @@ const PT = {
 }
 
 const stripHtml = (str) => str.replace(/<[^>]*>/g, '').trim()
-const inits = n => (n || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 const fmtAgo = d => {
   const s = Math.floor((Date.now() - new Date(d)) / 1000)
   if (s < 60) return 'maintenant'

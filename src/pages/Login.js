@@ -61,7 +61,7 @@ export default function Login() {
     isSubmittingRef.current = true
     setLoading(true)
     try {
-      const { data, error: err } = await Promise.race([
+      const { error: err } = await Promise.race([
         supabase.auth.signInWithPassword({ email: email.trim(), password }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000)),
       ])

@@ -108,7 +108,6 @@ export default function ModulePage() {
   const [viewedDocs, setViewedDocs] = useState(() => {
     try { return new Set(JSON.parse(sessionStorage.getItem('9rz_viewed_docs') || '[]')) } catch { return new Set() }
   })
-  const [focusFeedback, setFocusFeedback] = useState(false)
 
   const markViewed = (docId) => {
     setViewedDocs(prev => {
@@ -282,7 +281,7 @@ export default function ModulePage() {
       toast.custom((t) => (
         <div style={{ opacity: t.visible ? 1 : 0, transition: 'opacity .15s ease' }}>
           <Toast tone="success" title="Téléchargé">
-            <Button variant="link" size="sm" onClick={() => { toast.dismiss(t.id); setPreviewDoc(doc); setFocusFeedback(true) }}>Donner mon avis</Button>
+            <Button variant="link" size="sm" onClick={() => { toast.dismiss(t.id); setPreviewDoc(doc) }}>Donner mon avis</Button>
           </Toast>
         </div>
       ), { duration: 6000 })
@@ -792,7 +791,7 @@ export default function ModulePage() {
         const level = qualityLevel(previewDoc)
         const canGiveFeedback = user && previewDoc.uploader_id !== user.id && viewedDocs.has(previewDoc.id)
         return (
-        <Sheet wide title={previewDoc.doc_number || TYPE_LABELS[previewDoc.doc_type] || previewDoc.doc_type} onClose={() => { setPreviewDoc(null); setFocusFeedback(false) }}>
+        <Sheet wide title={previewDoc.doc_number || TYPE_LABELS[previewDoc.doc_type] || previewDoc.doc_type} onClose={() => setPreviewDoc(null)}>
           <div className="mp-preview-layout">
             <div className="mp-preview-main">
               <div style={{ display: 'flex', gap: 8, marginBottom: 'var(--space-2)' }}>
