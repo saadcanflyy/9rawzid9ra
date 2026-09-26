@@ -3,6 +3,50 @@
 **Date**: 2026-09-27 · **Scope**: Supabase `egqjyzuinoljadzxiwpb` (eu-west-3, Postgres 17.6, ACTIVE_HEALTHY), React CRA on Vercel, edge function `notify-email`.
 **Phase 1 — audit only. Nothing was changed.** Every write test below ran inside a transaction that was deliberately aborted, so no data was modified.
 
+> ## Phase 2 status — 2026-09-26
+>
+> | # | Finding | Status | Commit |
+> |---|---|---|---|
+> | C1 | `activate_senpai_profile` callable by anon | **Fixed** | `2ef9c73` |
+> | H1 | Every signed-in user could read all emails | **Fixed** | `16c5024` |
+> | H2 | `reset_daily_ai_usage` callable by anon | **Fixed** | `2ef9c73` |
+> | H3 | No security headers | **Fixed** | `dae5c0d` |
+> | H4 | `react-router-dom` advisory | Open — needs a routing regression pass |
+> | H5 | No error boundary | **Fixed** | `dae5c0d` |
+> | H6 | No error monitoring | **Fixed (code)** — needs a DSN | `dae5c0d` |
+> | H7 | ESLint disabled in prod builds | **Fixed** | `dae5c0d` |
+> | M1 | Analytics RPCs public | **Fixed** | `2ef9c73` |
+> | M2 | `refresh_module_stats` callable by anon | **Fixed** | `2ef9c73` |
+> | M3 | `check_download_limit` callable by anon | **Fixed** | `2ef9c73` |
+> | M4 | 19 functions with mutable `search_path` | **Fixed** | `2ef9c73` |
+> | M5 | No storage DELETE policy | **Fixed** | `159fe73` |
+> | M6 | Storage INSERT not path-scoped | **Fixed** | `159fe73` |
+> | M10 | Realtime channel per tab | **Partly fixed** — navbar channel removed | `159fe73` |
+> | L4 | `rls_auto_enable` executable by anon | **Fixed** | `2ef9c73` |
+> | — | Senpai email exposed to students | **Fixed** (new rule) | `4b3ea4e` |
+> | M7, M8, M9, M11, M12, M13, L1–L3, L5–L7 | | Open |
+>
+> Re-ran the Phase-1 probe battery after the fixes — every attack path blocked,
+> every legitimate path still working:
+>
+> ```
+> C1  anon activate_senpai_profile -> blocked      OK anon search_catalog        -> works
+> H2  anon reset_daily_ai_usage    -> blocked      OK student reads names/points -> works
+> M2  anon refresh_module_stats    -> blocked      OK senpai RPC (no email col)  -> works
+> M1  anon get_analytics_extra     -> blocked      OK admin_list_users           -> works (17)
+> H1  student reads emails         -> blocked      OK admin get_analytics_extra  -> works
+> H1  student reads ban_reason     -> blocked
+>     student admin_list_users     -> blocked
+>     student self is_admin        -> blocked
+>     student bypass ratelimit     -> blocked
+> ```
+>
+> **Orphaned storage files awaiting your go-ahead**: 26 files / 41 MB, all
+> uploaded 2026-06-08, owned by the admin and moderator accounts, mostly exact
+> duplicate pairs (same size, timestamps seconds apart) — they look like
+> failed-and-retried launch-day uploads rather than deleted documents. Listed
+> but **not deleted**; say the word and they go.
+
 ## How to read this
 
 Each finding has **What / Where / Impact / Fix**. Severity is about *category and exploitability*, not just blast radius — an unauthenticated privilege escalation is Critical even when the thing it escalates to is modest.
