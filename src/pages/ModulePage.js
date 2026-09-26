@@ -19,9 +19,18 @@ const css = `
   .mp-hero { padding: var(--space-8) var(--space-6); border-bottom: 1px solid var(--border); background: var(--surface); }
   .mp-hero__inner { max-width: 1000px; margin: 0 auto; }
   .mp-hero__top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; }
+  /* Same min-width:auto trap as .mp-layout: the flex child would not shrink
+     below the intrinsic width of the long "filiere - ecole" eyebrow, holding
+     the hero at 446px in a 390px viewport. */
+  .mp-hero__top > * { min-width: 0; }
+  .mp-hero__top .t-eyebrow { overflow-wrap: anywhere; }
   .mp-hero__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-4); }
   .mp-layout { max-width: 1300px; margin: 0 auto; padding: var(--space-6); display: grid; grid-template-columns: 1fr 320px; gap: var(--space-8); align-items: start; }
   @media (max-width: 1023px) { .mp-layout { grid-template-columns: 1fr; } }
+  /* Grid items default to min-width:auto, so a track refuses to shrink below
+     its content intrinsic width. That made .mp-aside 683px wide inside a
+     390px viewport and stopped .mp-tabs-scroll from ever needing to scroll. */
+  .mp-layout > * { min-width: 0; }
   .mp-tabs-wrap { position: sticky; top: 56px; z-index: 10; background: var(--bg); padding: var(--space-3) 0; margin-bottom: var(--space-4); }
   .mp-tabs-scroll { overflow-x: auto; scrollbar-width: none; }
   .mp-tabs-scroll::-webkit-scrollbar { display: none; }
@@ -30,7 +39,8 @@ const css = `
   .mp-doc-card { border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: var(--space-2); background: var(--surface); }
   .mp-doc-card__footer { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); border-top: 1px solid var(--border); flex-wrap: wrap; }
   .mp-stars { display: flex; align-items: center; gap: 2px; }
-  .mp-star { background: none; border: 0; cursor: pointer; padding: 2px; display: flex; }
+  .mp-star { background: none; border: 0; cursor: pointer; padding: 2px; display: flex; color: inherit; }
+  @media (max-width: 860px) { .mp-star { min-width: 44px; min-height: 44px; align-items: center; justify-content: center; } }
   .mp-multi-files { display: flex; flex-direction: column; gap: 6px; }
   .mp-aside { display: flex; flex-direction: column; gap: var(--space-4); position: sticky; top: 72px; }
   @media (max-width: 1023px) { .mp-aside { position: static; } }

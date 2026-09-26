@@ -23,11 +23,14 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-sans);
 .qz-btn--secondary:hover { background: var(--surface-2); border-color: var(--text-subtle); }
 .qz-btn--ghost { background: transparent; color: var(--text-muted); }
 .qz-btn--ghost:hover { background: var(--surface-2); color: var(--text); }
-.qz-btn--danger { background: var(--danger-solid); color: #ffffff; }
+.qz-btn--danger { background: var(--danger-solid); color: var(--on-danger); }
 .qz-btn--danger:hover { filter: brightness(1.08); }
 .qz-btn--danger-ghost { background: transparent; color: var(--danger); border-color: var(--border-control); }
 .qz-btn--danger-ghost:hover { background: var(--danger-soft); border-color: var(--danger); }
-.qz-btn--link { background: none; border: 0; height: auto; padding: 0; color: var(--brand-text); font-weight: 550; }
+/* Link-style buttons are running text, not button chrome: inherit the
+   nowrap from .qz-btn and a long label forces its container wider than the
+   viewport (seen on /module at 390px). */
+.qz-btn--link { background: none; border: 0; height: auto; padding: 0; color: var(--brand-text); font-weight: 550; white-space: normal; text-align: start; overflow-wrap: anywhere; }
 .qz-btn--link:hover { text-decoration: underline; text-underline-offset: 3px; }
 .qz-btn[disabled], .qz-btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; pointer-events: none; }
 .qz-btn--icon { width: var(--h); padding: 0; }
@@ -117,7 +120,7 @@ button.qz-badge:hover { filter: brightness(1.15); }
 .qz-card--link { display: block; color: inherit; text-decoration: none; cursor: pointer; transition: border-color .15s, background-color .15s; }
 .qz-card--link:hover { border-color: var(--border-strong); background: color-mix(in srgb, var(--surface-2) 50%, var(--surface)); }
 .qz-card--flush { padding: 0; overflow: hidden; }
-.qz-eyebrow { font: 500 11px/16px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-subtle); }
+.qz-eyebrow { font: 500 12px/16px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--text-subtle); }
 .qz-h1 { font: 700 32px/38px var(--font-display); letter-spacing: -0.02em; color: var(--text); margin: 0; }
 .qz-h2 { font: 600 22px/28px var(--font-display); letter-spacing: -0.01em; color: var(--text); margin: 0; }
 .qz-h3 { font: 600 17px/24px var(--font-sans); color: var(--text); margin: 0; }
@@ -181,10 +184,11 @@ button.qz-badge:hover { filter: brightness(1.15); }
 .qz-navbar__end { display: flex; align-items: center; gap: var(--space-2); }
 .qz-navbar__mobile { display: none; gap: var(--space-2); }
 @media (max-width: 860px) { .qz-navbar__mobile { display: inline-flex; } }
+.qz-avatarbtn { background: none; border: 0; padding: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
 .qz-iconbtn { position: relative; width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-md); border: 0; background: transparent; color: var(--text-muted); cursor: pointer; }
 .qz-iconbtn:hover { background: var(--surface-2); color: var(--text); }
 .qz-iconbtn svg { width: 18px; height: 18px; }
-.qz-iconbtn .qz-pip { position: absolute; top: 6px; right: 6px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--radius-full); background: var(--danger-solid); color: #fff; font: 600 10px/16px var(--font-sans); box-shadow: 0 0 0 2px var(--bg); }
+.qz-iconbtn .qz-pip { position: absolute; top: 6px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: var(--radius-full); background: var(--danger-solid); color: var(--on-danger); font: 600 12px/18px var(--font-sans); box-shadow: 0 0 0 2px var(--bg); }
 
 /* ---------- Navbar: notifications & user menu ---------- */
 .qz-notif-head { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); }
@@ -590,6 +594,10 @@ button.qz-badge:hover { filter: brightness(1.15); }
   .qz-footer__col button { min-height: 44px; }
   /* The wordmark is a link; 20-28px tall is under the minimum. */
   .qz-wordmark { min-height: 44px; }
+  /* Account menu: the trigger is avatar-sized (28px), too small to tap. */
+  .qz-avatarbtn { min-width: 44px; min-height: 44px; }
+  /* Vote arrows are 32x28 by design on desktop; too small for a thumb. */
+  .qz-vote button { width: 44px; height: 44px; }
   /* A narrow tab label is still a 44px-wide target. */
   .qz-tab { min-width: 44px; justify-content: center; }
   /* The search input sits inside .qz-search padding; make the inner control

@@ -4,6 +4,7 @@ import { Wordmark, Button, Input, Chip, Switch, Icon, ProgressBar, Sheet } from 
 import { notify } from '../design-system/toast'
 import SenpaiSection from './SenpaiSection'
 import { useAuth } from '../context/AuthContext'
+import { handleStaleSession } from '../lib/session'
 
 const TOTAL_STEPS = 5
 
@@ -146,7 +147,10 @@ export default function WelcomeModal() {
       p_semester: semester || null,
       p_follow_modules: followModules,
     })
-    if (error) { notify.error(error.message); setCompleting(false); return }
+    if (error) {
+      if (await handleStaleSession(supabase, error)) return
+      notify.error(error.message); setCompleting(false); return
+    }
     // Pull the new filiere/semestre into the context straight away, so the home
     // page behind the modal is already personalised when the last slide closes.
     await refreshProfile()

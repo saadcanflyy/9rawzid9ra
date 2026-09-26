@@ -26,9 +26,11 @@ const PUBLIC = [
   ['about', '/about'], ['contact', '/contact'], ['privacy-policy', '/privacy-policy'],
   ['terms', '/terms'], ['ai', '/ai'], ['notfound', '/nope-404'],
 ]
+// Signed-in student routes. /admin and /moderator are deliberately absent:
+// the test account is not staff, and those are reviewed separately.
 const AUTHED = [
   ['upload', '/upload'], ['profile', '/profile'], ['my-modules', '/my-modules'],
-  ['admin', '/admin'], ['moderator', '/moderator'],
+  ['module', '/module/technologies-big-data-ii-855'],
 ]
 const routes = storageState ? [...PUBLIC, ...AUTHED] : PUBLIC
 const WIDTHS = [390, 1280]

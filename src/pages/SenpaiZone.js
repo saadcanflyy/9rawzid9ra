@@ -31,6 +31,7 @@ const fmtAgo = d => {
 }
 
 const css = `
+  .sn-compose-trigger { background: none; border: 0; text-align: start; width: 100%; cursor: text; display: flex; align-items: center; min-height: 44px; padding: 0; color: inherit; }
   .sn-layout { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 220px minmax(0, 1fr) 300px; align-items: start; }
   @media (max-width: 1100px) { .sn-layout { grid-template-columns: 220px minmax(0, 1fr); } .sn-right { display: none; } }
   @media (max-width: 768px) { .sn-layout { grid-template-columns: 1fr; } .sn-left { display: none; } }
@@ -794,7 +795,7 @@ export default function SenpaiZone() {
                     <Button variant="primary" size="sm" onClick={() => { sessionStorage.setItem('redirectAfterLogin', '/senpai'); navigate('/login') }}>Se connecter</Button>
                   </div>
                 ) : !composeFocused ? (
-                  <button type="button" onClick={() => setComposeFocused(true)} style={{ background: 'none', border: 0, textAlign: 'left', width: '100%', cursor: 'text' }}>
+                  <button type="button" className="sn-compose-trigger" onClick={() => setComposeFocused(true)}>
                     <span className="t-body qz-subtle">Partage un conseil, un bilan, un red flag…</span>
                   </button>
                 ) : (

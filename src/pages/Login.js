@@ -4,6 +4,7 @@ import { supabase } from '../supabase'
 import Turnstile, { captchaEnabled, CAPTCHA_ERROR } from '../components/Turnstile'
 import AuthLayout from '../components/AuthLayout'
 import { Button, Input, Icon, Badge } from '../design-system/ui'
+import { SESSION_EXPIRED_MESSAGE } from '../lib/session'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -12,7 +13,10 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  // handleStaleSession() redirects here with ?expired=1 after dropping a dead token.
+  const [error, setError] = useState(
+    () => new URLSearchParams(window.location.search).get('expired') ? SESSION_EXPIRED_MESSAGE : ''
+  )
   const [banInfo, setBanInfo] = useState(null)
   const [failCount, setFailCount] = useState(0)
   const [captchaToken, setCaptchaToken] = useState(null)

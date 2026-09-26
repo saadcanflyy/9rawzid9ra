@@ -15,6 +15,7 @@
   --brand: #5b95f8;
   --brand-hover: #76a8fa;
   --on-brand: #050b18;
+  --on-danger: #ffffff;
   --brand-text: #8ab4fb;
   --brand-soft: rgba(91,149,248,0.12);
   --accent: #2dd4bf;
@@ -56,6 +57,7 @@
   --brand: #2e6be6;
   --brand-hover: #2459c9;
   --on-brand: #ffffff;
+  --on-danger: #ffffff;
   --brand-text: #1f5ad0;
   --brand-soft: rgba(46,107,230,0.08);
   --accent: #0b7a6d;
@@ -98,6 +100,7 @@
   --brand: #2e6be6;
   --brand-hover: #2459c9;
   --on-brand: #ffffff;
+  --on-danger: #ffffff;
   --brand-text: #1f5ad0;
   --brand-soft: rgba(46,107,230,0.08);
   --accent: #0b7a6d;

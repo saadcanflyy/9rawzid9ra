@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
-import { Wordmark, Button, Avatar, Badge, Icon, Sheet, ThemeToggle, Banner } from '../design-system/ui'
+import { Wordmark, Button, Avatar, Badge, Icon, Sheet, ThemeToggle, Banner, Tooltip } from '../design-system/ui'
 import { useTheme } from '../design-system/theme'
 import SearchAutocomplete from './SearchAutocomplete'
 
@@ -266,9 +266,13 @@ export default function Navbar({ activePage = '' }) {
             <>
               <span className="qz-navbar__desktop-only">
                 {/* English on purpose in both languages: it's the slogan, not UI copy.
-                    Hidden under 860px with the button; the Upload page header carries it there. */}
-                <span className="qz-slogan">Sharing is caring</span>
-                <Button variant="primary" size="sm" iconRight="upload" as={Link} to="/upload">Partager</Button>
+                    As a tooltip rather than an inline caption: the caption measured
+                    90px and pushed .qz-navbar__end past the right edge at 1280px.
+                    Hidden under 860px with the button; the Upload page header
+                    carries the slogan there. */}
+                <Tooltip label="Sharing is caring">
+                  <Button variant="primary" size="sm" iconRight="upload" as={Link} to="/upload">Partager</Button>
+                </Tooltip>
               </span>
 
               <div className="qz-dropdown-anchor" ref={notifRef}>
@@ -320,7 +324,7 @@ export default function Navbar({ activePage = '' }) {
               </div>
 
               <div className="qz-dropdown-anchor" ref={dropdownRef}>
-                <button type="button" ref={accountBtnRef} onClick={() => setShowDropdown(d => !d)} aria-haspopup="true" aria-expanded={showDropdown} aria-label="Menu du compte" style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }}>
+                <button type="button" ref={accountBtnRef} className="qz-avatarbtn" onClick={() => setShowDropdown(d => !d)} aria-haspopup="true" aria-expanded={showDropdown} aria-label="Menu du compte">
                   <Avatar name={profile?.name || user.email} size="sm" founder={founder} />
                 </button>
                 {showDropdown && (

@@ -27,3 +27,9 @@ yarn-error.log*
 
 # Playwright storageState logins (Phase 3/4 screenshots) - NEVER commit
 auth-*.json
+
+# Playwright session tokens (Phase 3/4 screenshots) - NEVER commit
+auth-token-*.txt
+
+# UX audit screenshots: large binaries, regenerate with scripts/ux-audit.mjs
+docs/screenshots/

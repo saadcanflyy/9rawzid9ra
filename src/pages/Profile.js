@@ -11,6 +11,7 @@ import {
 } from '../design-system/ui'
 import { useTheme } from '../design-system/theme'
 import { useAuth } from '../context/AuthContext'
+import { handleStaleSession } from '../lib/session'
 import { notify } from '../design-system/toast'
 import { qualityLevel, displayStatus } from '../lib/quality'
 import { levelFor, formatPoints, POINT_RULES, LEVELS, LEVEL_TONES, BADGE_TIER_TONES, PERIODS, rankLabel } from '../lib/reputation'
@@ -26,7 +27,8 @@ const css = `
   @media (max-width: 640px) { .pf-header { flex-direction: column; align-items: center; text-align: center; } .pf-header__badges { justify-content: center; } .pf-header__actions { width: 100%; margin-left: 0; } .pf-header__actions > * { flex: 1; } }
   .pf-nudge-row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-2); }
   .pf-social-row { display: flex; align-items: center; gap: var(--space-6); margin-top: var(--space-6); flex-wrap: wrap; }
-  .pf-social-stat { background: none; border: 0; cursor: pointer; display: flex; align-items: baseline; gap: 6px; }
+  .pf-social-stat { background: none; border: 0; cursor: pointer; display: flex; align-items: baseline; gap: 6px; color: inherit; }
+  @media (max-width: 860px) { .pf-social-stat { min-height: 44px; align-items: center; } }
   .pf-tabs-wrap { margin: var(--space-6) 0 var(--space-4); }
   .pf-list { display: flex; flex-direction: column; gap: var(--space-2); }
   .pf-doc-card { border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
@@ -46,7 +48,7 @@ const css = `
   .pf-badge-tile { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
   .pf-badge-tile--locked { opacity: 0.35; }
   .pf-badge-tile__icon { width: 48px; height: 48px; border-radius: var(--radius-full); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .pf-badge-tile__label { font: 500 11px/14px var(--font-sans); color: var(--text-muted); }
+  .pf-badge-tile__label { font: 500 12px/16px var(--font-sans); color: var(--text-muted); }
 `
 
 const PT_TONE = {
@@ -346,7 +348,10 @@ export default function Profile() {
       p_follow_modules: false,
     })
     setSavingStudies(false)
-    if (error) { notify.error(error.message); return }
+    if (error) {
+      if (await handleStaleSession(supabase, error)) return
+      notify.error(error.message); return
+    }
     notify.success('Études mises à jour')
     refreshProfile()
     setProfile(p => ({
