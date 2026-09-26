@@ -129,15 +129,30 @@ export default function Navbar({ activePage = '' }) {
     return () => window.removeEventListener('keydown', handler)
   }, [user, navigate])
 
-  // Real-time: new notifications
+  // Notifications refresh on focus/visibility instead of holding an open
+  // realtime channel. The navbar is on every page, so that channel was opened
+  // once per tab — and realtime connections (200 on the free plan) are the
+  // first capacity limit this app hits. Polling here costs one query per
+  // focus, only while the tab is actually in use.
   useEffect(() => {
     if (!user) return
-    const channel = supabase
-      .channel(`nb-notifs-${user.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` },
-        payload => setNotifs(prev => [payload.new, ...prev]))
-      .subscribe()
-    return () => supabase.removeChannel(channel)
+    let last = 0
+    const refresh = () => {
+      if (document.visibilityState !== 'visible') return
+      const now = Date.now()
+      if (now - last < 30000) return   // at most once every 30s
+      last = now
+      loadNotifs(user.id)
+    }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    const t = setInterval(refresh, 120000)
+    return () => {
+      window.removeEventListener('focus', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+      clearInterval(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
   const page = activePage || location.pathname.replace('/', '') || 'home'
