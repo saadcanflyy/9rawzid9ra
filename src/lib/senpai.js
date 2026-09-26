@@ -38,6 +38,7 @@ export function senpaiContactErrorMessage(error) {
   const msg = error?.message || '';
   if (msg.includes('daily_limit')) return "Tu as atteint la limite de 3 messages envoyés aujourd'hui. Réessaie demain.";
   if (msg.includes('senpai_full')) return 'Ce senpai a atteint sa limite de messages cette semaine. Réessaie plus tard ou écris à un autre senpai.';
+  if (msg.includes('senpai_paused')) return 'Ce senpai est en pause en ce moment. Réessaie plus tard ou écris à un autre senpai.';
   if (msg.includes('cannot contact yourself')) return 'Tu ne peux pas te contacter toi-même.';
   return msg || "Impossible d'envoyer le message pour le moment.";
 }

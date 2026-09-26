@@ -114,6 +114,7 @@ export default function Profile() {
   const [repPeriod, setRepPeriod] = useState('week')
   const [myRep, setMyRep] = useState(null)
   const [senpaiInfo, setSenpaiInfo] = useState(null)
+  const [myRequests, setMyRequests] = useState([])
   const [myMentorProfile, setMyMentorProfile] = useState(null)
   const [mentorHelpWith, setMentorHelpWith] = useState([])
   const [mentorResponse, setMentorResponse] = useState('days')
@@ -267,12 +268,20 @@ export default function Profile() {
     if (!currentUser || !uid) { setSenpaiInfo(null); return }
     supabase.rpc('get_user_senpai_profile', { p_user_id: uid }).then(({ data, error }) => setSenpaiInfo(error ? null : (data?.[0] || null)))
     const isOwn = !targetId || currentUser.id === targetId
+    if (isOwn) supabase.rpc('get_my_senpai_requests').then(({ data, error }) => { if (!error) setMyRequests(data || []) })
     if (isOwn) supabase.rpc('get_my_senpai_profile').then(({ data, error }) => {
       if (error) return
       setMyMentorProfile(data)
       if (data) { setMentorHelpWith(data.help_with || []); setMentorResponse(data.response_estimate || 'days'); setMentorWeeklyLimit(String(data.weekly_limit || 5)) }
     })
   }, [currentUser, targetId])
+
+  const thankSenpai = async (req) => {
+    const { error } = await supabase.rpc('mark_senpai_contact_helpful', { p_contact_id: req.id })
+    if (error) { notify.error(error.message); return }
+    setMyRequests(list => list.map(r => r.id === req.id ? { ...r, marked_helpful: true } : r))
+    notify.success('Merci ! Ton senpai gagne 10 points.')
+  }
 
   const saveMentorProfile = async () => {
     setMentorSaving(true)
@@ -602,6 +611,27 @@ export default function Profile() {
           )}
         </div>
 
+        {isOwnProfile && myRequests.length > 0 && (
+          <Card style={{ marginTop: 'var(--space-4)' }}>
+            <span className="t-eyebrow qz-subtle">Mes demandes de senpai</span>
+            <div style={{ marginTop: 'var(--space-2)' }}>
+              {myRequests.slice(0, 5).map(r => (
+                <div key={r.id} className="pf-activity-row">
+                  <span className="t-body-sm qz-muted">
+                    {r.senpai_name}
+                    <span className="t-caption qz-subtle" style={{ marginLeft: 8 }}>
+                      {r.answered_at ? 'a répondu' : 'en attente de réponse'}
+                    </span>
+                  </span>
+                  {r.answered_at && (r.marked_helpful
+                    ? <Badge tone="success" icon="check">Remercié</Badge>
+                    : <Button variant="secondary" size="sm" onClick={() => thankSenpai(r)}>Ça m'a aidé</Button>)}
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
         {isOwnProfile && myRep && (
           <Card style={{ marginTop: 'var(--space-4)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
@@ -850,7 +880,8 @@ export default function Profile() {
               )}
               <StatStrip items={[
                 { value: myMentorProfile.contacts_total || 0, label: 'Messages reçus' },
-                { value: myMentorProfile.contacts_week || 0, label: 'Cette semaine' },
+                { value: myMentorProfile.pending_count || 0, label: 'En attente' },
+                { value: myMentorProfile.median_response_hours != null ? `${myMentorProfile.median_response_hours} h` : '—', label: 'Réponse médiane' },
                 { value: myMentorProfile.helpful_count || 0, label: '« Ça m\'a aidé »' },
               ]} />
             </Card>

@@ -42,6 +42,9 @@ export default function SenpaiSection({ filiereId, compact, recruitEligible, tit
   return (
     <div>
       {title && <span className="t-eyebrow qz-subtle" style={{ display: 'block', marginBottom: 8 }}>{title}</span>}
+      <p className="t-caption qz-subtle" style={{ marginBottom: 8 }}>
+        Tu recevras sa réponse dans ta messagerie.
+      </p>
       {senpais.map((s) => {
         const lvl = levelFor(s.points)
         return (
