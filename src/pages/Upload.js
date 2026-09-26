@@ -397,7 +397,7 @@ export default function Upload() {
     if (valid.length !== arr.length) setError('Format non supporté. Acceptés : PDF, images, PPT, Word, Excel, Notebook (.ipynb)')
     else setError('')
 
-    const tooLarge = valid.filter(f => f.size > 50 * 1024 * 1024)
+    const tooLarge = valid.filter(f => f.size > 20 * 1024 * 1024)
     if (tooLarge.length) { setError(`Fichier trop grand (max 50MB): ${tooLarge[0].name}`); return }
 
     if (files.length === 0 && valid.length > 0) detectFromFilename(valid[0].name)
@@ -1148,7 +1148,7 @@ export default function Upload() {
                   <div className="up-field">
                     <label className="qz-label">Fichier(s)</label>
                     <Dropzone
-                      hint="PDF, images, PPT, Word, Excel, Notebook · jusqu'à 20 fichiers · 50 Mo max"
+                      hint="PDF, images, PPT, Word, Excel, Notebook · jusqu'à 20 fichiers · 20 Mo max"
                       accept="image/*,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.ipynb"
                       onFiles={handleFiles}
                       onRemove={removeFile}
@@ -1265,7 +1265,7 @@ export default function Upload() {
             <Card>
               <span className="t-eyebrow qz-subtle">Checklist qualité</span>
               <div style={{ marginTop: 8 }}>
-                {['Pages lisibles, pas floues', 'PDF, JPG ou PNG · max 50 Mo', "Aucun nom d'étudiant visible", 'Année universitaire indiquée'].map(c => (
+                {['Pages lisibles, pas floues', 'PDF, JPG ou PNG · max 20 Mo', "Aucun nom d'étudiant visible", 'Année universitaire indiquée'].map(c => (
                   <div key={c} className="up-checklist-row"><Icon name="check" size={14} /><span className="t-body-sm qz-muted">{c}</span></div>
                 ))}
               </div>
