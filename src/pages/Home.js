@@ -2,11 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Navbar from '../components/Navbar'
-import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import {
   Badge, Chip, StatStrip, DocumentRow, DocumentCard, ModuleCard, SchoolCard, Skeleton, Card, Button, Banner, Icon, Avatar,
-  LevelBadge, LevelProgress, DocType, EmptyState,
+  LevelBadge, LevelProgress, DocType, EmptyState, Accordion,
 } from '../design-system/ui'
 import { notify } from '../design-system/toast'
 import { levelFor } from '../lib/reputation'
@@ -49,11 +48,7 @@ const css = `
   .home-step { display: flex; flex-direction: column; gap: var(--space-2); }
   .home-cta { display: grid; grid-template-columns: 1fr auto; gap: var(--space-6); align-items: center; padding: var(--space-8); }
   .home-cta__actions { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-end; }
-  .home-faq__list { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
-  .home-faq__q { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); background: none; border: 0; cursor: pointer; padding: var(--space-2) 0; text-align: left; }
-  .home-faq__chev { display: inline-flex; transition: transform .15s; color: var(--text-subtle); }
-  .home-faq__chev--open { transform: rotate(180deg); }
-  .home-faq__a { margin-top: var(--space-2); }
+  .home-faq__list { margin-top: var(--space-4); }
   @media (max-width: 640px) {
     .home-hero { padding: var(--space-12) var(--space-4) var(--space-8); }
     .home-cta { grid-template-columns: 1fr; }
@@ -133,7 +128,6 @@ function VisitorHome() {
   const [activeTag, setActiveTag] = useState(-1)
   const [schools, setSchools] = useState([])
   const [schoolsReady, setSchoolsReady] = useState(false)
-  const [openFaq, setOpenFaq] = useState(null)
   const searchInputRef = useRef(null)
   const [followingCount, setFollowingCount] = useState(null)
   const [suggestFollowing, setSuggestFollowing] = useState(false)
@@ -436,19 +430,10 @@ function VisitorHome() {
         <span className="t-eyebrow qz-subtle">FAQ</span>
         <h2 className="t-h2">Questions fréquentes</h2>
         <div className="home-faq__list">
-          {FAQS.map((f, i) => (
-            <div className="qz-card" key={i}>
-              <button type="button" className="home-faq__q" aria-expanded={openFaq === i} onClick={() => setOpenFaq(openFaq === i ? null : i)}>
-                <span className="t-label">{f.q}</span>
-                <span className={`home-faq__chev${openFaq === i ? ' home-faq__chev--open' : ''}`}><Icon name="down" /></span>
-              </button>
-              {openFaq === i && <p className="t-body qz-muted home-faq__a">{f.a}</p>}
-            </div>
-          ))}
+          <Accordion items={FAQS} idPrefix="home-faq" />
         </div>
       </section>
 
-      <Footer />
     </div>
   )
 }
@@ -671,7 +656,6 @@ function PersonalizedHome() {
         </div>
       </div>
 
-      <Footer />
     </div>
   )
 }

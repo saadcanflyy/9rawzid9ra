@@ -4,7 +4,7 @@ import {
   Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard,
   DocumentRow, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal,
   Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, ThemeToggle,
-  Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar,
+  Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, Accordion, Tooltip,
 } from '../design-system/ui';
 import { useTheme } from '../design-system/theme';
 import { notify } from '../design-system/toast';
@@ -203,6 +203,48 @@ export default function DesignPreview() {
             <Skeleton height={12} width="90%" />
           </div>
         </div>
+      </section>
+
+      <section className="dp-section">
+        <h2 className="qz-h2">« Sharing is caring » — deux options</h2>
+        <p className="t-body-sm qz-muted">
+          Le bandeau fait 56px de haut, donc une légende <em>sous</em> le bouton ne rentre pas.
+          Voici les deux placements possibles sur desktop. Sur mobile la légende passe sur l'en-tête
+          de la page Partager (le bouton du bandeau disparaît en dessous de 860px).
+        </p>
+
+        <Card>
+          <span className="t-eyebrow qz-subtle">Option A — légende à côté</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)' }}>
+            <span style={{ marginInlineEnd: 'auto' }} className="t-body-sm qz-subtle">…reste du bandeau</span>
+            <span className="qz-slogan">Sharing is caring</span>
+            <Button variant="primary" size="sm" iconRight="upload">Partager</Button>
+          </div>
+          <p className="t-caption qz-subtle" style={{ marginTop: 'var(--space-3)' }}>
+            Toujours visible. Coûte ~120px de largeur dans le bandeau.
+          </p>
+        </Card>
+
+        <Card>
+          <span className="t-eyebrow qz-subtle">Option B — infobulle au survol / focus</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-4)', padding: 'var(--space-3) var(--space-4)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)' }}>
+            <span style={{ marginInlineEnd: 'auto' }} className="t-body-sm qz-subtle">…reste du bandeau</span>
+            <Tooltip label="Sharing is caring">
+              <Button variant="primary" size="sm" iconRight="upload">Partager</Button>
+            </Tooltip>
+          </div>
+          <p className="t-caption qz-subtle" style={{ marginTop: 'var(--space-3)' }}>
+            Zéro impact sur l'alignement. Visible au survol et au clavier (focus), donc invisible au premier coup d'œil.
+          </p>
+        </Card>
+      </section>
+
+      <section className="dp-section">
+        <h2 className="qz-h2">Accordion (FAQ)</h2>
+        <Accordion idPrefix="dp-acc" items={[
+          { q: 'Première question ?', a: 'La réponse, en texte atténué.' },
+          { q: 'Deuxième question ?', a: 'Une seule réponse ouverte à la fois.' },
+        ]} />
       </section>
 
       <section className="dp-section">

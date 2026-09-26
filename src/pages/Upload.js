@@ -869,6 +869,7 @@ export default function Upload() {
             <>
               <span className="t-eyebrow qz-subtle">Partager</span>
               <h1 className="t-h1" style={{ margin: '4px 0 8px' }}>Partage un document</h1>
+              <p className="qz-slogan qz-mobile-only" style={{ marginBottom: 'var(--space-2)' }}>Sharing is caring</p>
               <p className="t-body qz-muted" style={{ marginBottom: 'var(--space-8)' }}>Il sera visible immédiatement par toute ta filière. Merci pour ta promo.</p>
 
               <div className="up-stepper">
@@ -954,7 +955,7 @@ export default function Upload() {
                               <Select label="Type" value={addFacType} onChange={e => setAddFacType(e.target.value)} options={['Faculté', 'École', 'Institut', 'Centre', 'Département']} />
                             </div>
                             <div style={{ display: 'flex', gap: 8 }}>
-                              <Button variant="primary" size="sm" loading={addFacBusy} disabled={!addFacName.trim()} onClick={handleAddFacultyInline}>Ajouter</Button>
+                              <Button variant="secondary" size="sm" loading={addFacBusy} disabled={!addFacName.trim()} onClick={handleAddFacultyInline}>Ajouter</Button>
                               <Button variant="ghost" size="sm" onClick={() => setShowAddFacForm(false)}>Annuler</Button>
                             </div>
                           </div>
@@ -983,7 +984,7 @@ export default function Upload() {
                               <Input label="Nombre de semestres" type="number" min="1" max="10" placeholder="Ex : 6, 8, 10…" value={filiereNbSem} onChange={e => setFiliereNbSem(e.target.value)} />
                             </div>
                             <div style={{ display: 'flex', gap: 8 }}>
-                              <Button variant="primary" size="sm" onClick={handleFiliereRequest}>Signaler la filière</Button>
+                              <Button variant="secondary" size="sm" onClick={handleFiliereRequest}>Signaler la filière</Button>
                               <Button variant="ghost" size="sm" onClick={() => setShowFiliereForm(false)}>Annuler</Button>
                             </div>
                           </div>
@@ -1101,7 +1102,7 @@ export default function Upload() {
 
                           {schoolCase && (
                             <div style={{ display: 'flex', gap: 8, marginTop: 'var(--space-3)' }}>
-                              <Button variant="primary" size="sm" loading={schoolSubmitting} onClick={handleSchoolRequest}>Envoyer la demande</Button>
+                              <Button variant="secondary" size="sm" loading={schoolSubmitting} onClick={handleSchoolRequest}>Envoyer la demande</Button>
                               <Button variant="ghost" size="sm" onClick={() => setShowSchoolForm(false)}>Annuler</Button>
                             </div>
                           )}

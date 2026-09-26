@@ -497,3 +497,74 @@ button.qz-badge:hover { filter: brightness(1.15); }
 
 /* ---------- Error boundary fallback ---------- */
 .qz-error-boundary { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: var(--space-6); background: var(--bg); }
+
+/* ---- Accordion (FAQ) ------------------------------------------------------
+   The question is a <button>; without an explicit colour it inherits the UA
+   default (near-black) and disappears on the dark surface. That was the
+   "FAQ unreadable in dark mode" bug. Everything here is token-driven, so it
+   follows both themes. */
+.qz-accordion { display: flex; flex-direction: column; gap: var(--space-2); }
+.qz-accordion__item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  transition: border-color .15s, background-color .15s;
+}
+.qz-accordion__item:hover { border-color: var(--border-strong); }
+.qz-accordion__item.is-open { border-color: var(--border-strong); background: var(--surface-2); }
+
+.qz-accordion__q {
+  width: 100%;
+  min-height: 44px;                 /* tap target on mobile */
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: none; border: 0; cursor: pointer;
+  text-align: start;
+  color: var(--text);               /* the actual fix */
+  font-family: var(--font-sans); font-size: 15px; line-height: 22px; font-weight: 550;
+}
+.qz-accordion__q:hover { color: var(--text); }
+.qz-accordion__q:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius-lg); }
+
+.qz-accordion__chev {
+  display: inline-flex; flex: none;
+  color: var(--text-muted);         /* was --text-subtle: too faint to see */
+  transition: transform .15s, color .15s;
+}
+.qz-accordion__item.is-open .qz-accordion__chev { transform: rotate(180deg); color: var(--text); }
+.qz-accordion__q:hover .qz-accordion__chev { color: var(--text); }
+
+.qz-accordion__panel { padding: 0 var(--space-5) var(--space-4); }
+.qz-accordion__a {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-sans); font-size: 14px; line-height: 22px;
+}
+
+/* ---- Tooltip -------------------------------------------------------------- */
+.qz-tip { position: relative; display: inline-flex; align-items: center; }
+.qz-tip__trigger { display: inline-flex; align-items: center; }
+.qz-tip__bubble {
+  position: absolute; inset-block-start: calc(100% + var(--space-2)); inset-inline-end: 0;
+  z-index: 40; white-space: nowrap; pointer-events: none;
+  opacity: 0; transform: translateY(-2px);
+  transition: opacity .12s ease, transform .12s ease;
+  background: var(--surface-2); color: var(--text-muted);
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-sans); font-size: 12px; line-height: 16px;
+  box-shadow: var(--shadow-md);
+}
+.qz-tip:hover .qz-tip__bubble,
+.qz-tip:focus-within .qz-tip__bubble { opacity: 1; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) { .qz-tip__bubble { transition: none; } }
+
+/* ---- "Sharing is caring" slogan -------------------------------------------
+   Deliberately English in both languages: it's the slogan, not UI copy. */
+.qz-slogan { color: var(--text-subtle); white-space: nowrap; font-family: var(--font-sans); font-size: 12px; line-height: 16px; }
+
+/* Utility: the mirror of qz-navbar__desktop-only, for the Upload header slogan
+   that replaces the nav one on small screens. */
+.qz-mobile-only { display: none; }
+@media (max-width: 860px) { .qz-mobile-only { display: block; } }

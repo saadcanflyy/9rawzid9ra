@@ -3,16 +3,12 @@ import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import { supabase } from '../supabase'
 import { useAuth } from '../context/AuthContext'
-import { Paywall, Badge, Icon } from '../design-system/ui'
+import { Paywall, Badge, Accordion } from '../design-system/ui'
 
 const css = `
   .ac-layout { max-width: 480px; margin: 0 auto; padding: var(--space-16) var(--space-6) var(--space-16); }
   .ac-faq { margin-top: var(--space-12); }
-  .ac-faq__list { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
-  .ac-faq__q { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); background: none; border: 0; cursor: pointer; padding: var(--space-2) 0; text-align: left; }
-  .ac-faq__chev { display: inline-flex; transition: transform .15s; color: var(--text-subtle); }
-  .ac-faq__chev--open { transform: rotate(180deg); }
-  .ac-faq__a { margin-top: var(--space-2); }
+  .ac-faq__list { margin-top: var(--space-4); }
 `
 
 const FAQS = [
@@ -25,7 +21,6 @@ export default function AICoach() {
   const { user } = useAuth()
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
-  const [openFaq, setOpenFaq] = useState(null)
 
   useEffect(() => { document.title = 'AI Coach — 9rawZid9ra' }, [])
 
@@ -74,15 +69,7 @@ export default function AICoach() {
           <span className="t-eyebrow qz-subtle">FAQ</span>
           <h2 className="t-h2">Questions fréquentes</h2>
           <div className="ac-faq__list">
-            {FAQS.map((f, i) => (
-              <div className="qz-card" key={i}>
-                <button type="button" className="ac-faq__q" aria-expanded={openFaq === i} onClick={() => setOpenFaq(openFaq === i ? null : i)}>
-                  <span className="t-label">{f.q}</span>
-                  <span className={`ac-faq__chev${openFaq === i ? ' ac-faq__chev--open' : ''}`}><Icon name="down" /></span>
-                </button>
-                {openFaq === i && <p className="t-body-sm qz-muted ac-faq__a">{f.a}</p>}
-              </div>
-            ))}
+            <Accordion items={FAQS} idPrefix="ac-faq" />
           </div>
         </div>
       </div>

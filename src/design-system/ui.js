@@ -471,6 +471,47 @@ import { trapFocus, focusFirst } from './focusTrap';
       (props.hint || props.error) ? h('span', { id: id + '-hint', className: cx('qz-hint', props.error && 'qz-hint--error') }, props.error || props.hint) : null);
   }
 
+  /* ---- Accordion (FAQ) ----
+     items: [{ q, a }]. One panel open at a time, which is what every FAQ on the
+     site wants. The question is a real <button> so keyboard and screen readers
+     work for free; the colour is set explicitly because a <button> otherwise
+     inherits the UA default (near-black), which is invisible on a dark surface. */
+  function Accordion(props) {
+    var items = props.items || [];
+    var initial = typeof props.defaultOpen === 'number' ? props.defaultOpen : -1;
+    var state = useState(initial);
+    var open = state[0], setOpen = state[1];
+    var base = props.idPrefix || 'qz-acc';
+    return h('div', { className: cx('qz-accordion', props.className) },
+      items.map(function (it, i) {
+        var isOpen = open === i;
+        var qid = base + '-q-' + i, pid = base + '-p-' + i;
+        return h('div', { className: cx('qz-accordion__item', isOpen && 'is-open'), key: i },
+          h('button', {
+            type: 'button', id: qid, className: 'qz-accordion__q',
+            'aria-expanded': isOpen ? 'true' : 'false', 'aria-controls': pid,
+            onClick: function () { setOpen(isOpen ? -1 : i); },
+          },
+            h('span', { className: 'qz-accordion__label' }, it.q),
+            h('span', { className: 'qz-accordion__chev', 'aria-hidden': 'true' }, h(Icon, { name: 'down' }))),
+          h('div', {
+            id: pid, role: 'region', 'aria-labelledby': qid,
+            className: 'qz-accordion__panel', hidden: !isOpen,
+          }, h('p', { className: 'qz-accordion__a' }, it.a)));
+      }));
+  }
+
+  /* ---- Tooltip ----
+     Wraps a trigger and shows a short hint on hover AND keyboard focus.
+     Non-interactive by design (role="tooltip" + aria-describedby): never put a
+     control inside the bubble, since it can't be reached by keyboard. */
+  function Tooltip(props) {
+    var id = props.id || ('qz-tip-' + String(props.label || '').toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+    return h('span', { className: cx('qz-tip', props.className) },
+      h('span', { className: 'qz-tip__trigger', 'aria-describedby': id }, props.children),
+      h('span', { id: id, role: 'tooltip', className: 'qz-tip__bubble' }, props.label));
+  }
+
   /* ---- Switch ---- */
   function Switch(props) {
     var id = props.id || ('qz-switch-' + String(props.label || 'toggle').toLowerCase().replace(/[^a-z0-9]+/g, '-'));
@@ -672,4 +713,4 @@ import { trapFocus, focusFirst } from './focusTrap';
           h('button', { type: 'button', className: 'qz-btn qz-btn--danger', disabled: !reason, onClick: function () { if (props.onSubmit) props.onSubmit(reason, details); } }, 'Signaler'))));
   }
 
-  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, DocumentCard, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, StatusBadge, LevelBadge, LevelProgress, BadgeChip, SenpaiCard };
+  export { Wordmark, Button, Input, SearchBar, Chip, Tabs, Badge, DocType, Card, ModuleCard, DocumentRow, DocumentCard, SchoolCard, StatStrip, Avatar, Navbar, Breadcrumb, EmptyState, Modal, Toast, Banner, Dropzone, PostCard, Messenger, Paywall, Skeleton, Icon, ThemeToggle, Select, Switch, Sheet, Dropdown, Pagination, LoadMore, ProgressBar, QualityBadge, QualityCard, FeedbackPrompt, ReportModal, StatusBadge, LevelBadge, LevelProgress, BadgeChip, SenpaiCard, Accordion, Tooltip };
