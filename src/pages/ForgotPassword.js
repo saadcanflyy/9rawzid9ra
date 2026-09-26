@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
+import Turnstile, { captchaEnabled, CAPTCHA_ERROR } from '../components/Turnstile'
 import AuthLayout from '../components/AuthLayout'
 import { Button, Input, Tabs, Icon } from '../design-system/ui'
 
@@ -13,6 +14,8 @@ export default function ForgotPassword() {
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [newPass, setNewPass] = useState('')
   const [confirmPass, setConfirmPass] = useState('')
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const captchaRef = useRef(null)
   const [showPwd, setShowPwd] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
   const isSendingRef = useRef(false)
@@ -32,10 +35,11 @@ export default function ForgotPassword() {
     e.preventDefault(); setError('')
     if (isSendingRef.current) return
     if (!email.trim()) return setError("L'adresse email est requise.")
+    if (captchaEnabled() && !captchaToken) return setError(CAPTCHA_ERROR)
     isSendingRef.current = true
     setLoading(true)
     try {
-      const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim())
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), { captchaToken })
       if (err) { setError(err.message); return }
       setStep(2); setResendTimer(60)
     } catch {
@@ -117,6 +121,7 @@ export default function ForgotPassword() {
             <div style={{ marginBottom: 'var(--space-5)' }}>
               <Input label="Adresse email" type="email" placeholder="ton@email.com" value={email} onChange={e => setEmail(e.target.value)} autoFocus />
             </div>
+            <Turnstile widgetRef={captchaRef} onToken={setCaptchaToken} />
             <Button type="submit" variant="primary" size="lg" block loading={loading}>{loading ? 'Envoi du code…' : 'Envoyer le code'}</Button>
           </form>
           <Button variant="secondary" block style={{ marginTop: 'var(--space-3)' }} onClick={() => navigate('/login')}>Retour à la connexion</Button>

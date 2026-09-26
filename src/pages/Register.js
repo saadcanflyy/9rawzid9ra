@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
+import Turnstile, { captchaEnabled, CAPTCHA_ERROR } from '../components/Turnstile'
 import AuthLayout from '../components/AuthLayout'
 import { Button, Input, Select, Icon } from '../design-system/ui'
 
@@ -13,6 +14,8 @@ export default function Register() {
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [otpLoading, setOtpLoading] = useState(false)
   const [otpError, setOtpError] = useState('')
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const captchaRef = useRef(null)
   const [resendTimer, setResendTimer] = useState(0)
   const [pwdError, setPwdError] = useState('')
   const [showPwd, setShowPwd] = useState(false)
@@ -48,6 +51,7 @@ export default function Register() {
     setError('')
     setPwdError('')
     if (!form.name.trim()) return setError('Le nom est requis.')
+    if (captchaEnabled() && !captchaToken) return setError(CAPTCHA_ERROR)
     if (!form.email.trim()) return setError("L'email est requis.")
     const pwdOk = form.password.length >= 8 && /[a-zA-Z]/.test(form.password) && /[0-9]/.test(form.password)
     if (!pwdOk) return setPwdError('Le mot de passe doit contenir au moins une lettre et un chiffre')
@@ -59,7 +63,7 @@ export default function Register() {
       const { data, error: err } = await supabase.auth.signUp({
         email: form.email.trim(),
         password: form.password,
-        options: { data: { name: form.name.trim(), university_id: form.university_id || null } },
+        options: { captchaToken, data: { name: form.name.trim(), university_id: form.university_id || null } },
       })
       if (err) {
         const msg = err.message.toLowerCase()
@@ -214,6 +218,7 @@ export default function Register() {
               <Input label="Confirmer" type={showPwd ? 'text' : 'password'} placeholder="••••••••" value={form.confirm} onChange={e => set('confirm', e.target.value)} />
             </div>
             {pwdError ? <span className="qz-hint qz-hint--error">{pwdError}</span> : <span className="qz-hint">8 caractères minimum.</span>}
+            <Turnstile widgetRef={captchaRef} onToken={setCaptchaToken} />
             <Button type="submit" variant="primary" size="lg" block loading={loading} style={{ marginTop: 'var(--space-6)' }}>
               {loading ? 'Création du compte…' : 'Créer mon compte'}
             </Button>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { supabase } from '../supabase'
+import Turnstile, { captchaEnabled, CAPTCHA_ERROR } from '../components/Turnstile'
 import AuthLayout from '../components/AuthLayout'
 import { Button, Input, Icon, Badge } from '../design-system/ui'
 
@@ -14,6 +15,8 @@ export default function Login() {
   const [error, setError] = useState('')
   const [banInfo, setBanInfo] = useState(null)
   const [failCount, setFailCount] = useState(0)
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const captchaRef = useRef(null)
   const [googleLoading, setGoogleLoading] = useState(false)
   const isSubmittingRef = useRef(false)
 
@@ -58,16 +61,18 @@ export default function Login() {
     setError('')
     setBanInfo(null)
     if (!email.trim() || !password) return setError('Email et mot de passe requis.')
+    if (captchaEnabled() && !captchaToken) return setError(CAPTCHA_ERROR)
     isSubmittingRef.current = true
     setLoading(true)
     try {
       const { error: err } = await Promise.race([
-        supabase.auth.signInWithPassword({ email: email.trim(), password }),
+        supabase.auth.signInWithPassword({ email: email.trim(), password, options: { captchaToken } }),
         new Promise((_, rej) => setTimeout(() => rej(new Error('TIMEOUT')), 10000)),
       ])
       if (err) {
         setFailCount(c => c + 1)
         setError('Email ou mot de passe incorrect.')
+        captchaRef.current?.reset(); setCaptchaToken(null)
         return
       }
       const { data: banRows } = await supabase.rpc('get_my_ban_status')
@@ -156,6 +161,7 @@ export default function Login() {
         <div style={{ textAlign: 'right', marginTop: 6 }}>
           <Button variant="link" size="sm" type="button" onClick={() => navigate('/forgot-password')}>Mot de passe oublié ?</Button>
         </div>
+        <Turnstile widgetRef={captchaRef} onToken={setCaptchaToken} />
         <Button type="submit" variant="primary" size="lg" block loading={loading} style={{ marginTop: 'var(--space-6)' }}>
           {loading ? 'Connexion…' : 'Se connecter'}
         </Button>
