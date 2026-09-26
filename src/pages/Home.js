@@ -12,6 +12,7 @@ import { levelFor } from '../lib/reputation'
 import { displayStatus } from '../lib/quality'
 import { cachedRpc } from '../lib/rpcCache'
 import { semesterAtLeast } from '../lib/senpai'
+import { fmtNum } from '../lib/format'
 import SearchAutocomplete from '../components/SearchAutocomplete'
 import SenpaiSection from '../components/SenpaiSection'
 
@@ -244,7 +245,7 @@ function VisitorHome() {
 
       <section className="home-hero">
         <div className="home-hero__inner">
-          <Badge tone="accent" dot>{stats?.documents ?? 0} documents{stats?.documents_this_week ? ` · +${stats.documents_this_week} cette semaine` : ''}</Badge>
+          <Badge tone="accent" dot>{stats?.modules != null ? `${fmtNum(stats.modules)} modules référencés` : 'Modules référencés'}</Badge>
           <h1 className="t-display">Le réseau organisé du savoir étudiant marocain.</h1>
           <p className="t-body-lg qz-muted">
             Examens, CC, TD, TP et corrigés, rangés par école, filière, semestre et module — partagés et vérifiés par les étudiants.
@@ -265,7 +266,7 @@ function VisitorHome() {
 
       <div className="home-stats">
         <StatStrip items={[
-          { value: stats?.modules != null ? stats.modules.toLocaleString() : '—', label: 'Modules' },
+          { value: stats?.modules != null ? fmtNum(stats.modules) : '—', label: 'Modules' },
           { value: stats?.universities ?? '—', label: 'Établissements' },
           { value: stats?.documents ?? 0, label: 'Documents' },
           { value: stats?.contributors ?? '—', label: 'Contributeurs' },
@@ -384,7 +385,7 @@ function VisitorHome() {
       <div className="home-metrics">
         <div className="home-metrics__inner">
           {[
-            { v: stats?.modules != null ? stats.modules.toLocaleString() : '—', l: 'Modules structurés', s: 'Organisés par filière et semestre' },
+            { v: stats?.modules != null ? fmtNum(stats.modules) : '—', l: 'Modules structurés', s: 'Organisés par filière et semestre' },
             { v: stats?.universities ?? '—', l: 'Établissements', s: 'Toutes les grandes écoles' },
             { v: stats?.filieres ?? '—', l: 'Filières couvertes', s: 'Licence, Ingénieur, Master' },
             { v: '0 MAD', l: 'Coût d’accès', s: 'Gratuit pour tous les étudiants' },

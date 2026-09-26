@@ -265,6 +265,9 @@ export default function Navbar({ activePage = '' }) {
           {user ? (
             <>
               <span className="qz-navbar__desktop-only">
+                {/* English on purpose in both languages: it's the slogan, not UI copy.
+                    Hidden under 860px with the button; the Upload page header carries it there. */}
+                <span className="qz-slogan">Sharing is caring</span>
                 <Button variant="primary" size="sm" iconRight="upload" as={Link} to="/upload">Partager</Button>
               </span>
 

@@ -24,3 +24,6 @@ yarn-error.log*
 
 # manual pre-migration data snapshots (contain user ids / points, local safety net only)
 .migration-snapshot-*.json
+
+# Playwright storageState logins (Phase 3/4 screenshots) - NEVER commit
+auth-*.json

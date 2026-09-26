@@ -14,7 +14,7 @@ const css = `
 const FAQS = [
   { q: "C'est quoi exactement ?", a: 'Un coach IA entraîné sur les annales de ta filière : il explique les examens pas à pas, génère des quiz à partir de tes cours et te propose un plan de révision avant les partiels.' },
   { q: 'Comment je paie ?', a: "Pour l'instant, l'activation se fait manuellement — inscris-toi sur la liste d'attente et on te contacte au lancement pour la mise en place du paiement." },
-  { q: 'Il y aura une version gratuite ?', a: 'Oui, une version gratuite avec publicités sera disponible en plus de la formule payante.' },
+  { q: 'Le coach IA sera-t-il gratuit ?', a: 'La plateforme reste gratuite pour toujours. Le coach IA est un supplément : une version avec publicités sera disponible en plus de la formule à 39 MAD / mois.' },
 ]
 
 export default function AICoach() {
