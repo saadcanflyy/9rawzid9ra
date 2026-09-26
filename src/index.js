@@ -14,6 +14,8 @@ if (process.env.REACT_APP_SENTRY_DSN) {
   Sentry.init({
     dsn: process.env.REACT_APP_SENTRY_DSN,
     environment: process.env.NODE_ENV,
+    // Set by the Vercel build so an issue says which deploy introduced it.
+    release: process.env.REACT_APP_SENTRY_RELEASE || undefined,
     tracesSampleRate: 0.1,
     // Don't ship user input or auth tokens to Sentry.
     sendDefaultPii: false,
