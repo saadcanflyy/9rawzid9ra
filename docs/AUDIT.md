@@ -11,7 +11,7 @@
 > | H1 | Every signed-in user could read all emails | **Fixed** | `16c5024` |
 > | H2 | `reset_daily_ai_usage` callable by anon | **Fixed** | `2ef9c73` |
 > | H3 | No security headers | **Fixed** | `dae5c0d` |
-> | H4 | `react-router-dom` advisory | Open — needs a routing regression pass |
+> | H4 | `react-router-dom` advisory | **Fixed on branch** `chore/react-router-upgrade` — awaiting preview click-through | `pending merge` |
 > | H5 | No error boundary | **Fixed** | `dae5c0d` |
 > | H6 | No error monitoring | **Fixed (code)** — needs a DSN | `dae5c0d` |
 > | H7 | ESLint disabled in prod builds | **Fixed** | `dae5c0d` |
@@ -21,10 +21,17 @@
 > | M4 | 19 functions with mutable `search_path` | **Fixed** | `2ef9c73` |
 > | M5 | No storage DELETE policy | **Fixed** | `159fe73` |
 > | M6 | Storage INSERT not path-scoped | **Fixed** | `159fe73` |
+> | M7 | Catalogue spam caps | **Fixed** | `c93ad8a` |
+> | M8 | No server-side rate limits | **Fixed** | `1a549b9` |
+> | M9 | Contact form broken (policy, no grant) | **Fixed** | `cbba080` |
 > | M10 | Realtime channel per tab | **Partly fixed** — navbar channel removed | `159fe73` |
+> | M11 | 56 unindexed FKs | **Fixed** (12 hot ones; 44 cold left) | `4d3c894` |
+> | M13 | Upload size inconsistent (20 vs 50 MB) | **Fixed** — 20 MB everywhere | `7ebf3d5` |
+> | — | Captcha on auth (Turnstile) | **Fixed (code)** — inert until site key set | `c798631` |
+> | — | Senpai contact wired to Messenger + stats | **Fixed** | `ff6ff3f` |
 > | L4 | `rls_auto_enable` executable by anon | **Fixed** | `2ef9c73` |
 > | — | Senpai email exposed to students | **Fixed** (new rule) | `4b3ea4e` |
-> | M7, M8, M9, M11, M12, M13, L1–L3, L5–L7 | | Open |
+> | M12 (leaked-password protection), L1–L3, L5–L7 | | Open — M12 is a dashboard toggle |
 >
 > Re-ran the Phase-1 probe battery after the fixes — every attack path blocked,
 > every legitimate path still working:
