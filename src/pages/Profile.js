@@ -177,7 +177,7 @@ export default function Profile() {
         { data: badgeCatalogue },
         { data: userBadgeRows },
       ] = await Promise.all([
-        supabase.from('user_profiles').select('*, universities(name)').eq('id', uid).single(),
+        supabase.from('user_profiles').select('id, name, bio, university_id, faculty_id, filiere_id, current_semester, points, uploads_count, total_downloads, followers_count, following_count, posts_count, is_fondateur, is_admin, is_moderator, is_banned, created_at, onboarded_at, wants_ai_notification, universities(name)').eq('id', uid).single(),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('following_id', uid),
         supabase.from('user_follows').select('*', { count: 'exact', head: true }).eq('follower_id', uid),
         supabase.from('documents')

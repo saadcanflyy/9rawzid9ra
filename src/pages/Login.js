@@ -70,11 +70,8 @@ export default function Login() {
         setError('Email ou mot de passe incorrect.')
         return
       }
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('is_banned, banned_until, ban_reason')
-        .eq('id', data.user.id)
-        .single()
+      const { data: banRows } = await supabase.rpc('get_my_ban_status')
+      const profile = banRows?.[0]
       if (profile?.is_banned) {
         const isPerm = !profile.banned_until
         const isFuture = profile.banned_until && new Date(profile.banned_until) > new Date()

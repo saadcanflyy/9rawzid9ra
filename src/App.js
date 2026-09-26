@@ -66,8 +66,8 @@ function App() {
         setBannedUser(null)
         return
       }
-      const { data } = await supabase.from('user_profiles')
-        .select('is_banned, banned_until, ban_reason').eq('id', session.user.id).single()
+      const { data: banRows } = await supabase.rpc('get_my_ban_status')
+      const data = banRows?.[0]
       if (data?.is_banned) {
         const isPerm = !data.banned_until
         const isFuture = data.banned_until && new Date(data.banned_until) > new Date()

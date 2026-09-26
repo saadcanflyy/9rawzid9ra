@@ -443,9 +443,7 @@ export default function ModeratorPanel() {
 
   const loadUsers = async () => {
     setLoading(true)
-    const { data } = await supabase.from('user_profiles')
-      .select('id, name, uploads_count, points, is_admin, is_banned, banned_until, ban_reason, universities(name)')
-      .order('created_at', { ascending: false }).limit(100)
+    const { data } = await supabase.rpc('admin_list_users', { p_limit: 100 })
     setUsers(data || [])
     setLoading(false)
   }
@@ -1118,7 +1116,7 @@ export default function ModeratorPanel() {
                       <div className="mp-user-meta">
                         <span className="t-label">{u.name || 'Sans nom'}</span>
                         <Badge tone={LEVEL_TONE[level]}>{level}</Badge>
-                        <span className="t-mono qz-subtle">{u.universities?.name || ''}</span>
+                        <span className="t-mono qz-subtle">{u.university_name || ''}</span>
                         <span className="t-mono qz-subtle">{u.uploads_count || 0} docs · {u.points || 0} pts</span>
                         {u.is_banned && <Badge tone="danger">Banni</Badge>}
                       </div>

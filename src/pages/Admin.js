@@ -231,7 +231,7 @@ export default function Admin() {
       supabase.from('documents').select('*', { count:'exact', head:true }).gte('created_at', monthStart),
       supabase.from('documents').select('*', { count:'exact', head:true }).gte('created_at', lastMonthStart).lt('created_at', monthStart),
       supabase.from('user_profiles').select('*', { count:'exact', head:true }).gte('created_at', monthStart),
-      supabase.from('user_profiles').select('id, name, email, points, uploads_count').order('points', { ascending: false }).limit(10),
+      supabase.rpc('admin_top_users', { p_limit: 10 }),
       supabase.from('senpai_posts').select('*', { count:'exact', head:true }).eq('is_approved', false),
       supabase.from('filiere_suggestions').select('*', { count:'exact', head:true }).eq('status', 'pending'),
       supabase.from('admin_documents').select('id, doc_type, module_name, uploader_name, created_at, academic_year').order('created_at', { ascending: false }).limit(8),
@@ -478,7 +478,7 @@ export default function Admin() {
     setLoading(true)
     const { data } = await supabase
       .from('senpai_posts')
-      .select('*, user_profiles(name, email)')
+      .select('*, user_profiles(name)')
       .order('created_at', { ascending: false })
       .limit(100)
     setFlaggedPosts(data || [])
@@ -501,7 +501,7 @@ export default function Admin() {
 
   const loadUsers = async () => {
     setLoading(true)
-    const { data } = await supabase.from('user_profiles').select('*').order('created_at', { ascending: false }).limit(100)
+    const { data } = await supabase.rpc('admin_list_users', { p_limit: 100 })
     setUsers(data || [])
     setLoading(false)
   }
